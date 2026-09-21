@@ -177,6 +177,9 @@ input:focus,textarea:focus{border-color:var(--petrol)}
 .mini{width:40px;height:40px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--ink2);cursor:pointer;flex:0 0 auto;padding:0}
 .mini:hover{background:var(--coral-t);color:#8E2C10}
 .mini.copy:hover{background:var(--petrol-t);color:var(--petrol-d)}
+.task-rem{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--ink2);font-size:13px}
+.task-rem svg{width:15px;height:15px;flex:0 0 auto}
+.task-rem.location{color:var(--petrol-d)}
 .empty{padding:26px 4px;color:var(--ink2)}
 .empty .btn{margin-top:12px}
 
@@ -441,6 +444,8 @@ const ICON = {
   cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2.6l2.1 11h10.6l2-8H6.4"/>',
   download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  bell: '<path d="M18 9a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+  pin: '<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1116 0z"/><circle cx="12" cy="10" r="2.5"/>',
   doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>'
 };
 const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
@@ -693,7 +698,7 @@ function fridgeBadge(f) {
   return `<span class="badge ${cls}">${f.est ? '~ ' : ''}${txt}</span>`;
 }
 /* ---------- meals & shopping ---------- */
-const MEAL_TAG = { zajtrk: 'Zajtrk', kosilo: 'Kosilo', vecerja: 'Večerja', malica_jutri: 'Za jutri v službo', prigrizek: 'Prigrizek' };
+const MEAL_TAG = { zajtrk: 'Zajtrk', malica: 'Malica', kosilo: 'Kosilo', vecerja: 'Večerja', malica_jutri: 'Malica za jutri', prigrizek: 'Prigrizek' };
 const SHOP_ORDER = ['Zelenjava', 'Sadje', 'Meso in ribe', 'Mlečno', 'Jajca', 'Kruh in pekovski', 'Žita in testenine', 'Konzerve in suho', 'Zamrznjeno', 'Pijače', 'Omake in začimbe', 'Drugo'];
 const fridgeForAI = () => S.fridge.map(f => ({ ime: f.name, kolicina: f.qty || null, dni_do_izteka: f.expires ? dayDiff(f.expires) : null }));
 function householdTxt() {
@@ -710,15 +715,16 @@ async function genMeals() {
   const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
 ${householdTxt()}
 Vsebina hladilnika: ${JSON.stringify(fridgeForAI())}
-Pripravi predlog obrokov za današnji dan. Vključi samo obroke, ki so še pred nami glede na trenutno uro (zajtrk do 10:00, kosilo do 15:00, večerja do 21:00; ostale preskoči).
+Pripravi CELOTEN jedilnik za današnji dan. Vedno vrni natanko štiri glavne obroke: zajtrk, malico, kosilo in večerjo. Ne izpuščaj obroka samo zato, ker je njegova običajna ura že mimo.
 Vrni JSON:
-{"nasvet":"1 stavek: kaj je najbolj nujno porabiti in kako je dan zastavljen","obroki":[{"tip":"zajtrk|kosilo|vecerja|malica_jutri|prigrizek","naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":["živila iz hladilnika"],"manjka":["kar je treba dokupiti, lahko prazno"],"koraki":["3-6 kratkih korakov"],"nasvet":"kratek nasvet ali null"}]}
+{"nasvet":"1 stavek: kaj je najbolj nujno porabiti in kako je dan zastavljen","obroki":[{"tip":"zajtrk|malica|kosilo|vecerja","naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":["živila iz hladilnika"],"manjka":["kar je treba dokupiti, lahko prazno"],"koraki":["3-6 kratkih korakov"],"nasvet":"kratek nasvet ali null"}]}
 Pravila:
+- Vrni po en obrok tipa "zajtrk", "malica", "kosilo" in "vecerja".
 - Uporabi predvsem živila iz hladilnika, najprej tista z najmanjšim "dni_do_izteka".
 - Preprosti postopki brez pretirane kompliciranosti. Osnovne stvari (olje, sol, poper, začimbe, moka, sladkor, kis) imajo vedno.
 - V "manjka" navedi največ 3-4 stvari; če gre brez dokupa, pusti prazno.
 - Količine in porcije prilagodi številu oseb.
-${mp ? '- Uporabnik nosi malico v službo. Dodaj obrok tipa "malica_jutri": jed, ki se pripravi danes (lahko skupaj z večerjo, s podvojenimi porcijami) in je naslednji dan tudi hladna ali pogreta dobra ter praktična za prenos v posodi. V "nasvet" napiši, kako jo shraniti.' : ''}`;
+${mp ? '- Malico oblikuj kot praktično malico za v službo: naj bo primerna za posodo, dobra hladna ali pogreta in čim bolj enostavna za pripravo.' : ''}`;
   busy.meals = true; render();
   try {
     const r = await callGemini([{ text: prompt }]);
@@ -740,9 +746,9 @@ async function genShop() {
   const prompt = `Trenutni datum: ${today()} (${weekday()}, Europe/Ljubljana).
 ${householdTxt()}
 Vsebina hladilnika: ${JSON.stringify(fridgeForAI())}
-Sestavi nakupovalni seznam živil za naslednjih 7 dni od danes: kosilo in večerja vsak dan, preprost zajtrk in osnovni prigrizki${S.ui.mealprep ? ', ter malica za v službo za delovne dni (pripravi se dan prej, dobra mora biti tudi hladna ali pogreta)' : ''}.
+Sestavi nakupovalni seznam živil za naslednjih 7 dni od danes: zajtrk, malica, kosilo in večerja vsak dan${S.ui.mealprep ? ', pri čemer naj bo malica za delovne dni praktična za v službo (dobra hladna ali pogreta)' : ''}.
 Vrni JSON:
-{"nasvet":"1 stavek: kako je seznam zasnovan","obroki_teden":["Ponedeljek: kosilo …, večerja …", "... ena kratka vrstica na dan, 7 vrstic z imenom dneva"],"seznam":[{"ime":"","kolicina":"npr. 1 kg, 2 kos, 500 g","kategorija":"${SHOP_ORDER.join('|')}"}]}
+{"nasvet":"1 stavek: kako je seznam zasnovan","obroki_teden":["Ponedeljek: zajtrk …, malica …, kosilo …, večerja …", "... ena kratka vrstica na dan, 7 vrstic z imenom dneva"],"seznam":[{"ime":"","kolicina":"npr. 1 kg, 2 kos, 500 g","kategorija":"${SHOP_ORDER.join('|')}"}]}
 Pravila:
 - Živil, ki jih je v hladilniku že dovolj, ne dodajaj. Tista z majhnim "dni_do_izteka" porabi v prvih dneh menija.
 - Največ 35 artiklov, realne količine za število oseb, vse kupljivo v običajni trgovini.
@@ -850,15 +856,27 @@ function renderMoney() {
   return h;
 }
 const PRIO = { visoka: 0, srednja: 1, nizka: 2 };
+function taskReminderLabel(t) {
+  const r = t && t.reminder;
+  if (!r || !r.type) return '';
+  if (r.type === 'time' && r.at) {
+    const d = r.at.slice(0, 10) === today() ? 'danes' : fmtDate(r.at.slice(0, 10));
+    return `${d} ob ${r.at.slice(11, 16)}`;
+  }
+  if (r.type === 'location') return `ko si pri ${r.label || 'nastavljeni lokaciji'}`;
+  return '';
+}
 function renderTasks() {
   const open = S.tasks.filter(t => !t.done).sort((a, b) => PRIO[a.prio] - PRIO[b.prio] || (a.due || '9999').localeCompare(b.due || '9999'));
   const done = S.tasks.filter(t => t.done);
   const row = t => {
     const meta = [t.frame, t.time, t.min ? t.min + ' min' : null, t.due ? rel(dayDiff(t.due)) : null].filter(Boolean).join(' · ');
-    return `<li class="row ${t.done ? 'done' : ''}">${chk(t.done, 'toggleTask', t.id, t.done ? 'Vrni med odprta' : 'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong>${meta ? `<small>${esc(meta)}</small>` : ''}</div>
-      <button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash', 19)}</button></li>`;
+    const reminder = taskReminderLabel(t);
+    return `<li class="row ${t.done ? 'done' : ''}">${chk(t.done, 'toggleTask', t.id, t.done ? 'Vrni med odprta' : 'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong>${meta ? `<small>${esc(meta)}</small>` : ''}${reminder ? `<small class="task-rem ${t.reminder.type === 'location' ? 'location' : ''}">${ic(t.reminder.type === 'location' ? 'pin' : 'bell', 15)} ${esc(reminder)}</small>` : ''}</div>
+      <button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder ? 'Uredi opomnik' : 'Dodaj opomnik'} za opravilo">${ic('bell', 19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash', 19)}</button></li>`;
   };
   let h = `<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="btn" data-act="quickTask">Dodaj</button></div>`;
+  h += `<p class="help" style="margin:10px 0 0">Opomnik lahko sprožiš ob določeni uri ali ko prideš na določeno lokacijo.</p>`;
   const groups = [['visoka', 'Visoka prioriteta'], ['srednja', 'Srednja prioriteta'], ['nizka', 'Nizka prioriteta']];
   let any = false;
   groups.forEach(([k, l]) => { const g = open.filter(t => t.prio === k); if (g.length) { any = true; h += `<h2 class="sec">${l}</h2><ul class="list">${g.map(row).join('')}</ul>`; } });
@@ -1435,6 +1453,146 @@ async function installApp() {
   openSheet(`<div class="sheet-h"><h2>Namesti na telefon</h2>${closeBtn}</div>${body}`, 'install');
 }
 
+
+/* ---------- task reminders ---------- */
+const taskReminderForm = { id: null };
+function localDateTimeValue(d = new Date()) {
+  return `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function ensureNotifyPermission() {
+  if (!('Notification' in window)) return Promise.resolve('unsupported');
+  if (Notification.permission === 'granted') return Promise.resolve('granted');
+  if (Notification.permission === 'denied') return Promise.resolve('denied');
+  return Notification.requestPermission().catch(() => 'denied');
+}
+function notifyUser(title, body) {
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') new Notification(title, { body, tag: 'lifeflow-task-reminder' });
+  } catch (e) { /* toast below is the fallback */ }
+  toast(body);
+}
+function distanceM(lat1, lon1, lat2, lon2) {
+  const R = 6371000, rad = Math.PI / 180, dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function normalizeTaskReminder(t) {
+  const r = t && t.reminder;
+  if (!r || !r.type) return null;
+  if (r.type === 'time' && r.at) return { ...r, at: r.at.slice(0, 16), fired: !!r.fired };
+  if (r.type === 'location' && Number.isFinite(Number(r.lat)) && Number.isFinite(Number(r.lon))) {
+    return { ...r, lat: Number(r.lat), lon: Number(r.lon), radius: Math.max(30, Number(r.radius) || 150), label: str(r.label) || 'nastavljeni lokaciji', fired: !!r.fired };
+  }
+  return null;
+}
+function checkTaskTimeReminders() {
+  const now = Date.now();
+  let changed = false;
+  S.tasks.forEach(t => {
+    const r = normalizeTaskReminder(t);
+    if (!r || r.type !== 'time' || t.done || r.fired || !r.at) return;
+    const ts = new Date(r.at).getTime();
+    if (!Number.isFinite(ts) || now < ts || now - ts > 24 * 60 * 60 * 1000) return;
+    t.reminder = { ...r, fired: true };
+    changed = true;
+    notifyUser('LifeFlow AI – opomnik', t.title);
+  });
+  if (changed) { save(); if (!sheet.open) render(); }
+}
+let geoWatch = null;
+function checkTaskLocationReminders(pos) {
+  if (!pos || !pos.coords) return;
+  let changed = false;
+  const { latitude, longitude } = pos.coords;
+  S.tasks.forEach(t => {
+    const r = normalizeTaskReminder(t);
+    if (!r || r.type !== 'location' || t.done || r.fired) return;
+    const d = distanceM(latitude, longitude, r.lat, r.lon);
+    if (d <= r.radius) {
+      t.reminder = { ...r, fired: true };
+      changed = true;
+      notifyUser('LifeFlow AI – opomnik', `${t.title} · ${r.label}`);
+    }
+  });
+  if (changed) { save(); if (!sheet.open) render(); }
+}
+function startReminderMonitoring() {
+  checkTaskTimeReminders();
+  clearInterval(window.lifeFlowReminderTimer);
+  window.lifeFlowReminderTimer = setInterval(checkTaskTimeReminders, 15000);
+  const hasLocation = S.tasks.some(t => { const r = normalizeTaskReminder(t); return r && r.type === 'location' && !t.done && !r.fired; });
+  if (!hasLocation || !navigator.geolocation) return;
+  if (geoWatch != null) return;
+  try {
+    geoWatch = navigator.geolocation.watchPosition(checkTaskLocationReminders, () => { /* location unavailable */ }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 });
+  } catch (e) { geoWatch = null; }
+}
+function stopReminderMonitoring() {
+  if (geoWatch != null && navigator.geolocation) navigator.geolocation.clearWatch(geoWatch);
+  geoWatch = null;
+}
+function taskReminder(id) {
+  const t = byId(S.tasks, id); if (!t) return;
+  taskReminderForm.id = id;
+  const r = normalizeTaskReminder(t) || {};
+  const type = r.type || 'time';
+  const d = new Date(); if (d.getTime() < Date.now() + 60000) d.setMinutes(d.getMinutes() + 5);
+  const fallbackAt = `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const html = `<div class="sheet-h"><h2>Opomnik za opravilo</h2>${closeBtn}</div>
+    <p class="hint"><strong>${esc(t.title)}</strong></p>
+    <div class="field"><label for="trType">Sprožilec</label><select id="trType"><option value="time" ${type === 'time' ? 'selected' : ''}>Ob določeni uri</option><option value="location" ${type === 'location' ? 'selected' : ''}>Ko pridem na lokacijo</option></select></div>
+    <div id="trTime" ${type === 'time' ? '' : 'hidden'}><div class="field"><label for="trAt">Datum in ura</label><input type="datetime-local" id="trAt" value="${esc(r.at || fallbackAt)}"></div></div>
+    <div id="trLoc" ${type === 'location' ? '' : 'hidden'}>
+      <div class="field"><label for="trLabel">Ime lokacije</label><input type="text" id="trLabel" value="${esc(r.label || '')}" placeholder="npr. Mercator Trebnje"></div>
+      <div class="field"><label>Koordinate lokacije</label><div class="field two"><input type="number" id="trLat" step="any" value="${r.lat != null ? esc(r.lat) : ''}" placeholder="Zemljepisna širina"><input type="number" id="trLon" step="any" value="${r.lon != null ? esc(r.lon) : ''}" placeholder="Zemljepisna dolžina"></div></div>
+      <div class="field"><label for="trRadius">Radij zaznave (m)</label><input type="number" id="trRadius" min="30" max="3000" step="10" value="${esc(r.radius || 150)}"></div>
+      <button class="btn sm ghost" data-act="useCurrentLocation" type="button">${ic('pin', 16)} Uporabi mojo trenutno lokacijo</button>
+      <p class="help">Za poljubno lokacijo lahko vneseš koordinate iz Google Maps. GPS opozorilo se preverja, ko aplikacija teče in ima dovoljenje za lokacijo.</p>
+    </div>
+    <div class="set-actions"><button class="btn" data-act="saveTaskReminder">${ic('bell', 17)} Shrani opomnik</button>${r.type ? `<button class="btn ghost danger" data-act="removeTaskReminder">Odstrani opomnik</button>` : ''}</div>
+    <button class="btn plain" data-act="requestNotifications">Dovoli obvestila brskalnika</button>`;
+  openSheet(html, 'taskReminder');
+}
+function toggleTaskReminderFields() {
+  const type = $('#trType') && $('#trType').value;
+  const a = $('#trTime'), b = $('#trLoc');
+  if (a) a.hidden = type !== 'time';
+  if (b) b.hidden = type !== 'location';
+}
+async function saveTaskReminder() {
+  const t = byId(S.tasks, taskReminderForm.id); if (!t) return;
+  const type = $('#trType') && $('#trType').value;
+  if (type === 'time') {
+    const at = $('#trAt') && $('#trAt').value;
+    if (!at) { toast('Izberi datum in uro.'); return; }
+    t.reminder = { type: 'time', at: at.slice(0, 16), fired: false };
+  } else {
+    const label = ($('#trLabel') && $('#trLabel').value.trim()) || 'nastavljeni lokaciji';
+    const lat = num($('#trLat') && $('#trLat').value), lon = num($('#trLon') && $('#trLon').value), radius = num($('#trRadius') && $('#trRadius').value) || 150;
+    if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) { toast('Za lokacijski opomnik vnesi veljavne koordinate.'); return; }
+    t.reminder = { type: 'location', label, lat, lon, radius: Math.max(30, Math.min(3000, radius)), fired: false };
+  }
+  const p = await ensureNotifyPermission();
+  save(); stopReminderMonitoring(); startReminderMonitoring(); sheet.close(); render();
+  if (p === 'denied') toast('Opomnik je shranjen, vendar so obvestila brskalnika blokirana.');
+  else if (p === 'unsupported') toast('Opomnik je shranjen. Ta brskalnik ne podpira obvestil.');
+  else toast('Opomnik je shranjen.');
+}
+function removeTaskReminder() {
+  const t = byId(S.tasks, taskReminderForm.id); if (!t) return;
+  delete t.reminder; save(); stopReminderMonitoring(); startReminderMonitoring(); sheet.close(); render(); toast('Opomnik odstranjen.');
+}
+function useCurrentLocation() {
+  if (!navigator.geolocation) { toast('Ta brskalnik ne podpira GPS lokacije.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = $('#trLat'), lon = $('#trLon');
+    if (lat) lat.value = pos.coords.latitude.toFixed(6);
+    if (lon) lon.value = pos.coords.longitude.toFixed(6);
+    const lab = $('#trLabel'); if (lab && !lab.value.trim()) lab.value = 'Trenutna lokacija';
+    toast('Trenutna lokacija je nastavljena.');
+  }, () => toast('GPS lokacije ni bilo mogoče določiti. Dovoli dostop do lokacije.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+}
+
 /* ---------- actions ---------- */
 const byId = (list, id) => list.find(x => x.id === id);
 const A = {
@@ -1473,7 +1631,12 @@ const A = {
     if (bl.task_id) { const t = byId(S.tasks, bl.task_id); if (t) t.done = bl.done; }
     save(); render();
   },
-  toggleTask(b) { const t = byId(S.tasks, b.dataset.id); if (t) { t.done = !t.done; save(); render(); } },
+  toggleTask(b) { const t = byId(S.tasks, b.dataset.id); if (t) { t.done = !t.done; save(); render(); startReminderMonitoring(); } },
+  taskReminder(b) { taskReminder(b.dataset.id); },
+  saveTaskReminder() { saveTaskReminder(); },
+  removeTaskReminder() { removeTaskReminder(); },
+  useCurrentLocation() { useCurrentLocation(); },
+  requestNotifications() { ensureNotifyPermission().then(p => toast(p === 'granted' ? 'Obvestila so dovoljena.' : p === 'denied' ? 'Obvestila so blokirana v brskalniku.' : 'Obvestila niso podprta.')); },
   delTask(b) { S.tasks = S.tasks.filter(x => x.id !== b.dataset.id); save(); render(); },
   doneRem(b) { const r = byId(S.reminders, b.dataset.id); if (r) { r.done = true; save(); render(); } },
   delRem(b) { S.reminders = S.reminders.filter(x => x.id !== b.dataset.id); save(); render(); },
@@ -1559,14 +1722,16 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   if (e.target.id === 'planFrom') { S.ui.from = tm(e.target.value) || '08:00'; save(); }
   if (e.target.id === 'planTo') { S.ui.to = tm(e.target.value) || '21:00'; save(); }
+  if (e.target.id === 'trType') toggleTaskReminderFields();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
   if (e.key === 'Enter' && e.target.id === 'quickShop') { e.preventDefault(); A.quickShop(); }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.open) render(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkTaskTimeReminders(); if (!sheet.open) render(); } });
 
 render();
+startReminderMonitoring();
 const qa = new URLSearchParams(location.search).get('a');
 if (qa) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ } setTimeout(() => openCapture(qa === 'voice' ? 'voice' : 'open'), 80); }
 </script>
