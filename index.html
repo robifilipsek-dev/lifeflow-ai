@@ -237,7 +237,41 @@ dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
 dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
+
+/* ---------- LifeFlow AI v2 enhancements ---------- */
+.install-card{margin:16px 0;padding:16px;border:1.5px solid var(--line);border-radius:18px;background:#fff}
+.install-card h3{font-size:18px;margin-bottom:4px}
+.install-card p{margin:4px 0 10px;color:var(--ink2)}
+.feature-grid{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+.feature-card{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--paper)}
+.feature-card strong{display:block;margin-bottom:3px}
+.receipt-img{width:76px;height:76px;border-radius:10px;object-fit:cover;border:1px solid var(--line);cursor:pointer}
+.doc-list{display:grid;gap:10px}
+.doc{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.doc .grow{flex:1;min-width:0}
+.doc .grow strong{display:block;overflow-wrap:anywhere}
+.doc .meta{font-size:13.5px;color:var(--ink2)}
+.doc .actions{display:flex;gap:3px;flex:0 0 auto}
+.shop-list{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.shop-list li{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.shop-list input{width:20px;height:20px}
+.shop-list .done{text-decoration:line-through;color:var(--ink2)}
+.location-pill{margin-top:6px;padding:5px 9px;border-radius:9px;background:var(--petrol-t);color:var(--petrol-d);font-size:13px;display:inline-block}
+.location-missing{background:var(--gold-t);color:#7A5300}
+.rem-grid{display:grid;gap:10px}
+.rem-card{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.rem-card strong{display:block}
+.small-note{font-size:13px;color:var(--ink2)}
+@media(max-width:420px){.feature-grid{grid-template-columns:1fr}}
+
 </style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LifeFlow AI">
 </head>
 <body>
 <div id="app">
@@ -246,7 +280,7 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
       <h1 id="title"></h1>
       <p id="sub"></p>
     </div>
-    <button class="icon-btn" data-act="settings" aria-label="Nastavitve"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button>
+    <button class="icon-btn" data-act="settings" aria-label="Nastavitve"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button><button class="icon-btn" data-act="install" aria-label="Namesti aplikacijo" title="Namesti aplikacijo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="m8 10 4 4 4-4"/><path d="M5 17.5v1a2.5 2.5 0 0 0 2.5 2.5h9a2.5 2.5 0 0 0 2.5-2.5v-1"/></svg></button>
   </header>
   <main id="view"></main>
 </div>
@@ -1091,6 +1125,362 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.open) render(); });
+
+
+/* ================= LifeFlow AI v2 enhancement layer ================= */
+(function(){
+  'use strict';
+
+  // Extend the existing local state without breaking older saved data.
+  S.documents = Array.isArray(S.documents) ? S.documents : [];
+  S.shopping = Array.isArray(S.shopping) ? S.shopping : [];
+  S.mealPlan = S.mealPlan || null;
+  S.receipts = Array.isArray(S.receipts) ? S.receipts : [];
+  S.settings.notifications = !!S.settings.notifications;
+  S.settings.location = S.settings.location || { enabled:false };
+  save();
+
+  let deferredInstallPrompt = null;
+  let pendingTaskCoords = null;
+  let lastTimeNotice = {};
+  let lastLocationNotice = {};
+
+  // PWA install prompt (Chromium-based browsers).
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    updateInstallAvailability();
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    toast('LifeFlow AI je nameščen na napravi.');
+    render();
+  });
+
+  function isStandalone(){
+    return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  function installHelp(){
+    if(location.protocol === 'file:'){
+      return 'Za namestitev kot pravo aplikacijo odpri LifeFlow AI prek HTTPS povezave. Lokalna datoteka file:// ni PWA namestitveni vir.';
+    }
+    if(/iPhone|iPad|iPod/i.test(navigator.userAgent)){
+      return 'Na iPhonu/iPadu odpri Deli → Add to Home Screen / Dodaj na začetni zaslon.';
+    }
+    return 'V Chrome/Edge uporabi gumb Namesti ali meni brskalnika → Namesti aplikacijo / Add to Home screen.';
+  }
+  function updateInstallAvailability(){
+    const b = document.getElementById('installPwaBtn');
+    if(!b) return;
+    b.disabled = isStandalone();
+    b.textContent = isStandalone() ? 'Aplikacija je že nameščena' : 'Namesti LifeFlow AI';
+  }
+  async function installApp(){
+    if(isStandalone()){ toast('LifeFlow AI je že nameščen.'); return; }
+    if(deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      try { await deferredInstallPrompt.userChoice; } catch(e) {}
+      deferredInstallPrompt = null;
+      updateInstallAvailability();
+      return;
+    }
+    toast(installHelp());
+  }
+
+  // Notifications.
+  async function requestNotifications(){
+    if(!('Notification' in window)){
+      toast('Ta brskalnik ne podpira sistemskih obvestil.');
+      return false;
+    }
+    const p = await Notification.requestPermission();
+    S.settings.notifications = p === 'granted';
+    save(); render();
+    if(p === 'granted') toast('Obvestila so omogočena.');
+    else toast('Obvestila niso dovoljena.');
+    return p === 'granted';
+  }
+  function notify(title, body){
+    if(!S.settings.notifications || !('Notification' in window) || Notification.permission !== 'granted') return;
+    try { new Notification(title,{body,icon:'icons/icon-192.png',badge:'icons/icon-192.png'}); } catch(e) {}
+  }
+  function reminderLabel(r){
+    if(r.trigger === 'cas') return r.at ? `ob ${r.at.slice(11,16)}` : 'ob določenem času';
+    if(r.trigger === 'lokacija') return r.locationName ? `ob prihodu: ${r.locationName}` : 'lokacijski opomnik';
+    if(r.trigger === 'pred_odhodom') return 'pred odhodom';
+    if(r.trigger === 'v_trgovini') return 'v trgovini';
+    return 'opomnik';
+  }
+  function checkTimeReminders(){
+    const now = new Date();
+    const key = `${today()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at).forEach(r=>{
+      const at = r.at.slice(0,16);
+      if(at === key && lastTimeNotice[r.id] !== key){
+        lastTimeNotice[r.id] = key;
+        notify('LifeFlow AI', r.text || 'Čas je za opravilo.');
+      }
+    });
+  }
+  function distanceM(lat1, lon1, lat2, lon2){
+    const R=6371000, toRad=x=>x*Math.PI/180;
+    const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+  function checkLocationReminders(){
+    const list = S.reminders.filter(r=>!r.done && r.trigger==='lokacija' && r.lat!=null && r.lng!=null);
+    if(!list.length || !navigator.geolocation || document.hidden) return;
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const now = Date.now();
+      list.forEach(r=>{
+        const dist = distanceM(pos.coords.latitude,pos.coords.longitude,Number(r.lat),Number(r.lng));
+        const radius = Number(r.radius || 200);
+        if(dist <= radius){
+          const last = lastLocationNotice[r.id] || 0;
+          if(now-last > 12*3600*1000){
+            lastLocationNotice[r.id] = now;
+            notify('LifeFlow AI', r.text || `Opomnik na lokaciji ${r.locationName || ''}`);
+          }
+        }
+      });
+    },()=>{}, {enableHighAccuracy:false,maximumAge:30000,timeout:8000});
+  }
+  setInterval(checkTimeReminders, 30000);
+  setInterval(checkLocationReminders, 60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){checkTimeReminders();checkLocationReminders();} });
+
+  // Service worker.
+  if('serviceWorker' in navigator && location.protocol !== 'file:'){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  // ---- Meal planning from fridge ----
+  async function generateMealPlan(){
+    if(!S.fridge.length){ toast('Najprej dodaj nekaj živil v hladilnik.'); return; }
+    if(!needKey()) return;
+    const items = S.fridge.map(f=>({ime:f.name,kolicina:f.qty||null,rok:f.expires||null,kategorija:f.category||null}));
+    openSheet(`<div class="sheet-h"><h2>Načrt obrokov</h2>${closeBtn}</div><div class="busy"><span class="spin"></span> AI sestavlja današnje obroke in nakupovalni seznam …</div>`,'mealplan');
+    try{
+      const d = await callGemini([{text:`Moja živila v hladilniku:\n${JSON.stringify(items)}\nDanes je ${today()}. Pripravi praktičen načrt za današnji dan in nakupovalni seznam za naslednjih 7 dni. Upoštevaj najprej živila z bližnjim rokom. Vrni JSON v obliki: {"danes":[{"obrok":"zajtrk|kosilo|večerja","ime":"...","sestavine":["..."],"manjkajo":["..."]}],"teden":[{"dan":"ponedeljek","obroki":["..."]}],"nakup":[{"izdelek":"...","kolicina":"...","kategorija":"sadje|zelenjava|meso|mlecno|shramba|pijaca|drugo"}],"nasvet":"..."}. Brez izmišljanja količin iz hladilnika.`}]);
+      S.mealPlan = {...d, generatedAt:nowStr()};
+      const existing = new Set(S.shopping.map(x=>String(x.name).toLowerCase()));
+      arr(d.nakup).forEach(x=>{
+        const name=str(x.izdelek); if(name && !existing.has(name.toLowerCase())) S.shopping.push({id:uid(),name,qty:str(x.kolicina),category:str(x.kategorija)||'drugo',done:false,source:'AI'});
+      });
+      save(); renderMealPlanSheet();
+    }catch(e){
+      $('#sheetBody').innerHTML=`<div class="sheet-h"><h2>Načrt obrokov</h2>${closeBtn}</div><div class="err">${esc(e.message || 'AI napaka')}</div><div class="sheet-f"><button class="btn wide" data-act="closeSheet">Zapri</button></div>`;
+    }
+  }
+  function renderMealPlanSheet(){
+    const p=S.mealPlan||{};
+    const todayMeals=arr(p.danes);
+    const week=arr(p.teden);
+    const shopping=arr(p.nakup);
+    let h=`<div class="sheet-h"><h2>Načrt obrokov</h2>${closeBtn}</div>`;
+    if(p.nasvet) h+=`<p class="suggest">${esc(p.nasvet)}</p>`;
+    h+=`<div class="rvh">Danes</div><ul class="rvl">${todayMeals.length?todayMeals.map(m=>`<li class="rv"><strong>${esc(m.obrok||'Obrok')}: ${esc(m.ime||'')}</strong><div class="small-note">${esc(arr(m.sestavine).join(', '))}</div>${arr(m.manjkajo).length?`<div class="small-note">Manjka: ${esc(arr(m.manjkajo).join(', '))}</div>`:''}</li>`).join(''):'<li class="rv">Ni predlogov.</li>'}</ul>`;
+    h+=`<div class="rvh">Naslednjih 7 dni</div><ul class="rvl">${week.map(d=>`<li class="rv"><strong>${esc(d.dan||'Dan')}</strong><div class="small-note">${esc(arr(d.obroki).join(' · '))}</div></li>`).join('')}</ul>`;
+    h+=`<div class="rvh">Nakupovalni seznam</div><ul class="shop-list">${shopping.map(x=>`<li><input type="checkbox" data-shop-id="${esc(x.id)}" ${x.done?'checked':''}><span class="${x.done?'done':''}">${esc(x.name)}${x.qty?` · ${esc(x.qty)}`:''}</span></li>`).join('')}</ul>`;
+    h+=`<div class="sheet-f"><button class="btn wide" data-act="addShopping">Shrani nakupovalni seznam</button></div>`;
+    $('#sheetBody').innerHTML=h;
+  }
+  document.addEventListener('change',e=>{
+    const id=e.target && e.target.dataset && e.target.dataset.shopId;
+    if(!id) return;
+    const x=S.shopping.find(a=>a.id===id); if(x){x.done=e.target.checked;save();render();}
+  });
+  function addShoppingFromPlan(){
+    if(!S.mealPlan) return;
+    let added=0; const have=new Set(S.shopping.map(x=>String(x.name).toLowerCase()));
+    arr(S.mealPlan.nakup).forEach(x=>{const name=str(x.izdelek);if(name&&!have.has(name.toLowerCase())){S.shopping.push({id:uid(),name,qty:str(x.kolicina),category:str(x.kategorija)||'drugo',done:false,source:'AI'});have.add(name.toLowerCase());added++;}});
+    save();toast(added?`Dodano ${added} živil na nakupovalni seznam.`:'Nakupovalni seznam je že posodobljen.');render();
+  }
+
+  // ---- Documents: warranties, car service, vignette, contracts, etc. ----
+  function openDocumentForm(existing){
+    const d=existing||{};
+    openSheet(`<div class="sheet-h"><h2>${d.id?'Uredi zapis':'Nov zapis'}</h2>${closeBtn}</div>
+      <div class="field"><label>Vrsta</label><select id="docType" style="font:inherit;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;min-height:44px;width:100%"><option value="garancija">Garancija</option><option value="servis">Servis</option><option value="vinjeta">Vinjeta</option><option value="zavarovanje">Zavarovanje</option><option value="naročnina">Naročnina</option><option value="drugo">Drugo</option></select></div>
+      <div class="field"><label>Naslov</label><input id="docTitle" value="${esc(d.title||'')}" placeholder="npr. Servis avta, garancija za TV …"></div>
+      <div class="feature-grid"><div class="field"><label>Velja do</label><input type="date" id="docExpiry" value="${esc(d.expiry||'')}"></div><div class="field"><label>Opomni me</label><input type="date" id="docReminder" value="${esc(d.reminderDate||'')}"></div></div>
+      <div class="field"><label>Opomba</label><textarea id="docNote" placeholder="Podrobnosti, servisni interval, številka police …">${esc(d.note||'')}</textarea></div>
+      <div class="sheet-f"><button class="btn wide" data-act="saveDocument" data-id="${esc(d.id||'')}">Shrani</button>${d.id?`<button class="btn ghost wide danger" data-act="delDocument" data-id="${esc(d.id)}">Izbriši</button>`:''}</div>`,'document');
+    const sel=$('#docType'); if(sel) sel.value=d.type||'drugo';
+  }
+  function saveDocument(id){
+    const type=$('#docType').value, title=str($('#docTitle').value)||'Brez naslova', expiry=dt($('#docExpiry').value), reminder=dt($('#docReminder').value), note=str($('#docNote').value);
+    if(!title){toast('Dodaj naslov zapisa.');return;}
+    let d=id?S.documents.find(x=>x.id===id):null;
+    if(!d){d={id:uid(),createdAt:nowStr()};S.documents.push(d)}
+    Object.assign(d,{type,title,expiry,reminderDate:reminder,note});
+    S.reminders=S.reminders.filter(r=>r.documentId!==d.id);
+    const target=reminder||expiry;
+    if(target){
+      S.reminders.push({id:uid(),text:`${title}${expiry?` · rok ${fmtDate(expiry)}`:''}`,trigger:'cas',at:`${target} 08:00`,done:false,documentId:d.id});
+    }
+    save();sheet.close();render();toast('Zapis in opomnik sta shranjena.');
+  }
+  function delDocument(id){
+    S.documents=S.documents.filter(d=>d.id!==id);
+    S.reminders=S.reminders.filter(r=>r.documentId!==id);
+    save();sheet.close();render();toast('Zapis je izbrisan.');
+  }
+  function renderDocuments(){
+    const docs=[...S.documents].sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999'));
+    let h=`<h2 class="sec">Garancije in pomembni roki</h2><div class="toolbar"><button class="btn" data-act="newDocument">${ic('pen',18)} Dodaj rok</button></div>`;
+    if(!docs.length) return h+`<div class="empty"><p>Sem lahko shraniš garancije, servise, vinjete, zavarovanja in druge roke.</p></div>`;
+    h+=`<div class="doc-list">${docs.map(d=>{const dd=d.expiry?dayDiff(d.expiry):null;const cls=dd!=null&&dd<=7?'bad':dd!=null&&dd<=30?'warn':'';return `<div class="doc"><div class="grow"><strong>${esc(d.title)}</strong><div class="meta">${esc(d.type||'drugo')}${d.expiry?' · velja do '+fmtDate(d.expiry):''}</div>${d.note?`<div class="small-note">${esc(d.note)}</div>`:''}</div>${dd!=null?`<span class="badge ${cls}">${dd<0?'poteklo':dd===0?'danes':dd===1?'jutri':'čez '+dd+' dni'}</span>`:''}<div class="actions"><button class="mini copy" data-act="editDocument" data-id="${esc(d.id)}" aria-label="Uredi">${ic('pen',18)}</button><button class="mini" data-act="delDocument" data-id="${esc(d.id)}" aria-label="Izbriši">${ic('trash',18)}</button></div></div>`}).join('')}</div>`;
+    return h;
+  }
+
+  // ---- Saved receipts ----
+  function openImage(src,title){
+    openSheet(`<div class="sheet-h"><h2>${esc(title||'Račun')}</h2>${closeBtn}</div><img src="${esc(src)}" alt="Shranjeni račun" style="width:100%;max-height:70vh;object-fit:contain;border-radius:14px;border:1px solid var(--line)"><div class="sheet-f"><button class="btn wide" data-act="closeSheet">Zapri</button></div>`,'image');
+  }
+  function renderReceipts(){
+    const rows=[];
+    S.bills.filter(b=>b.receiptImage).forEach(b=>rows.push({id:b.id,title:b.recipient||'Položnica',date:b.due||'',amount:money(b.amount,b.currency),img:b.receiptImage}));
+    S.expenses.filter(e=>e.receiptImage).forEach(e=>rows.push({id:e.id,title:e.store||'Račun',date:e.date||'',amount:money(e.total),img:e.receiptImage}));
+    if(!rows.length) return '';
+    rows.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    return `<h2 class="sec">Shranjeni računi</h2><ul class="list">${rows.slice(0,20).map(r=>`<li class="row"><img class="receipt-img" src="${esc(r.img)}" alt="Račun" data-act="viewReceipt" data-src="${esc(r.img)}" data-title="${esc(r.title)}"><div class="grow"><strong>${esc(r.title)}</strong><small>${esc(r.date)} · ${esc(r.amount)}</small></div></li>`).join('')}</ul>`;
+  }
+
+  // Capture image before the old AI apply() resets the capture buffer, then attach it to new records.
+  const oldApply = A.apply;
+  A.apply = function(){
+    const receiptImage = cap.images && cap.images[0] ? cap.images[0].url : null;
+    const oldBills=new Set(S.bills.map(x=>x.id)), oldExp=new Set(S.expenses.map(x=>x.id)), oldTasks=new Set(S.tasks.map(x=>x.id));
+    oldApply();
+    if(receiptImage){
+      S.bills.filter(x=>!oldBills.has(x.id)).forEach(x=>x.receiptImage=receiptImage);
+      S.expenses.filter(x=>!oldExp.has(x.id)).forEach(x=>x.receiptImage=receiptImage);
+      const recId=uid();
+      S.receipts.push({id:recId,image:receiptImage,createdAt:nowStr()});
+    }
+    // Tasks produced by AI with a concrete time get a matching time reminder automatically.
+    S.tasks.filter(t=>!oldTasks.has(t.id) && t.time).forEach(t=>{
+      const atDate=t.due||today(), at=`${atDate} ${tm(t.time)||t.time}`;
+      if(!S.reminders.some(r=>r.taskId===t.id)) S.reminders.push({id:uid(),text:t.title,trigger:'cas',at,done:false,taskId:t.id});
+    });
+    save(); render();
+  };
+
+  // ---- Enhanced fridge view ----
+  const oldRenderFridge = renderFridge;
+  renderFridge = function(){
+    let h=oldRenderFridge();
+    h=h.replace('<div class="toolbar">', `<div class="toolbar"><button class="btn ghost" data-act="mealPlan">${ic('spark',18)} Plan danes + teden</button>`);
+    if(S.shopping.length){
+      const left=S.shopping.filter(x=>!x.done).length;
+      h+=`<h2 class="sec">Nakupovalni seznam <span class="badge plain">${left} odprtih</span></h2><ul class="shop-list">${S.shopping.slice(-20).map(x=>`<li><input type="checkbox" data-shop-id="${esc(x.id)}" ${x.done?'checked':''}><span class="${x.done?'done':''}">${esc(x.name)}${x.qty?' · '+esc(x.qty):''}</span></li>`).join('')}</ul>`;
+    }
+    if(S.mealPlan && S.mealPlan.danes && S.mealPlan.danes.length){
+      h+=`<div class="suggest"><strong>Danes:</strong> ${esc(arr(S.mealPlan.danes).map(x=>x.ime).filter(Boolean).join(' · '))}</div>`;
+    }
+    return h;
+  };
+
+  // ---- Enhanced finance view ----
+  const oldRenderMoney = renderMoney;
+  renderMoney = function(){
+    return oldRenderMoney() + renderReceipts() + renderDocuments();
+  };
+
+  // ---- Enhanced task view ----
+  const oldRenderTasks = renderTasks;
+  renderTasks = function(){
+    let h=`<div style="margin-bottom:12px"><button class="btn" data-act="advancedTask">${ic('spark',18)} Opravilo z opomnikom</button></div>`+oldRenderTasks();
+    const loc=S.reminders.filter(r=>!r.done&&r.trigger==='lokacija');
+    if(loc.length){
+      h+=`<h2 class="sec">Lokacijski opomniki</h2><div class="rem-grid">${loc.map(r=>`<div class="rem-card"><strong>${esc(r.text)}</strong><div class="small-note">${esc(r.locationName||'Lokacija ni določena')}${r.radius?` · radij ${esc(r.radius)} m`:''}</div>${r.lat==null||r.lng==null?`<button class="btn sm ghost" data-act="locateReminder" data-id="${esc(r.id)}">Nastavi trenutno lokacijo</button>`:''}</div>`).join('')}</div>`;
+    }
+    return h;
+  };
+
+  function openAdvancedTask(){
+    pendingTaskCoords=null;
+    openSheet(`<div class="sheet-h"><h2>Opravilo in opomnik</h2>${closeBtn}</div>
+      <div class="field"><label>Opravilo</label><input id="advTitle" placeholder="npr. oddaj paket, servis avta, pokliči dobavitelja"></div>
+      <div class="field"><label>Prioriteta</label><select id="advPrio" style="font:inherit;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;min-height:44px;width:100%"><option value="visoka">Visoka</option><option value="srednja" selected>Srednja</option><option value="nizka">Nizka</option></select></div>
+      <div class="feature-grid"><div class="field"><label>Datum</label><input type="date" id="advDate" value="${today()}"></div><div class="field"><label>Ura</label><input type="time" id="advTime"></div></div>
+      <div class="field"><label>Lokacijski opomnik</label><input id="advLocation" placeholder="npr. Merkur Celje, pošta …"><div class="small-note">Ko boš na tej lokaciji, prejmeš opomnik. Brskalnik bo zahteval dovoljenje za lokacijo.</div><button class="btn sm ghost" data-act="captureTaskLocation">Uporabi mojo trenutno lokacijo</button><div id="advLocStatus" class="location-pill" hidden></div></div>
+      <div class="field"><label>Radij opomnika</label><input type="number" id="advRadius" min="50" step="50" value="200"></div>
+      <div class="sheet-f"><button class="btn wide" data-act="saveAdvancedTask">Shrani opravilo</button></div>`,'task');
+  }
+  function captureTaskLocation(){
+    if(!navigator.geolocation){toast('Geolokacija ni podprta.');return;}
+    navigator.geolocation.getCurrentPosition(pos=>{
+      pendingTaskCoords={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      const s=$('#advLocStatus'); if(s){s.hidden=false;s.textContent=`Lokacija zajeta (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`;}
+    },()=>toast('Lokacije ni bilo mogoče pridobiti. Dovoli dostop do lokacije.'),{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  }
+  function saveAdvancedTask(){
+    const title=str($('#advTitle').value); if(!title){toast('Vnesi opravilo.');return;}
+    const date=dt($('#advDate').value)||null, time=tm($('#advTime').value), prio=$('#advPrio').value, loc=str($('#advLocation').value), radius=num($('#advRadius').value)||200;
+    const task={id:uid(),title,prio,done:false,due:date,time,frame:time?'ob določeni uri':null};
+    S.tasks.push(task);
+    if(time){S.reminders.push({id:uid(),text:title,trigger:'cas',at:`${date||today()} ${time}`,done:false,taskId:task.id});}
+    if(loc){
+      S.reminders.push({id:uid(),text:title,trigger:'lokacija',locationName:loc,lat:pendingTaskCoords?.lat??null,lng:pendingTaskCoords?.lng??null,radius,done:false,taskId:task.id});
+    }
+    save();sheet.close();render();toast('Opravilo in opomnik sta shranjena.');
+  }
+  function locateExistingReminder(id){
+    const r=S.reminders.find(x=>x.id===id); if(!r || !navigator.geolocation)return;
+    navigator.geolocation.getCurrentPosition(pos=>{r.lat=pos.coords.latitude;r.lng=pos.coords.longitude;save();render();toast('Lokacija opomnika je posodobljena.');},()=>toast('Lokacije ni bilo mogoče pridobiti.'),{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  }
+
+  // Keep reminder/task state in sync when the user completes one of them.
+  const oldDoneRem=A.doneRem;
+  A.doneRem=function(b){
+    oldDoneRem(b);
+    const id=b?.dataset?.id;
+    const r=S.reminders.find(x=>x.id===id); if(r&&r.taskId){const t=S.tasks.find(x=>x.id===r.taskId);if(t)t.done=true;save();render();}
+  };
+  const oldToggleTask=A.toggleTask;
+  A.toggleTask=function(b){
+    oldToggleTask(b);
+    const id=b?.dataset?.id;
+    const t=S.tasks.find(x=>x.id===id); if(t){S.reminders.filter(r=>r.taskId===id).forEach(r=>r.done=t.done);save();render();}
+  };
+
+  // Settings: append PWA/notification/location controls to the existing settings sheet.
+  const oldOpenSettings=openSettings;
+  openSettings=function(){
+    oldOpenSettings();
+    setTimeout(()=>{
+      const host=$('#sheetBody'); if(!host)return;
+      const p=document.createElement('div'); p.className='install-card'; p.innerHTML=`<h3>Aplikacija na telefonu</h3><p>Namesti LifeFlow AI na začetni zaslon in ga uporabljaj kot aplikacijo.</p><button id="installPwaBtn" class="btn wide" data-act="install">Namesti LifeFlow AI</button><p class="small-note">${esc(installHelp())}</p>`;
+      host.appendChild(p);
+      const n=document.createElement('div'); n.className='install-card'; n.innerHTML=`<h3>Opomniki</h3><p>${S.settings.notifications?'Sistemska obvestila so omogočena.':'Sistemska obvestila niso omogočena.'}</p><button class="btn ghost wide" data-act="enableNotifications">${S.settings.notifications?'Preveri obvestila':'Omogoči obvestila'}</button><div class="small-note" style="margin-top:8px">Časovni in lokacijski opomniki delujejo, ko ima brskalnik dovoljenje za obvestila in lokacijo. Delovanje v ozadju je odvisno od naprave in brskalnika.</div>`;
+      host.appendChild(n);
+      updateInstallAvailability();
+    },0);
+  };
+
+  // New actions are added to the existing action dispatcher.
+  A.install=installApp;
+  A.enableNotifications=requestNotifications;
+  A.mealPlan=generateMealPlan;
+  A.addShopping=addShoppingFromPlan;
+  A.newDocument=()=>openDocumentForm();
+  A.editDocument=b=>{const d=S.documents.find(x=>x.id===b?.dataset?.id);if(d)openDocumentForm(d)};
+  A.saveDocument=b=>saveDocument(b?.dataset?.id||'');
+  A.delDocument=b=>delDocument(b?.dataset?.id||'');
+  A.viewReceipt=b=>openImage(b?.dataset?.src||'',b?.dataset?.title||'Račun');
+  A.advancedTask=openAdvancedTask;
+  A.captureTaskLocation=captureTaskLocation;
+  A.saveAdvancedTask=saveAdvancedTask;
+  A.locateReminder=b=>locateExistingReminder(b?.dataset?.id||'');
+
+  // Persist version marker for future upgrades.
+  S.settings.schemaVersion=2;
+  save();
+  updateInstallAvailability();
+})();
 
 render();
 </script>
