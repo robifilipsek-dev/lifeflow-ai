@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A5C6B">
+<meta name="color-scheme" content="light">
+<title>LifeFlow AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mist:#E8EEF0; --paper:#F7FAFA; --ink:#0F2530; --ink2:#4A5F68; --line:#C9D6DA;
+  --petrol:#0A5C6B; --petrol-d:#06404B; --petrol-t:#D3E6EA;
+  --gold:#F0A500; --gold-t:#FBEBC0;
+  --coral:#DD4B25; --coral-t:#F9D8CD;
+  --moss:#2E8050; --moss-t:#D5EADC;
+  --font-h:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-b:'Atkinson Hyperlegible Next','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--mist);color:var(--ink);font:400 16px/1.5 var(--font-b);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+h1,h2,h3{font-family:var(--font-h);margin:0;letter-spacing:-.01em}
+button{font-family:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+[hidden]{display:none!important}
+
+#app{max-width:680px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top,0px)) 18px 170px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+.top h1{font-weight:800;font-size:30px;line-height:1.1;letter-spacing:-.02em}
+.top p{margin:6px 0 0;color:var(--ink2)}
+.icon-btn{width:44px;height:44px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink2);flex:0 0 auto}
+.icon-btn:hover{background:var(--petrol-t);color:var(--petrol-d)}
+
+h2.sec{font-weight:800;font-size:19px;margin:26px 0 10px}
+.muted{color:var(--ink2)}
+
+/* buttons */
+.btn{font:700 15px var(--font-b);min-height:46px;padding:0 20px;border-radius:999px;border:0;background:var(--petrol);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{background:var(--petrol-d)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.ghost{background:transparent;color:var(--petrol-d);box-shadow:inset 0 0 0 1.5px var(--petrol)}
+.btn.ghost:hover{background:var(--petrol-t)}
+.btn.sm{min-height:38px;padding:0 14px;font-size:14px}
+.btn.wide{width:100%}
+.btn.plain{background:transparent;color:var(--ink2);padding:0 10px;min-height:38px}
+.btn.plain:hover{background:var(--petrol-t);color:var(--petrol-d)}
+
+.spin{width:16px;height:16px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* welcome */
+.welcome{padding:6px 0 4px}
+.welcome h2{font-size:26px;font-weight:800;margin-bottom:8px}
+.welcome p{margin:0 0 10px;max-width:60ch}
+.invites{margin:14px 0 0;display:grid;gap:10px}
+.invite{display:flex;gap:14px;align-items:center;text-align:left;width:100%;padding:16px;border:0;border-radius:18px;background:var(--paper);cursor:pointer;font:500 16px/1.35 var(--font-b);box-shadow:inset 0 0 0 1.5px var(--line)}
+.invite:hover{box-shadow:inset 0 0 0 2px var(--petrol)}
+.invite .ico{flex:0 0 48px;height:48px;border-radius:14px;background:var(--petrol);color:#fff;display:grid;place-items:center}
+.invite:nth-child(2) .ico{background:var(--gold);color:var(--ink)}
+.invite:nth-child(3) .ico{background:var(--moss)}
+
+/* alerts */
+.alert{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 12px 12px 16px;border-radius:14px;margin:0 0 8px;background:var(--ct);box-shadow:inset 6px 0 0 var(--c)}
+.alert.bad{--c:var(--coral);--ct:var(--coral-t)}
+.alert.warn{--c:var(--gold);--ct:var(--gold-t)}
+.alert.info{--c:var(--petrol);--ct:var(--petrol-t)}
+.a-body{display:flex;flex-direction:column;min-width:0}
+.a-body span{color:var(--ink2);font-size:14.5px}
+.a-act{display:flex;gap:4px;flex:0 0 auto}
+.alert .btn{background:var(--ink)}
+.alert .btn:hover{background:#000}
+.alert .btn.plain{background:transparent;color:var(--ink2)}
+
+/* context reminders */
+.ctx{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:560px){.ctx.two{grid-template-columns:1fr 1fr}}
+.ctx h3{font-size:16px;margin:0 0 4px;color:var(--petrol-d)}
+
+/* plan controls */
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:12px}
+.lbl{font-weight:700;min-width:64px}
+.seg{display:inline-flex;background:#D5E1E5;border-radius:12px;padding:3px}
+.seg button{border:0;background:transparent;padding:0 14px;min-height:40px;border-radius:9px;font:700 14px var(--font-b);color:var(--ink2);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(15,37,48,.2)}
+.time{display:inline-flex;align-items:center;gap:8px;color:var(--ink2)}
+input[type=time],input[type=date],input[type=number],input[type=text],input[type=password],textarea{font:inherit;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;min-height:44px;width:100%}
+.time input{width:auto}
+textarea{padding:12px;resize:vertical;min-height:110px}
+input:focus,textarea:focus{border-color:var(--petrol)}
+
+.advice{margin:18px 0 4px;padding:12px 14px;border-radius:12px;background:var(--petrol-t);color:var(--petrol-d);font-weight:500}
+.warns{margin:8px 0 0;padding-left:20px;color:#8E2C10}
+
+/* flow timeline */
+.flow{list-style:none;margin:16px 0 0;padding:0}
+.flow li{position:relative;display:grid;grid-template-columns:56px 22px 1fr;align-items:start}
+.flow li::before{content:"";position:absolute;left:65px;top:0;bottom:0;width:4px;border-radius:2px;background:var(--petrol-t)}
+.flow li:first-child::before{top:16px}
+.flow li:last-child::before{bottom:auto;height:16px}
+.flow li:only-child::before{display:none}
+.flow time{grid-column:1;text-align:right;font:800 15px var(--font-h);padding-top:7px;font-variant-numeric:tabular-nums}
+.flow time small{display:block;font:400 12.5px var(--font-b);color:var(--ink2)}
+.node{grid-column:2;justify-self:center;width:14px;height:14px;margin-top:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px var(--mist);position:relative;z-index:1}
+.blk{grid-column:3;text-align:left;background:transparent;border:0;padding:6px 8px 8px 10px;font:inherit;cursor:pointer;border-radius:10px;min-height:46px}
+.blk:hover{background:rgba(255,255,255,.55)}
+.blk .t{display:block;font-weight:700}
+.blk .k{font-size:13.5px;color:var(--ct)}
+.is-done .t{text-decoration:line-through;color:var(--ink2);font-weight:500}
+.is-done .node{background:var(--line)}
+.tip-opravilo{--c:var(--petrol);--ct:var(--petrol)}
+.tip-fiksno{--c:var(--ink);--ct:var(--ink2)}
+.tip-obrok{--c:#D18F00;--ct:#84590A}
+.tip-odmor,.tip-rekreacija{--c:var(--moss);--ct:#1E6B3E}
+.tip-opomnik{--c:var(--coral);--ct:#A93815}
+.flow li.now{--c:var(--gold)}
+.flow li.now .node{width:18px;height:18px;margin-top:8px}
+.flow li.now .pill{grid-column:3;justify-self:start;margin:6px 0 6px 10px;background:var(--gold);color:var(--ink);font-weight:700;font-size:13.5px;padding:2px 12px;border-radius:999px}
+
+/* lists */
+.list{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.row{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);min-height:56px}
+.row .grow{flex:1;min-width:0;padding:4px 0}
+.row .grow strong{display:block;overflow-wrap:anywhere}
+.row small,.sub{color:var(--ink2);font-size:14px}
+.row.done .grow strong{text-decoration:line-through;color:var(--ink2);font-weight:500}
+.badge{font:700 13px var(--font-b);padding:3px 10px;border-radius:8px;background:var(--moss-t);color:#1E5A37;white-space:nowrap}
+.badge.warn{background:var(--gold-t);color:#7A5300}
+.badge.bad{background:var(--coral-t);color:#8E2C10}
+.badge.plain{background:#DCE5E8;color:var(--ink2)}
+.chk{width:44px;height:44px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;flex:0 0 auto;padding:0}
+.circle{width:26px;height:26px;border-radius:50%;border:2px solid var(--petrol);display:grid;place-items:center;color:#fff}
+.chk[aria-pressed=true] .circle{background:var(--petrol)}
+.mini{width:40px;height:40px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--ink2);cursor:pointer;flex:0 0 auto;padding:0}
+.mini:hover{background:var(--coral-t);color:#8E2C10}
+.mini.copy:hover{background:var(--petrol-t);color:var(--petrol-d)}
+.empty{padding:26px 4px;color:var(--ink2)}
+.empty .btn{margin-top:12px}
+
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.switch{display:inline-flex;align-items:center;gap:10px;background:transparent;border:0;font:500 15px var(--font-b);cursor:pointer;min-height:44px;padding:0}
+.switch i{width:44px;height:26px;border-radius:999px;background:#B9C8CD;position:relative;transition:background .15s}
+.switch i::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch[aria-checked=true] i{background:var(--petrol)}
+.switch[aria-checked=true] i::after{transform:translateX(18px)}
+
+/* money */
+.sums{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px}
+.sums div{padding:0 0 0 14px}
+.sums div+div{border-left:1.5px solid var(--line)}
+.sums b{display:block;font:800 25px/1.15 var(--font-h);letter-spacing:-.01em}
+.sums span{color:var(--ink2);font-size:14px}
+.chips{display:flex;gap:8px;margin:14px 0 4px}
+.chip{border:0;min-height:38px;padding:0 14px;border-radius:10px;background:#D5E1E5;font:700 14px var(--font-b);color:var(--ink2);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--petrol);color:#fff}
+details.bill{border-bottom:1px solid var(--line)}
+details.bill summary{list-style:none;display:flex;align-items:center;gap:6px;min-height:60px;cursor:pointer}
+details.bill summary::-webkit-details-marker{display:none}
+.b-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 4px}
+.b-det{padding:2px 4px 14px 50px;display:grid;gap:4px}
+.kv{display:flex;align-items:center;gap:4px;min-height:36px}
+.kv span{color:var(--ink2);min-width:74px;font-size:14px}
+.kv code{font:500 14.5px ui-monospace,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;font-size:14.5px}
+.bar i{display:block;height:12px;border-radius:6px;background:var(--petrol);min-width:4px}
+.bar b{font-variant-numeric:tabular-nums}
+details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--ink2);min-height:44px}
+
+/* quick add */
+.quick{display:flex;gap:8px;margin-bottom:6px}
+
+/* nav */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
+nav .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav button{border:0;background:transparent;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:500 12.5px var(--font-b);color:var(--ink2);cursor:pointer;position:relative}
+nav button[aria-current=page]{color:var(--petrol-d);font-weight:700}
+nav button[aria-current=page]::before{content:"";position:absolute;top:0;left:26%;right:26%;height:4px;border-radius:0 0 4px 4px;background:var(--petrol)}
+.fab{position:fixed;z-index:25;right:max(18px,calc((100vw - 680px)/2 + 18px));bottom:calc(76px + env(safe-area-inset-bottom,0px));min-height:56px;padding:0 22px 0 18px;border-radius:999px;border:0;background:var(--ink);color:#fff;font:700 16px var(--font-b);display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 6px 18px rgba(15,37,48,.35)}
+.fab:hover{background:#000}
+
+/* sheet */
+dialog#sheet{border:0;padding:0;margin:auto auto 0;width:100%;max-width:680px;max-height:92vh;max-height:92dvh;border-radius:26px 26px 0 0;background:var(--paper);color:var(--ink);overflow:auto}
+dialog#sheet[open]{animation:up .22s ease-out}
+dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
+@keyframes up{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}
+.sheet-in{padding:18px 20px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sheet-h h2{font-size:23px;font-weight:800}
+.hint{margin:0 0 12px;color:var(--ink2)}
+.lead{margin:0 0 14px;font-size:17px}
+.src-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.src{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:76px;border-radius:16px;border:1.5px solid var(--line);background:#fff;color:var(--petrol-d);font:700 14px var(--font-b);cursor:pointer}
+.src:hover{border-color:var(--petrol)}
+.src.on{background:var(--coral);border-color:var(--coral);color:#fff}
+.src.on svg{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.18)}}
+.thumbs{display:flex;gap:10px;overflow-x:auto;padding:8px 6px 4px 0}
+.th{position:relative;flex:0 0 auto}
+.th img{display:block;height:84px;width:84px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+.th button{position:absolute;top:-7px;right:-7px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;border:0;display:grid;place-items:center;cursor:pointer;padding:0}
+.aud{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 8px 8px 14px;border-radius:12px;background:var(--gold-t)}
+.aud .btn{margin-left:auto}
+.sheet-f{margin-top:16px;display:grid;gap:8px}
+.err{margin:12px 0 0;padding:10px 14px;border-radius:12px;background:var(--coral-t);color:#8E2C10}
+.busy{display:flex;align-items:center;gap:12px;padding:26px 2px;font-size:17px}
+.rvh{font:800 16px var(--font-h);color:var(--petrol-d);margin:18px 0 4px}
+.rvl{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.rv{padding:8px 0;border-bottom:1px solid var(--line)}
+.ck{display:flex;gap:12px;align-items:flex-start;cursor:pointer;padding:4px 0}
+.ck input{width:22px;height:22px;accent-color:var(--petrol);margin:2px 0 0;flex:0 0 auto}
+.ck .rv-b{display:flex;flex-direction:column;min-width:0}
+.ck small{color:var(--ink2);font-size:14px}
+.rv-in{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 0 4px 34px}
+.rv-in label{display:grid;gap:2px;font-size:13.5px;color:var(--ink2)}
+.suggest{margin:18px 0 0;padding:12px 14px;border-radius:12px;background:var(--petrol-t);color:var(--petrol-d);font-weight:500}
+.rcp{padding:16px 0;border-top:1px solid var(--line)}
+.rcp:first-of-type{border-top:0}
+.rcp h3{font-size:19px;font-weight:800;margin-bottom:2px}
+.rcp p{margin:6px 0}
+.rcp ol{margin:8px 0;padding-left:22px}
+.rcp li{margin:4px 0}
+.rcp .tip{background:var(--gold-t);padding:8px 12px;border-radius:10px}
+.field{margin-bottom:16px}
+.field label{display:block;font-weight:700;margin-bottom:6px}
+.field .help{color:var(--ink2);font-size:14px;margin:6px 0 0}
+.field .inline{display:flex;gap:8px}
+.set-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.danger{color:#8E2C10;box-shadow:inset 0 0 0 1.5px var(--coral)}
+.danger:hover{background:var(--coral-t)}
+
+#toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;max-width:min(92vw,520px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div>
+      <h1 id="title"></h1>
+      <p id="sub"></p>
+    </div>
+    <button class="icon-btn" data-act="settings" aria-label="Nastavitve"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button>
+  </header>
+  <main id="view"></main>
+</div>
+
+<button class="fab" data-act="capture" aria-label="Dodaj sliko, glas ali zapisek"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Dodaj</button>
+
+<nav aria-label="Glavna navigacija"><div class="in" id="nav"></div></nav>
+
+<dialog id="sheet" aria-label="Podrobnosti"><div class="sheet-in" id="sheetBody"></div></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="fileGal" accept="image/*" multiple hidden>
+<input type="file" id="fileImport" accept="application/json,.json" hidden>
+
+<noscript>LifeFlow AI potrebuje JavaScript.</noscript>
+
+<script>
+'use strict';
+/* =====================================================================
+   LifeFlow AI – osebni digitalni kopilot (Gemini 3.1 Flash-Lite)
+   Vse podatke hrani samo v tej napravi (localStorage).
+   ===================================================================== */
+
+const SYSTEM_PROMPT = `Si "LifeFlow AI" – napreden, proaktiven in intuitiven osebni digitalni kopilot. Tvoja glavna naloga je, da uporabniku drastično zmanjšaš mentalno obremenitev (mental load) in prihraniš čas z avtomatizacijo organizacije vsakodnevnega življenja (opravila, finance, prehrana, časovni razpored).
+
+Deluješ po načelu "Zero-Friction": od uporabnika nikoli ne zahtevaš zapletenega ročnega vnosa ali izpolnjevanja dolgih obrazcev. Namesto tega obdeluješ multimedijske vnose (slike računov/hladilnika, kratka glasovna sporočila, hitre zapiske) in samodejno strukturiraš informacije.
+
+### TVOJE GLAVNE FUNKCIONALNOSTI IN LOGIKA DELOVANJA:
+
+1. ANALIZA MULTIMEDIJSKIH VNOSOV (Zero-Input Engine)
+- Slike računov/položnic: Izlušči znesek, prejemnika, datum zapadlosti in kategorijo. Samodejno ustvari opomnik za plačilo.
+- Slike hladilnika/trgovinskih računov: Prepoznaj sestavine, oceni njihovo uporabnost ter jih dodaj v "Virtualni hladilnik". Opozori na iztek rokov.
+- Glasovna sporočila/Surovi zapisi: Pretvori kaotične misli uporabnika v jasna, strukturirana opravila z opredeljeno prioriteto in časovnim okvirom.
+
+2. DINAMIČNO NAČRTOVANJE (Smart Auto-Scheduler)
+- Ustvarjaj in prilagajaj dnevni razpored glede na uporabnikovo trenutno energijo, razpoložljiv čas in obstoječe obveznosti.
+- Če ima uporabnik natrpan urnik, mu predlagaj hitre rešitve (npr. 15-minutno kosilo ali kratek odmor).
+- V proste termine samodejno, a nevsiljivo predlagaj rekreacijo, sprostitev ali opomnike za osebne opravke.
+
+3. PROAKTIVNI IN LOKACIJSKO/ČASOVNO ODVISNI OPOMNIKI
+- Ne obveščaj uporabnika brez potrebe. Dajaj le jasne, izvedljive napotke ob pravem času (npr. pred odhodom od doma, ob obisku trgovine ali pred iztekom meseca za pregled naročnin).
+
+### PRILAGODITEV TONA IN KOMUNIKACIJE:
+
+- TON: Strokoven, sproščen, neformalen, jasen in izjemno konkreten.
+- PRISTOP: Bodi proaktiven. Ne sprašuj "Kaj želiš narediti?", ampak ponudi rešitev: "Opazil sem X, predlagam Y. Naj to uredim?"
+- FORMAT: Kratki odstavki, brez dolgih uvodov in odvečnega balasta.`;
+
+const FORMAT_RULES = `### TEHNIČNA PRAVILA ODGOVORA (aplikacija razčlenjuje tvoj odgovor)
+- Odgovori VEDNO samo z enim veljavnim JSON objektom. Brez markdown ograj in brez besedila okoli njega.
+- Vsa besedila v slovenščini, kratka in konkretna.
+- Datumi so v obliki YYYY-MM-DD, ure v obliki HH:MM (24 h), zneski so števila z decimalno piko (npr. 84.2).
+- Če podatka ni v vnosu ali ga ne moreš zanesljivo prebrati, uporabi null. Ničesar si ne izmišljaj (izjema: rok uporabe živil, ki ga oceniš in označiš kot oceno).`;
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => ymd(new Date());
+const parseYmd = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const dayDiff = s => Math.round((parseYmd(s) - parseYmd(today())) / 864e5);
+const addDays = (s, n) => { const d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d); };
+const fmtDate = s => parseYmd(s).toLocaleDateString('sl-SI', { day: 'numeric', month: 'numeric' });
+const weekday = () => new Date().toLocaleDateString('sl-SI', { weekday: 'long' });
+const nowStr = () => { const d = new Date(); return `${today()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const toM = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fmtSecs = s => `${Math.floor(s / 60)}:${pad(Math.round(s % 60))}`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (n, c = 'EUR') => {
+  if (n == null || isNaN(n)) return '—';
+  try { return new Intl.NumberFormat('sl-SI', { style: 'currency', currency: c || 'EUR' }).format(n); }
+  catch (e) { return `${Number(n).toFixed(2)} ${c}`; }
+};
+function rel(n) {
+  if (n === 0) return 'danes';
+  if (n === 1) return 'jutri';
+  if (n === -1) return 'včeraj';
+  if (n === -2) return 'pred 2 dnevoma';
+  return n > 0 ? `čez ${n} dni` : `pred ${-n} dnevi`;
+}
+const num = v => { if (v == null || v === '') return null; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
+const dt = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : null;
+const tm = v => (typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v)) ? v.padStart(5, '0') : null;
+const str = v => (v == null || v === '' || v === 'null') ? null : String(v).trim();
+const arr = v => Array.isArray(v) ? v : [];
+
+const ICON = {
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+  fridge: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/>',
+  euro: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.6a4.6 4.6 0 100 6.8M7.5 10.8h5.5M7.5 13.2h5.5"/>',
+  list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
+  camera: '<path d="M3.5 8.5h3.2l1.6-2.5h7.4l1.6 2.5h3.2v11h-17z"/><circle cx="12" cy="13.5" r="3.6"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16.5l-5-5-9 8.5"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/>',
+  pen: '<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19z"/><path d="M14.5 6.5l3 3"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>'
+};
+const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+
+/* ---------- state ---------- */
+const KEY = 'lifeflow.v1';
+const memStore = {};
+const store = {
+  get() { try { return localStorage.getItem(KEY); } catch (e) { return memStore[KEY] || null; } },
+  set(v) { try { localStorage.setItem(KEY, v); } catch (e) { memStore[KEY] = v; } }
+};
+const DEFAULT = {
+  settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert' },
+  bills: [], expenses: [], fridge: [], tasks: [], reminders: [], plan: null, dismissed: {},
+  ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all' }
+};
+function load() {
+  const base = JSON.parse(JSON.stringify(DEFAULT));
+  try {
+    const raw = store.get();
+    if (raw) {
+      const o = JSON.parse(raw);
+      return { ...base, ...o, settings: { ...base.settings, ...(o.settings || {}) }, ui: { ...base.ui, ...(o.ui || {}) } };
+    }
+  } catch (e) { /* ignore */ }
+  return base;
+}
+let S = load();
+const save = () => store.set(JSON.stringify(S));
+const busy = { plan: false };
+let lastRecipes = [];
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg) {
+  const t = $('#toast'), host = sheet.open ? sheet : document.body;
+  if (t.parentNode !== host) host.appendChild(t);
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3400);
+}
+
+/* ---------- Gemini ---------- */
+class UserErr extends Error {}
+function apiErrText(status, data) {
+  const m = (data && data.error && data.error.message) || '';
+  if (status === 400 && /API key/i.test(m)) return 'Ključ API ni veljaven. Preveri ga v nastavitvah.';
+  if (status === 400) return 'Gemini je zavrnil zahtevo: ' + m;
+  if (status === 401 || status === 403) return `Ključ nima dostopa do tega modela (${status}). Preveri ključ in omejitve v Google AI Studio.`;
+  if (status === 404) return 'Model ni najden. V nastavitvah preveri ime modela.';
+  if (status === 429) return 'Dosežena omejitev zahtev. Počakaj minuto in poskusi znova.';
+  if (status >= 500) return 'Gemini je trenutno preobremenjen. Poskusi znova čez nekaj trenutkov.';
+  return `Napaka ${status}: ${m}`;
+}
+function parseJson(t) {
+  t = (t || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  try { return JSON.parse(t); } catch (e) { /* fallthrough */ }
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { /* fallthrough */ } }
+  throw new UserErr('Odgovora modela nisem mogel razbrati. Poskusi znova.');
+}
+async function callGemini(parts, extra = '') {
+  const key = (S.settings.apiKey || '').trim();
+  if (!key) throw new UserErr('NO_KEY');
+  const model = (S.settings.model || 'gemini-3.1-flash-lite').trim();
+  const body = {
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n\n' + FORMAT_RULES + (extra ? '\n\n' + extra : '') }] },
+    contents: [{ role: 'user', parts }],
+    generationConfig: { responseMimeType: 'application/json' }
+  };
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 90000);
+  const post = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+    signal: ctrl.signal
+  });
+  try {
+    let res = await post(model);
+    if (res.status === 404 && !/preview$/.test(model)) {
+      const r2 = await post(model + '-preview');
+      if (r2.ok) { S.settings.model = model + '-preview'; save(); res = r2; }
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new UserErr(apiErrText(res.status, data));
+    const cand = data && data.candidates && data.candidates[0];
+    if (!cand) {
+      const br = data && data.promptFeedback && data.promptFeedback.blockReason;
+      throw new UserErr(br ? `Gemini je vnos blokiral (${br}).` : 'Model ni vrnil odgovora. Poskusi znova.');
+    }
+    const txt = arr(cand.content && cand.content.parts).filter(p => p.text && !p.thought).map(p => p.text).join('');
+    return parseJson(txt);
+  } catch (e) {
+    if (e instanceof UserErr) throw e;
+    if (e.name === 'AbortError') throw new UserErr('Zahteva je potekla. Poskusi znova (manjša slika ali krajši posnetek).');
+    throw new UserErr('Ni povezave z Gemini. Preveri internet in poskusi znova.');
+  } finally { clearTimeout(to); }
+}
+function needKey() {
+  if ((S.settings.apiKey || '').trim()) return true;
+  toast('Najprej vnesi Gemini API ključ.');
+  openSettings();
+  return false;
+}
+
+/* ---------- sheet ---------- */
+const sheet = $('#sheet');
+function openSheet(html, kind) {
+  if (html != null) $('#sheetBody').innerHTML = html;
+  sheet.dataset.kind = kind || '';
+  if (!sheet.open) sheet.showModal();
+}
+const closeBtn = `<button class="icon-btn" data-act="closeSheet" aria-label="Zapri">${ic('x')}</button>`;
+sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
+sheet.addEventListener('close', () => {
+  sheet.dataset.kind = '';
+  if (cap.recording && mr && mr.state !== 'inactive') mr.stop();
+});
+
+/* ---------- alerts (proactive) ---------- */
+function computeAlerts() {
+  const out = [];
+  S.bills.filter(b => !b.paid && b.due).forEach(b => {
+    const d = dayDiff(b.due);
+    if (d <= 3) out.push({
+      lvl: d <= 1 ? 'bad' : 'warn', sort: d,
+      title: `${b.recipient || 'Položnica'}${b.amount != null ? ' · ' + money(b.amount, b.currency) : ''}`,
+      text: d < 0 ? `Zapadlo ${rel(d)}` : `Zapade ${rel(d)}`,
+      btn: 'Plačano', act: 'pay', id: b.id
+    });
+  });
+  const exp = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).sort((a, b) => a.expires.localeCompare(b.expires));
+  if (exp.length) {
+    const worst = dayDiff(exp[0].expires);
+    out.push({
+      lvl: worst <= 0 ? 'bad' : 'warn', sort: worst,
+      title: exp.length === 1 ? `${exp[0].name} se izteka` : `${exp.length} živil se kmalu izteka`,
+      text: exp.slice(0, 4).map(f => f.name).join(', ') + (exp.length > 4 ? ' …' : ''),
+      btn: 'Kaj skuhati?', act: 'cook'
+    });
+  }
+  S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && !r.billId && r.at.slice(0, 10) <= today()).forEach(r => {
+    out.push({ lvl: 'info', sort: -0.5, title: r.text, text: `Opomnik · ${r.at.slice(0, 10) === today() ? 'danes ob ' + r.at.slice(11, 16) : 'zamujeno'}`, btn: 'Opravljeno', act: 'doneRem', id: r.id });
+  });
+  const now = new Date();
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const mk = today().slice(0, 7);
+  if (last - now.getDate() <= 2 && !S.dismissed['subs' + mk]) {
+    out.push({ lvl: 'info', sort: 5, title: 'Konec meseca: pregled naročnin', text: 'Preveri, kaj se ti samodejno obnavlja, in ukini, česar ne uporabljaš.', btn: 'Odpri finance', act: 'subs', dismiss: 'subs' + mk });
+  }
+  return out.sort((a, b) => a.sort - b.sort);
+}
+function alertsHtml() {
+  const a = computeAlerts();
+  if (!a.length) return '';
+  return `<h2 class="sec">Zdaj</h2>` + a.map(x => `
+    <div class="alert ${x.lvl}">
+      <div class="a-body"><strong>${esc(x.title)}</strong><span>${esc(x.text)}</span></div>
+      <div class="a-act">
+        ${x.dismiss ? `<button class="btn sm plain" data-act="dismiss" data-key="${esc(x.dismiss)}">Skrij</button>` : ''}
+        <button class="btn sm" data-act="${x.act}" data-id="${esc(x.id || '')}">${esc(x.btn)}</button>
+      </div>
+    </div>`).join('');
+}
+function ctxHtml() {
+  const g = t => S.reminders.filter(r => !r.done && r.trigger === t);
+  const dep = g('pred_odhodom'), shop = g('v_trgovini');
+  if (!dep.length && !shop.length) return '';
+  const col = (title, list) => list.length ? `<div><h3>${title}</h3><ul class="list">${list.map(r => `
+    <li class="row">${chk(false, 'doneRem', r.id, 'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div></li>`).join('')}</ul></div>` : '';
+  return `<h2 class="sec">Ob pravem trenutku</h2><div class="ctx ${dep.length && shop.length ? 'two' : ''}">${col('Pred odhodom od doma', dep)}${col('V trgovini', shop)}</div>`;
+}
+const chk = (done, act, id, label, extra = '') => `<button class="chk" data-act="${act}" data-id="${esc(id)}" ${extra} aria-pressed="${done}" aria-label="${esc(label)}"><span class="circle">${done ? ic('check', 16) : ''}</span></button>`;
+
+/* ---------- views ---------- */
+function headerFor(tab) {
+  const h = new Date().getHours();
+  const greet = h < 10 ? 'Dobro jutro' : h < 18 ? 'Dober dan' : 'Dober večer';
+  const n = (S.settings.name || '').trim();
+  if (tab === 'today') return { t: new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }), s: `${greet}${n ? ', ' + n : ''}` };
+  if (tab === 'fridge') {
+    const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
+    return { t: 'Virtualni hladilnik', s: S.fridge.length ? `${S.fridge.length} živil${soon ? ' · ' + soon + ' se kmalu izteka' : ''}` : 'Zaenkrat prazen' };
+  }
+  if (tab === 'money') {
+    const un = S.bills.filter(b => !b.paid).length;
+    return { t: 'Finance', s: un ? `${un} neplačanih položnic` : 'Vse plačano' };
+  }
+  const open = S.tasks.filter(t => !t.done).length;
+  return { t: 'Opravila', s: open ? `${open} odprtih` : 'Nič odprtega' };
+}
+function renderToday() {
+  const empty = !S.bills.length && !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.expenses.length;
+  const n = (S.settings.name || '').trim();
+  let h = '';
+  if (empty) {
+    h += `<section class="welcome">
+      <h2>Živjo${n ? ', ' + esc(n) : ''}!</h2>
+      <p>Sem LifeFlow AI, tvoj osebni digitalni kopilot, ki ti zmanjša mentalno obremenitev in prihrani čas pri organizaciji vsakdana. Ti samo pošlješ sliko, glas ali zapisek, jaz pa ga sam razvrstim v opravila, finance, hladilnik in urnik.</p>
+      <p><strong>Pošlji mi karkoli od tega:</strong></p>
+      <div class="invites">
+        <button class="invite" data-act="capture" data-mode="camera"><span class="ico">${ic('camera', 26)}</span><span>Fotografijo računa, položnice ali vsebine hladilnika</span></button>
+        <button class="invite" data-act="capture" data-mode="voice"><span class="ico">${ic('mic', 26)}</span><span>Hitro glasovno ali pisno sporočilo o tem, kaj moraš danes ali ta teden urediti</span></button>
+        <button class="invite" data-act="capture" data-mode="text"><span class="ico">${ic('pen', 26)}</span><span>Seznam sestavin, ki jih imaš trenutno pri roki</span></button>
+      </div></section>`;
+  }
+  h += alertsHtml() + ctxHtml();
+  if (!empty) h += planHtml();
+  return h;
+}
+const TIP = { opravilo: 'Opravilo', fiksno: 'Fiksna obveznost', obrok: 'Obrok', odmor: 'Odmor', rekreacija: 'Rekreacija', opomnik: 'Opomnik' };
+function planHtml() {
+  const u = S.ui, p = S.plan && S.plan.date === today() ? S.plan : null;
+  let h = `<h2 class="sec">Moj dan</h2>
+    <div class="ctl-row"><span class="lbl" id="lblEn">Energija</span>
+      <div class="seg" role="group" aria-labelledby="lblEn">${['nizka', 'srednja', 'visoka'].map(e => `<button data-act="energy" data-v="${e}" aria-pressed="${u.energy === e}">${e[0].toUpperCase() + e.slice(1)}</button>`).join('')}</div></div>
+    <div class="ctl-row"><span class="lbl">Prost čas</span>
+      <label class="time">od <input type="time" id="planFrom" value="${esc(u.from)}"></label>
+      <label class="time">do <input type="time" id="planTo" value="${esc(u.to)}"></label></div>
+    <button class="btn" data-act="plan" ${busy.plan ? 'disabled' : ''}>${busy.plan ? '<span class="spin"></span> Sestavljam …' : ic('spark', 18) + (p ? ' Sestavi znova' : ' Sestavi moj dan')}</button>`;
+  if (!p) return h;
+  const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
+  let marked = false, items = '';
+  p.bloki.forEach((b, i) => {
+    if (!marked && toM(b.do) > nowM) {
+      marked = true;
+      items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
+    }
+    items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}"><time>${b.od}<small>${b.do}</small></time><i class="node"></i>
+      <button class="blk" data-act="blk" data-i="${i}" aria-pressed="${!!b.done}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}</span></button></li>`;
+  });
+  h += p.nasvet ? `<p class="advice">${esc(p.nasvet)}</p>` : '';
+  h += p.opozorila && p.opozorila.length ? `<ul class="warns">${p.opozorila.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '';
+  h += `<ol class="flow">${items}</ol>`;
+  return h;
+}
+function fridgeBadge(f) {
+  if (!f.expires) return '';
+  const d = dayDiff(f.expires);
+  const cls = d <= 0 ? 'bad' : d <= 2 ? 'warn' : '';
+  const txt = d < 0 ? 'poteklo' : d === 0 ? 'danes' : d === 1 ? 'jutri' : `še ${d} dni`;
+  return `<span class="badge ${cls}">${f.est ? '~ ' : ''}${txt}</span>`;
+}
+function renderFridge() {
+  if (!S.fridge.length) return `<div class="empty"><p>Hladilnik je prazen. Slikaj hladilnik ali trgovinski račun, ali povej, kaj imaš pri roki. Sestavine in roke uporabe razberem sam.</p><button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj hladilnik ali račun</button></div>`;
+  const list = [...S.fridge].sort((a, b) => (a.expires || '9999').localeCompare(b.expires || '9999'));
+  return `<div class="toolbar">
+      <button class="btn" data-act="cook">${ic('spark', 18)} Kaj skuhati?</button>
+      <button class="switch" role="switch" aria-checked="${!!S.ui.mealprep}" data-act="mealprep"><i></i>Za v službo (meal-prep)</button>
+    </div>
+    <ul class="list">${list.map(f => `<li class="row"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>
+      ${fridgeBadge(f)}
+      <button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check', 20)}</button>
+      <button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
+}
+function billBadge(b) {
+  if (b.paid) return `<span class="badge">plačano</span>`;
+  if (!b.due) return `<span class="badge plain">brez roka</span>`;
+  const d = dayDiff(b.due);
+  return `<span class="badge ${d <= 1 ? 'bad' : d <= 5 ? 'warn' : 'plain'}">${d < 0 ? 'zapadlo' : fmtDate(b.due)}</span>`;
+}
+function billRow(b) {
+  const kv = (k, v) => v ? `<div class="kv"><span>${k}</span><code>${esc(v)}</code><button class="mini copy" data-act="copy" data-v="${esc(v)}" aria-label="Kopiraj ${k}">${ic('copy', 17)}</button></div>` : '';
+  return `<details class="bill"><summary>
+      ${chk(b.paid, 'pay', b.id, b.paid ? 'Označi kot neplačano' : 'Označi kot plačano')}
+      <span class="grow" style="flex:1;min-width:0"><strong>${esc(b.recipient)}</strong><br><small class="sub">${esc(b.category || 'Drugo')}${b.purpose ? ' · ' + esc(b.purpose) : ''}</small></span>
+      <span class="b-amt">${money(b.amount, b.currency)}</span>${billBadge(b)}</summary>
+    <div class="b-det">${kv('IBAN', b.iban)}${kv('Referenca', b.reference)}${kv('Namen', b.purpose)}${b.due ? `<div class="kv"><span>Rok</span><code>${fmtDate(b.due)} (${rel(dayDiff(b.due))})</code></div>` : ''}
+      <div><button class="btn sm ghost danger" data-act="delBill" data-id="${b.id}">${ic('trash', 16)} Izbriši</button></div></div></details>`;
+}
+function renderMoney() {
+  const mk = today().slice(0, 7), f = S.ui.moneyFilter;
+  const sub = b => f !== 'subs' || b.category === 'Naročnine';
+  const unpaid = S.bills.filter(b => !b.paid && sub(b)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+  const paid = S.bills.filter(b => b.paid && sub(b)).sort((a, b) => (b.due || '').localeCompare(a.due || ''));
+  const unpaidSum = S.bills.filter(b => !b.paid && (b.currency || 'EUR') === 'EUR').reduce((s, b) => s + (b.amount || 0), 0);
+  const shopSum = S.expenses.filter(e => (e.date || '').startsWith(mk)).reduce((s, e) => s + (e.total || 0), 0);
+  const cat = {};
+  S.expenses.filter(e => (e.date || '').startsWith(mk)).forEach(e => { cat[e.category] = (cat[e.category] || 0) + (e.total || 0); });
+  S.bills.filter(b => (b.due || '').startsWith(mk) && (b.currency || 'EUR') === 'EUR').forEach(b => { const k = b.category || 'Drugo'; cat[k] = (cat[k] || 0) + (b.amount || 0); });
+  const cats = Object.entries(cat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const max = cats.length ? cats[0][1] : 1;
+  let h = `<div class="sums"><div><b>${money(unpaidSum)}</b><span>še za plačat</span></div><div><b>${money(shopSum)}</b><span>trgovine ta mesec</span></div></div>
+    <div class="chips" role="group" aria-label="Filter"><button class="chip" data-act="mfilter" data-v="all" aria-pressed="${f === 'all'}">Vse</button><button class="chip" data-act="mfilter" data-v="subs" aria-pressed="${f === 'subs'}">Naročnine</button></div>`;
+  h += `<h2 class="sec">Za plačilo</h2>`;
+  h += unpaid.length ? unpaid.map(billRow).join('') : `<div class="empty"><p>${f === 'subs' ? 'Ni naročnin.' : 'Nič ni neplačanega. Slikaj položnico in jo dodam z opomnikom.'}</p>${f === 'subs' ? '' : `<button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj položnico</button>`}</div>`;
+  if (paid.length) h += `<details class="fold"><summary>Plačano (${paid.length})</summary>${paid.map(billRow).join('')}</details>`;
+  if (cats.length) h += `<h2 class="sec">Ta mesec po kategorijah</h2><div class="bars">${cats.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(4, Math.round(v / max * 100))}%"></i><b>${money(v)}</b></div>`).join('')}</div>`;
+  if (S.expenses.length) {
+    const ex = [...S.expenses].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15);
+    h += `<details class="fold"><summary>Trgovinski računi (${S.expenses.length})</summary><ul class="list">${ex.map(e => `<li class="row"><div class="grow"><strong>${esc(e.store)}</strong><small>${e.date ? fmtDate(e.date) : ''} · ${esc(e.category)}</small></div><span class="b-amt">${money(e.total)}</span><button class="mini" data-act="delExp" data-id="${e.id}" aria-label="Izbriši račun">${ic('trash', 19)}</button></li>`).join('')}</ul></details>`;
+  }
+  return h;
+}
+const PRIO = { visoka: 0, srednja: 1, nizka: 2 };
+function renderTasks() {
+  const open = S.tasks.filter(t => !t.done).sort((a, b) => PRIO[a.prio] - PRIO[b.prio] || (a.due || '9999').localeCompare(b.due || '9999'));
+  const done = S.tasks.filter(t => t.done);
+  const row = t => {
+    const meta = [t.frame, t.time, t.min ? t.min + ' min' : null, t.due ? rel(dayDiff(t.due)) : null].filter(Boolean).join(' · ');
+    return `<li class="row ${t.done ? 'done' : ''}">${chk(t.done, 'toggleTask', t.id, t.done ? 'Vrni med odprta' : 'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong>${meta ? `<small>${esc(meta)}</small>` : ''}</div>
+      <button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash', 19)}</button></li>`;
+  };
+  let h = `<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="btn" data-act="quickTask">Dodaj</button></div>`;
+  const groups = [['visoka', 'Visoka prioriteta'], ['srednja', 'Srednja prioriteta'], ['nizka', 'Nizka prioriteta']];
+  let any = false;
+  groups.forEach(([k, l]) => { const g = open.filter(t => t.prio === k); if (g.length) { any = true; h += `<h2 class="sec">${l}</h2><ul class="list">${g.map(row).join('')}</ul>`; } });
+  if (!any) h += `<div class="empty"><p>Ni odprtih opravil. Povej ali napiši, kaj moraš urediti, in jih razvrstim.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic', 18)} Povej opravila</button></div>`;
+  const rem = S.reminders.filter(r => !r.done).sort((a, b) => (a.at || '9').localeCompare(b.at || '9'));
+  if (rem.length) {
+    const lab = r => r.trigger === 'cas' && r.at ? `${fmtDate(r.at.slice(0, 10))} ${r.at.slice(11, 16)}` : ({ pred_odhodom: 'Pred odhodom', v_trgovini: 'V trgovini', konec_meseca: 'Konec meseca' }[r.trigger] || 'Kadarkoli');
+    h += `<h2 class="sec">Opomniki</h2><ul class="list">${rem.map(r => `<li class="row">${chk(false, 'doneRem', r.id, 'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div><span class="badge plain">${esc(lab(r))}</span><button class="mini" data-act="delRem" data-id="${r.id}" aria-label="Izbriši opomnik">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
+  }
+  if (done.length) h += `<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(row).join('')}</ul></details>`;
+  return h;
+}
+const NAV = [['today', 'Danes', 'sun'], ['fridge', 'Hladilnik', 'fridge'], ['money', 'Finance', 'euro'], ['tasks', 'Opravila', 'list']];
+function render() {
+  const tab = S.ui.tab, H = headerFor(tab);
+  $('#title').textContent = H.t; $('#sub').textContent = H.s;
+  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, money: renderMoney, tasks: renderTasks })[tab]();
+  $('#nav').innerHTML = NAV.map(([id, l, i]) => `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`).join('');
+  document.title = 'LifeFlow AI';
+}
+
+/* ---------- capture (Zero-Input Engine) ---------- */
+const cap = { text: '', images: [], audio: null, recording: false, secs: 0, busy: false, result: null, error: null };
+let mr = null, recTimer = null, recStream = null;
+const resetCap = () => Object.assign(cap, { text: '', images: [], audio: null, recording: false, secs: 0, busy: false, result: null, error: null });
+
+function openCapture(mode) {
+  if (cap.busy) renderBusy(); else if (cap.result) renderResult(); else renderCompose();
+  openSheet(null, 'cap');
+  if (cap.busy || cap.result) return;
+  if (mode === 'camera') $('#fileCam').click();
+  else if (mode === 'voice') toggleRec();
+  else if (mode === 'text') setTimeout(() => { const t = $('#capText'); t && t.focus(); }, 60);
+}
+function renderCompose() {
+  $('#sheetBody').innerHTML = `
+    <div class="sheet-h"><h2>Dodaj karkoli</h2>${closeBtn}</div>
+    <p class="hint">Slika računa ali hladilnika, glasovno sporočilo ali hiter zapisek. Lahko tudi vse naenkrat.</p>
+    <textarea id="capText" rows="4" placeholder="Npr. jutri ob 10h klic z dobaviteljem, do petka plačaj zavarovanje, ko grem v trgovino kupi mleko …">${esc(cap.text)}</textarea>
+    <div class="src-row">
+      <button class="src" data-act="pickCam">${ic('camera', 26)}<span>Kamera</span></button>
+      <button class="src" data-act="pickGal">${ic('image', 26)}<span>Galerija</span></button>
+      <button class="src" id="btnRec" data-act="rec">${ic('mic', 26)}<span>Govori</span></button>
+    </div>
+    <div id="attach"></div>
+    ${cap.error ? `<p class="err" role="alert">${esc(cap.error)}</p>` : ''}
+    <div class="sheet-f"><button class="btn wide" data-act="analyze">${ic('spark', 18)} Razberi in uredi</button></div>`;
+  updateAttach();
+}
+function updateAttach() {
+  const r = $('#btnRec');
+  if (r) { r.classList.toggle('on', cap.recording); r.querySelector('span').textContent = cap.recording ? `Ustavi ${fmtSecs(cap.secs)}` : 'Govori'; }
+  const el = $('#attach'); if (!el) return;
+  let h = '';
+  if (cap.images.length) h += `<div class="thumbs">${cap.images.map((im, i) => `<div class="th"><img src="${im.url}" alt="Priložena slika ${i + 1}"><button data-act="rmImg" data-i="${i}" aria-label="Odstrani sliko ${i + 1}">${ic('x', 14)}</button></div>`).join('')}</div>`;
+  if (cap.audio) h += `<div class="aud">${ic('mic', 18)}<span>Glasovno sporočilo · ${fmtSecs(cap.audio.dur)}</span><button class="btn sm plain" data-act="rmAud">Odstrani</button></div>`;
+  el.innerHTML = h;
+}
+function renderBusy() {
+  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>Berem …</h2>${closeBtn}</div><p class="busy"><span class="spin"></span> Razvrščam račune, sestavine in opravila.</p>`;
+}
+async function loadBitmap(file) {
+  if ('createImageBitmap' in window) { try { return await createImageBitmap(file); } catch (e) { /* fallback */ } }
+  return await new Promise((res, rej) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+}
+async function compress(file, max = 1600, q = .85) {
+  const b = await loadBitmap(file), w = b.width || b.naturalWidth, h = b.height || b.naturalHeight;
+  const k = Math.min(1, max / Math.max(w, h)), cw = Math.round(w * k), ch = Math.round(h * k);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  c.getContext('2d').drawImage(b, 0, 0, cw, ch);
+  const url = c.toDataURL('image/jpeg', q);
+  return { url, b64: url.split(',')[1] };
+}
+async function addImages(files) {
+  for (const f of Array.from(files || [])) {
+    if (cap.images.length >= 6) { toast('Največ 6 slik naenkrat.'); break; }
+    try { cap.images.push(await compress(f)); } catch (e) { toast('Slike ni bilo mogoče prebrati.'); }
+  }
+  if (!sheet.open || sheet.dataset.kind !== 'cap' || cap.result || cap.busy) { openCapture('open'); } else { cap.text = ($('#capText') || {}).value ?? cap.text; renderCompose(); }
+}
+$('#fileCam').addEventListener('change', e => { addImages(e.target.files); e.target.value = ''; });
+$('#fileGal').addEventListener('change', e => { addImages(e.target.files); e.target.value = ''; });
+
+const wStr = (v, o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+function abToB64(ab) { let s = ''; const b = new Uint8Array(ab), n = 0x8000; for (let i = 0; i < b.length; i += n) s += String.fromCharCode.apply(null, b.subarray(i, i + n)); return btoa(s); }
+async function blobToWav(blob) {
+  const buf = await blob.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
+  const a = await ctx.decodeAudioData(buf); ctx.close && ctx.close();
+  const len = a.length, chs = a.numberOfChannels, mono = new Float32Array(len);
+  for (let c = 0; c < chs; c++) { const d = a.getChannelData(c); for (let i = 0; i < len; i++) mono[i] += d[i] / chs; }
+  const rate = 16000, ratio = a.sampleRate / rate, n = Math.floor(len / ratio), out = new Int16Array(n);
+  for (let i = 0; i < n; i++) {
+    const p = i * ratio, i0 = Math.floor(p), i1 = Math.min(i0 + 1, len - 1), f = p - i0;
+    out[i] = Math.max(-1, Math.min(1, mono[i0] * (1 - f) + mono[i1] * f)) * 0x7fff;
+  }
+  const wav = new ArrayBuffer(44 + n * 2), v = new DataView(wav);
+  wStr(v, 0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); wStr(v, 8, 'WAVE'); wStr(v, 12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); wStr(v, 36, 'data'); v.setUint32(40, n * 2, true);
+  new Int16Array(wav, 44).set(out);
+  return { b64: abToB64(wav), dur: n / rate };
+}
+async function toggleRec() {
+  if (cap.recording) { if (mr && mr.state !== 'inactive') mr.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Ta brskalnik ne podpira snemanja zvoka. Uporabi besedilo.'); return; }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = []; mr = new MediaRecorder(recStream);
+    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = async () => {
+      clearInterval(recTimer); recStream.getTracks().forEach(t => t.stop()); cap.recording = false; updateAttach();
+      try { cap.audio = await blobToWav(new Blob(chunks, { type: mr.mimeType || 'audio/webm' })); }
+      catch (e) { toast('Posnetka ni bilo mogoče obdelati. Poskusi znova.'); }
+      updateAttach();
+    };
+    cap.recording = true; cap.secs = 0; mr.start();
+    recTimer = setInterval(() => { cap.secs++; updateAttach(); if (cap.secs >= 120) mr.stop(); }, 1000);
+    updateAttach();
+  } catch (e) { toast('Dostop do mikrofona ni dovoljen. Dovoli ga v nastavitvah brskalnika.'); }
+}
+
+function analyzePrompt() {
+  return `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
+Analiziraj vse priložene vnose (slike, zvok, besedilo) in izlušči vse uporabno. Vrni JSON s to strukturo (prazne sezname pusti prazne, neznana polja so null):
+{
+ "opazil": "1-2 kratka stavka: kaj si prepoznal",
+ "predlog": "Proaktiven predlog v obliki: Opazil sem X, predlagam Y. Naj to uredim?",
+ "polozice": [{"prejemnik":"", "znesek":0.0, "valuta":"EUR", "rok_placila":"YYYY-MM-DD", "kategorija":"Stanovanje|Energija|Komunikacije|Zavarovanje|Naročnine|Davki|Zdravje|Prevoz|Drugo", "iban":"", "referenca":"", "namen":""}],
+ "trgovinski_racun": {"trgovina":"", "datum":"YYYY-MM-DD", "skupaj":0.0, "kategorija":"Hrana|Gospodinjstvo|Drugo"} ali null,
+ "hladilnik": [{"ime":"", "kolicina":"npr. 1 l, 500 g, 6 kos", "kategorija":"Zelenjava|Sadje|Mlečno|Meso in ribe|Jajca|Pijače|Suho|Zamrznjeno|Omake in začimbe|Drugo", "rok_uporabe":"YYYY-MM-DD", "rok_je_ocena":true, "opomba":""}],
+ "opravila": [{"naslov":"", "prioriteta":"visoka|srednja|nizka", "casovni_okvir":"npr. danes popoldne", "rok":"YYYY-MM-DD", "ura":"HH:MM", "trajanje_min":0}],
+ "opomniki": [{"besedilo":"", "sprozilec":"cas|pred_odhodom|v_trgovini|konec_meseca|drugo", "cas":"YYYY-MM-DDTHH:MM"}]
+}
+Pravila:
+- Položnica ali račun za plačilo: en element v "polozice". Opomnika za plačilo NE ustvarjaj, aplikacija ga ustvari sama.
+- Trgovinski račun: izpolni "trgovinski_racun" in živila z računa dodaj v "hladilnik" (brez nehrane, čistil, vrečk). Rok uporabe oceni glede na vrsto živila in nastavi rok_je_ocena=true.
+- Slika hladilnika ali seznam sestavin: vse prepoznane sestavine v "hladilnik". Če roka ni videti, ga oceni (rok_je_ocena=true). Če je kaj videti pokvarjeno ali na robu, to zapiši v "opomba".
+- Glasovni ali pisni zapiski: razčleni v jasna "opravila" (naslov v velelniku, npr. "Pokliči zobozdravnika"), prioriteto določi glede na nujnost, casovni_okvir napiši kratko (npr. "do petka"). Polji rok in ura izpolni samo, če ju uporabnik omeni ali sta nedvoumni; relativne izraze ("jutri", "v petek") pretvori glede na današnji datum.
+- Kar je treba sprožiti ob določenem trenutku (npr. "ko grem v trgovino kupi …", "preden odidem vzemi …"), daj v "opomniki" s sprozilec v_trgovini ali pred_odhodom; za konkreten čas sprozilec "cas" in polje cas.
+- Če ni nič uporabnega, vrni prazne sezname, v "opazil" povej, kaj vidiš, v "predlog" pa, kaj naj uporabnik pošlje.`;
+}
+function normalize(r) {
+  r = r || {};
+  const rc = r.trgovinski_racun && typeof r.trgovinski_racun === 'object' ? r.trgovinski_racun : null;
+  return {
+    opazil: str(r.opazil) || '', predlog: str(r.predlog) || '',
+    polozice: arr(r.polozice).filter(p => p && typeof p === 'object').map(p => ({ on: true, prejemnik: str(p.prejemnik) || 'Neznan prejemnik', znesek: num(p.znesek), valuta: str(p.valuta) || 'EUR', rok: dt(p.rok_placila), kategorija: str(p.kategorija) || 'Drugo', iban: str(p.iban), referenca: str(p.referenca), namen: str(p.namen) })),
+    racun: rc && (rc.skupaj != null || rc.trgovina) ? { on: true, trgovina: str(rc.trgovina) || 'Trgovina', datum: dt(rc.datum) || today(), skupaj: num(rc.skupaj), kategorija: str(rc.kategorija) || 'Hrana' } : null,
+    hladilnik: arr(r.hladilnik).filter(x => x && x.ime).map(x => ({ on: true, ime: str(x.ime), kolicina: str(x.kolicina), kategorija: str(x.kategorija) || 'Drugo', rok: dt(x.rok_uporabe), ocena: !!x.rok_je_ocena, opomba: str(x.opomba) })),
+    opravila: arr(r.opravila).filter(x => x && x.naslov).map(x => ({ on: true, naslov: str(x.naslov), prio: PRIO[x.prioriteta] != null ? x.prioriteta : 'srednja', okvir: str(x.casovni_okvir), rok: dt(x.rok), ura: tm(x.ura), min: num(x.trajanje_min) })),
+    opomniki: arr(r.opomniki).filter(x => x && x.besedilo).map(x => ({ on: true, besedilo: str(x.besedilo), sprozilec: ['cas', 'pred_odhodom', 'v_trgovini', 'konec_meseca', 'drugo'].includes(x.sprozilec) ? x.sprozilec : 'drugo', cas: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(x.cas || '') ? x.cas.slice(0, 16) : null }))
+  };
+}
+async function analyze() {
+  if (cap.busy) return;
+  const ta = $('#capText'); if (ta) cap.text = ta.value;
+  if (!cap.text.trim() && !cap.images.length && !cap.audio) { toast('Najprej dodaj sliko, glas ali besedilo.'); return; }
+  if (!needKey()) return;
+  cap.busy = true; cap.error = null; renderBusy();
+  try {
+    const parts = [];
+    cap.images.forEach(i => parts.push({ inlineData: { mimeType: 'image/jpeg', data: i.b64 } }));
+    if (cap.audio) parts.push({ inlineData: { mimeType: 'audio/wav', data: cap.audio.b64 } });
+    if (cap.text.trim()) parts.push({ text: 'Zapisek uporabnika:\n' + cap.text.trim() });
+    parts.push({ text: analyzePrompt() });
+    cap.result = normalize(await callGemini(parts));
+    cap.busy = false;
+    if (sheet.open && sheet.dataset.kind === 'cap') renderResult();
+    else toast('Vnos je razbran. Tapni Dodaj za pregled.');
+  } catch (e) {
+    cap.busy = false; cap.error = e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message;
+    if (sheet.open && sheet.dataset.kind === 'cap') renderCompose();
+  }
+}
+function countOn(r) {
+  return r.polozice.filter(x => x.on).length + (r.racun && r.racun.on ? 1 : 0) + r.hladilnik.filter(x => x.on).length + r.opravila.filter(x => x.on).length + r.opomniki.filter(x => x.on).length;
+}
+function renderResult() {
+  const r = cap.result, total = countOn(r);
+  const ck = (k, i, on, main, small) => `<li class="rv"><label class="ck"><input type="checkbox" data-k="${k}" ${i != null ? `data-i="${i}"` : ''} ${on ? 'checked' : ''}><span class="rv-b"><strong>${main}</strong>${small ? `<small>${small}</small>` : ''}</span></label>`;
+  let h = `<div class="sheet-h"><h2>Opazil sem</h2>${closeBtn}</div><p class="lead">${esc(r.opazil || 'Vnos sem pregledal.')}</p>`;
+  if (r.polozice.length) h += `<h3 class="rvh">Položnice</h3><ul class="rvl">${r.polozice.map((p, i) => ck('polozice', i, p.on, esc(p.prejemnik), esc(p.kategorija + (p.namen ? ' · ' + p.namen : '')))
+    + `<div class="rv-in"><label>Znesek (${esc(p.valuta)})<input type="number" step="0.01" inputmode="decimal" data-f="znesek" data-k="polozice" data-i="${i}" value="${p.znesek ?? ''}"></label><label>Rok plačila<input type="date" data-f="rok" data-k="polozice" data-i="${i}" value="${p.rok || ''}"></label></div></li>`).join('')}</ul>`;
+  if (r.racun) h += `<h3 class="rvh">Trgovinski račun</h3><ul class="rvl">${ck('racun', null, r.racun.on, esc(r.racun.trgovina), `${money(r.racun.skupaj)} · ${fmtDate(r.racun.datum)} · ${esc(r.racun.kategorija)}`)}</li></ul>`;
+  if (r.hladilnik.length) h += `<h3 class="rvh">V hladilnik (${r.hladilnik.length})</h3><ul class="rvl">${r.hladilnik.map((x, i) => ck('hladilnik', i, x.on, esc(x.ime), esc([x.kolicina, x.rok ? (x.ocena ? '~ ' : '') + 'do ' + fmtDate(x.rok) : null, x.opomba].filter(Boolean).join(' · '))) + '</li>').join('')}</ul>`;
+  if (r.opravila.length) h += `<h3 class="rvh">Opravila</h3><ul class="rvl">${r.opravila.map((x, i) => ck('opravila', i, x.on, esc(x.naslov), esc([x.prio, x.okvir, x.ura, x.rok ? fmtDate(x.rok) : null, x.min ? x.min + ' min' : null].filter(Boolean).join(' · '))) + '</li>').join('')}</ul>`;
+  if (r.opomniki.length) h += `<h3 class="rvh">Opomniki</h3><ul class="rvl">${r.opomniki.map((x, i) => ck('opomniki', i, x.on, esc(x.besedilo), esc(({ cas: x.cas ? fmtDate(x.cas.slice(0, 10)) + ' ' + x.cas.slice(11, 16) : 'ob času', pred_odhodom: 'pred odhodom', v_trgovini: 'v trgovini', konec_meseca: 'konec meseca', drugo: 'kadarkoli' })[x.sprozilec])) + '</li>').join('')}</ul>`;
+  if (r.predlog) h += `<p class="suggest">${esc(r.predlog)}</p>`;
+  h += `<div class="sheet-f"><button class="btn wide" id="btnApply" data-act="apply" ${total ? '' : 'disabled'}>${ic('check', 18)} <span id="applyTxt">Uredi vse (${total})</span></button><button class="btn wide ghost" data-act="backCompose">Dodaj še kaj</button></div>`;
+  $('#sheetBody').innerHTML = h;
+}
+function updateApply() {
+  const n = countOn(cap.result), b = $('#btnApply'); if (!b) return;
+  b.disabled = !n; $('#applyTxt').textContent = `Uredi vse (${n})`;
+}
+function applyResult() {
+  const r = cap.result; if (!r) return;
+  const c = { bills: 0, fridge: 0, tasks: 0, rem: 0, exp: 0 };
+  r.polozice.filter(p => p.on).forEach(p => {
+    const id = uid();
+    S.bills.push({ id, recipient: p.prejemnik, amount: p.znesek, currency: p.valuta, due: p.rok, category: p.kategorija, iban: p.iban, reference: p.referenca, purpose: p.namen, paid: false });
+    c.bills++;
+    if (p.rok && dayDiff(p.rok) >= 0) {
+      const d = dayDiff(p.rok) > 2 ? addDays(p.rok, -2) : today();
+      S.reminders.push({ id: uid(), text: `Plačaj ${p.prejemnik}${p.znesek != null ? ' – ' + money(p.znesek, p.valuta) : ''}`, trigger: 'cas', at: `${d}T09:00`, billId: id, done: false });
+    }
+  });
+  if (r.racun && r.racun.on) { S.expenses.push({ id: uid(), store: r.racun.trgovina, date: r.racun.datum, total: r.racun.skupaj, category: r.racun.kategorija }); c.exp++; }
+  r.hladilnik.filter(x => x.on).forEach(x => {
+    const ex = S.fridge.find(f => f.name.toLowerCase() === x.ime.toLowerCase());
+    const item = { id: ex ? ex.id : uid(), name: x.ime, qty: x.kolicina, category: x.kategorija, expires: x.rok, est: x.ocena, note: x.opomba, added: today() };
+    if (ex) Object.assign(ex, item); else S.fridge.push(item);
+    c.fridge++;
+  });
+  r.opravila.filter(x => x.on).forEach(x => { S.tasks.push({ id: uid(), title: x.naslov, prio: x.prio, frame: x.okvir, due: x.rok, time: x.ura, min: x.min, done: false }); c.tasks++; });
+  r.opomniki.filter(x => x.on).forEach(x => {
+    const trig = x.sprozilec === 'cas' && !x.cas ? 'drugo' : x.sprozilec;
+    S.reminders.push({ id: uid(), text: x.besedilo, trigger: trig, at: trig === 'cas' ? x.cas : null, done: false }); c.rem++;
+  });
+  save(); resetCap(); sheet.close(); render();
+  const bits = [];
+  if (c.bills) bits.push(`${c.bills} ${c.bills === 1 ? 'položnica' : 'položnic'}`);
+  if (c.exp) bits.push('račun');
+  if (c.fridge) bits.push(`${c.fridge} v hladilniku`);
+  if (c.tasks) bits.push(`${c.tasks} ${c.tasks === 1 ? 'opravilo' : 'opravil'}`);
+  if (c.rem) bits.push(`${c.rem} ${c.rem === 1 ? 'opomnik' : 'opomnikov'}`);
+  toast('Urejeno: ' + (bits.join(', ') || 'nič'));
+}
+sheet.addEventListener('change', e => {
+  const t = e.target;
+  if (!cap.result || !t.dataset || !t.dataset.k) return;
+  if (t.type === 'checkbox') {
+    const o = t.dataset.k === 'racun' ? cap.result.racun : cap.result[t.dataset.k][+t.dataset.i];
+    if (o) o.on = t.checked; updateApply();
+  }
+});
+sheet.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'capText') { cap.text = t.value; return; }
+  if (!cap.result || !t.dataset || !t.dataset.f) return;
+  const o = cap.result[t.dataset.k][+t.dataset.i]; if (!o) return;
+  o[t.dataset.f] = t.dataset.f === 'znesek' ? num(t.value) : dt(t.value);
+});
+
+/* ---------- planner ---------- */
+async function genPlan() {
+  if (busy.plan || !needKey()) return;
+  const u = S.ui, t = today();
+  const ctx = {
+    tasks: S.tasks.filter(x => !x.done).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, ura: x.time || null, trajanje_min: x.min || null })),
+    bills: S.bills.filter(b => !b.paid && b.due && dayDiff(b.due) <= 7).map(b => ({ prejemnik: b.recipient, znesek: b.amount, rok: b.due })),
+    fridge: S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).map(f => f.name),
+    rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t && !r.billId).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) }))
+  };
+  const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
+Sestavi realen dnevni načrt za danes.
+Energija uporabnika: ${u.energy}. Prost čas: od ${u.from} do ${u.to}.
+Odprta opravila: ${JSON.stringify(ctx.tasks)}
+Položnice, ki zapadejo v 7 dneh: ${JSON.stringify(ctx.bills)}
+Živila, ki se kmalu iztečejo: ${JSON.stringify(ctx.fridge)}
+Opomniki za danes: ${JSON.stringify(ctx.rem)}
+Vrni JSON:
+{"nasvet":"en kratek stavek o tem, kako naj uporabnik pristopi k današnjemu dnevu","bloki":[{"od":"HH:MM","do":"HH:MM","naslov":"","tip":"opravilo|fiksno|obrok|odmor|rekreacija|opomnik","task_id":"id opravila ali null"}],"opozorila":["kratko opozorilo, če je dan prenatrpan ali se kaj ne izide"]}
+Pravila:
+- Ne načrtuj pred trenutno uro in ne izven prostega časa. Opravila z uro postavi točno na to uro kot "fiksno".
+- Pri visoki energiji daj zahtevnejša opravila zgodaj; pri nizki energiji največ 2-3 zahtevna opravila in več odmorov.
+- Če je urnik natrpan, predlagaj hitre rešitve (15-minutno kosilo, kratek odmor). Obroke vključi ob običajnih urah, če jih prosti čas zajema.
+- V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek (npr. plačilo položnice, ki kmalu zapade). Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
+- Bloki se ne prekrivajo, "do" je za "od", največ 12 blokov. Če blok izhaja iz opravila, nastavi task_id.`;
+  busy.plan = true; render();
+  try {
+    const r = await callGemini([{ text: prompt }]);
+    const ids = new Set(S.tasks.map(x => x.id));
+    const bloki = arr(r.bloki).map(b => ({ od: tm(b && b.od), do: tm(b && b.do), naslov: str(b && b.naslov), tip: TIP[b && b.tip] ? b.tip : 'opravilo', task_id: b && ids.has(b.task_id) ? b.task_id : null, done: false }))
+      .filter(b => b.od && b.do && b.naslov && toM(b.do) > toM(b.od)).sort((a, b) => toM(a.od) - toM(b.od));
+    if (!bloki.length) throw new UserErr('Model ni vrnil uporabnega načrta. Poskusi znova.');
+    S.plan = { date: t, energy: u.energy, bloki, nasvet: str(r.nasvet) || '', opozorila: arr(r.opozorila).map(str).filter(Boolean).slice(0, 4) };
+    save();
+  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
+  busy.plan = false; render();
+}
+
+/* ---------- meals ---------- */
+async function cook() {
+  if (!S.fridge.length) { toast('Hladilnik je prazen. Najprej dodaj sestavine.'); return; }
+  if (!needKey()) return;
+  openSheet(`<div class="sheet-h"><h2>Kaj skuhati?</h2>${closeBtn}</div><p class="busy"><span class="spin"></span> Preverjam, kaj imaš pri roki …</p>`, 'cook');
+  const items = S.fridge.map(f => ({ ime: f.name, kolicina: f.qty || null, dni_do_izteka: f.expires ? dayDiff(f.expires) : null }));
+  const prompt = `Trenutni datum: ${today()} (${weekday()}).
+Vsebina hladilnika: ${JSON.stringify(items)}
+Predlagaj 2 preprosta jedi, ki najprej porabita živila z najkrajšim rokom. ${S.ui.mealprep ? 'Jedi naj bodo primerne za meal-prep: skuhaš danes, jutri jih v posodi odneseš v službo in so tudi hladne ali pogrete še vedno dobre.' : 'Jedi naj bodo za takojšnje kosilo ali večerjo.'} Brez zapletenih postopkov. Predpostavi, da so v kuhinji osnovne stvari (olje, sol, poper, začimbe).
+Vrni JSON:
+{"nasvet":"1 stavek: kaj je najbolj nujno porabiti","recepti":[{"naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":["živila iz hladilnika"],"manjka":["kar je treba še kupiti, lahko prazno"],"koraki":["3-6 kratkih korakov"],"naslednji_dan":"kratek nasvet za shranjevanje/pogrevanje ali null"}]}`;
+  try {
+    const r = await callGemini([{ text: prompt }]);
+    if (sheet.dataset.kind !== 'cook' || !sheet.open) return;
+    lastRecipes = arr(r.recepti).filter(x => x && x.naziv);
+    let h = `<div class="sheet-h"><h2>Kaj skuhati?</h2>${closeBtn}</div>`;
+    if (r.nasvet) h += `<p class="lead">${esc(r.nasvet)}</p>`;
+    if (!lastRecipes.length) h += `<p class="muted">Tokrat nisem našel predloga. Poskusi znova ali dodaj več sestavin.</p>`;
+    lastRecipes.forEach((x, i) => {
+      const miss = arr(x.manjka).map(str).filter(Boolean);
+      h += `<article class="rcp"><h3>${esc(x.naziv)}</h3>
+        <p class="muted">${[num(x.cas_min) ? num(x.cas_min) + ' min' : null, num(x.porcije) ? 'porcij: ' + num(x.porcije) : null].filter(Boolean).join(' · ')}</p>
+        <p><strong>Iz hladilnika:</strong> ${esc(arr(x.iz_hladilnika).join(', '))}</p>
+        ${miss.length ? `<p><strong>Manjka:</strong> ${esc(miss.join(', '))}</p><button class="btn sm ghost" data-act="addMissing" data-i="${i}">Dodaj na seznam za trgovino</button>` : ''}
+        <ol>${arr(x.koraki).map(k => `<li>${esc(k)}</li>`).join('')}</ol>
+        ${str(x.naslednji_dan) ? `<p class="tip"><strong>Naslednji dan:</strong> ${esc(x.naslednji_dan)}</p>` : ''}</article>`;
+    });
+    $('#sheetBody').innerHTML = h;
+  } catch (e) {
+    if (sheet.dataset.kind !== 'cook' || !sheet.open) return;
+    $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>Kaj skuhati?</h2>${closeBtn}</div><p class="err" role="alert">${esc(e.message)}</p><div class="sheet-f"><button class="btn wide" data-act="cook">Poskusi znova</button></div>`;
+  }
+}
+
+/* ---------- settings ---------- */
+function openSettings() {
+  const s = S.settings;
+  openSheet(`<div class="sheet-h"><h2>Nastavitve</h2>${closeBtn}</div>
+    <div class="field"><label for="setName">Ime</label><input type="text" id="setName" value="${esc(s.name)}" autocomplete="off"></div>
+    <div class="field"><label for="setKey">Gemini API ključ</label>
+      <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
+      <p class="help">Ključ dobiš brezplačno v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Shranjen je samo v tej napravi; slike in zvok gredo neposredno h Googlu. V AI Studiu ključ po možnosti omeji.</p></div>
+    <div class="field"><label for="setModel">Model</label><input type="text" id="setModel" value="${esc(s.model)}" autocomplete="off" spellcheck="false"></div>
+    <div class="set-actions"><button class="btn" data-act="testKey">Preveri povezavo</button></div>
+    <h3 class="rvh">Podatki</h3>
+    <div class="set-actions"><button class="btn ghost" data-act="export">Izvozi varnostno kopijo</button><button class="btn ghost" data-act="import">Uvozi</button><button class="btn ghost danger" data-act="wipe">Izbriši vse podatke</button></div>
+    <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz.</p>`, 'settings');
+}
+sheet.addEventListener('input', e => {
+  const id = e.target.id;
+  if (id === 'setName') S.settings.name = e.target.value;
+  else if (id === 'setKey') S.settings.apiKey = e.target.value.trim();
+  else if (id === 'setModel') S.settings.model = e.target.value.trim() || 'gemini-3.1-flash-lite';
+  else return;
+  save();
+});
+sheet.addEventListener('close', () => { if (S.ui) render(); });
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+$('#fileImport').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const o = JSON.parse(await f.text());
+    const key = S.settings.apiKey;
+    S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
+    save(); render(); toast('Podatki uvoženi.');
+  } catch (err) { toast('Datoteke ni bilo mogoče uvoziti.'); }
+});
+
+/* ---------- actions ---------- */
+const byId = (list, id) => list.find(x => x.id === id);
+const A = {
+  tab(b) { S.ui.tab = b.dataset.tab; save(); render(); window.scrollTo(0, 0); },
+  settings() { openSettings(); },
+  closeSheet() { sheet.close(); },
+  capture(b) { openCapture(b.dataset.mode || 'open'); },
+  pickCam() { cap.text = ($('#capText') || {}).value ?? cap.text; $('#fileCam').click(); },
+  pickGal() { cap.text = ($('#capText') || {}).value ?? cap.text; $('#fileGal').click(); },
+  rec() { toggleRec(); },
+  rmImg(b) { cap.text = ($('#capText') || {}).value ?? cap.text; cap.images.splice(+b.dataset.i, 1); renderCompose(); },
+  rmAud() { cap.audio = null; updateAttach(); },
+  analyze() { analyze(); },
+  backCompose() { cap.result = null; renderCompose(); },
+  apply() { applyResult(); },
+  pay(b) {
+    const x = byId(S.bills, b.dataset.id); if (!x) return;
+    x.paid = !x.paid;
+    S.reminders.filter(r => r.billId === x.id).forEach(r => { r.done = x.paid; });
+    save(); render(); toast(x.paid ? 'Označeno kot plačano.' : 'Vrnjeno med neplačane.');
+  },
+  delBill(b) { S.bills = S.bills.filter(x => x.id !== b.dataset.id); S.reminders = S.reminders.filter(r => r.billId !== b.dataset.id); save(); render(); },
+  delExp(b) { S.expenses = S.expenses.filter(x => x.id !== b.dataset.id); save(); render(); },
+  useFridge(b) { S.fridge = S.fridge.filter(x => x.id !== b.dataset.id); save(); render(); toast('Porabljeno.'); },
+  delFridge(b) { S.fridge = S.fridge.filter(x => x.id !== b.dataset.id); save(); render(); },
+  mealprep() { S.ui.mealprep = !S.ui.mealprep; save(); render(); },
+  cook() { cook(); },
+  addMissing(b) {
+    const x = lastRecipes[+b.dataset.i]; if (!x) return;
+    const miss = arr(x.manjka).map(str).filter(Boolean);
+    S.reminders.push({ id: uid(), text: 'Kupi: ' + miss.join(', '), trigger: 'v_trgovini', at: null, done: false });
+    save(); b.disabled = true; b.textContent = 'Dodano'; render();
+  },
+  mfilter(b) { S.ui.moneyFilter = b.dataset.v; save(); render(); },
+  subs(b) { S.ui.tab = 'money'; S.ui.moneyFilter = 'subs'; save(); render(); window.scrollTo(0, 0); },
+  dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
+  energy(b) { S.ui.energy = b.dataset.v; save(); render(); },
+  plan() { genPlan(); },
+  blk(b) {
+    const p = S.plan; if (!p) return;
+    const bl = p.bloki[+b.dataset.i]; if (!bl) return;
+    bl.done = !bl.done;
+    if (bl.task_id) { const t = byId(S.tasks, bl.task_id); if (t) t.done = bl.done; }
+    save(); render();
+  },
+  toggleTask(b) { const t = byId(S.tasks, b.dataset.id); if (t) { t.done = !t.done; save(); render(); } },
+  delTask(b) { S.tasks = S.tasks.filter(x => x.id !== b.dataset.id); save(); render(); },
+  doneRem(b) { const r = byId(S.reminders, b.dataset.id); if (r) { r.done = true; save(); render(); } },
+  delRem(b) { S.reminders = S.reminders.filter(x => x.id !== b.dataset.id); save(); render(); },
+  quickTask() {
+    const i = $('#quickTask'), v = i && i.value.trim(); if (!v) return;
+    S.tasks.push({ id: uid(), title: v, prio: 'srednja', frame: null, due: null, time: null, min: null, done: false });
+    save(); render(); const n = $('#quickTask'); n && n.focus();
+  },
+  copy(b) { const v = b.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Kopirano.')).catch(() => toast('Kopiranje ni uspelo.')); },
+  showKey(b) { const i = $('#setKey'); i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Pokaži' : 'Skrij'; },
+  async testKey(b) {
+    if (!(S.settings.apiKey || '').trim()) { toast('Najprej vnesi ključ.'); return; }
+    b.disabled = true; b.textContent = 'Preverjam …';
+    try { await callGemini([{ text: 'Vrni JSON {"ok":true}' }]); toast('Povezava deluje ✓'); }
+    catch (e) { toast(e.message); }
+    b.disabled = false; b.textContent = 'Preveri povezavo';
+  },
+  export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1)); },
+  import() { $('#fileImport').click(); },
+  wipe() {
+    if (!confirm('Res izbrišem vse podatke (položnice, hladilnik, opravila)? Ključ API ostane.')) return;
+    const key = S.settings.apiKey, name = S.settings.name, model = S.settings.model;
+    S = JSON.parse(JSON.stringify(DEFAULT)); S.settings.apiKey = key; S.settings.name = name; S.settings.model = model;
+    save(); resetCap(); sheet.close(); render(); toast('Podatki izbrisani.');
+  }
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const f = A[b.dataset.act]; if (f) f(b, e);
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'planFrom') { S.ui.from = tm(e.target.value) || '08:00'; save(); }
+  if (e.target.id === 'planTo') { S.ui.to = tm(e.target.value) || '21:00'; save(); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !sheet.open) render(); });
+
+render();
+</script>
+</body>
+</html>
