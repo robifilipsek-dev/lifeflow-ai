@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0A5C6B">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>LifeFlow AI</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -322,6 +322,38 @@ img[data-img]:not([src]){visibility:hidden}
 dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
+
+@media (prefers-color-scheme:dark){
+  :root{
+    --mist:#0B1519; --paper:#111E23; --ink:#E8F0F2; --ink2:#AABCC2; --line:#30434A;
+    --petrol:#48B7C8; --petrol-d:#8DDFEA; --petrol-t:#18343B;
+    --gold:#F2B93F; --gold-t:#453817; --coral:#F27652; --coral-t:#45251D;
+    --moss:#67C58A; --moss-t:#183A27;
+  }
+  body{background:var(--mist)}
+  input[type=time],input[type=date],input[type=number],input[type=text],input[type=password],select,textarea{background:#17262C;color:var(--ink)}
+  .src{background:#17262C}
+  .seg{background:#26383F}
+  .seg button[aria-pressed=true]{background:#17262C}
+  .chip{background:#26383F}
+  .badge.plain{background:#26383F}
+  .invite{background:var(--paper)}
+  .blk:hover{background:rgba(255,255,255,.05)}
+}
+.searchbar{display:flex;gap:8px;margin:0 0 12px}
+.searchbar input{min-height:42px}
+.quick-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 18px}
+.quick-summary .qs{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center}
+.quick-summary b{display:block;font:800 21px var(--font-h)}
+.quick-summary span{font-size:12.5px;color:var(--ink2)}
+.trend{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;align-items:end;height:150px;margin:8px 0 18px;padding-top:10px}
+.trend-col{height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px}
+.trend-bar{width:min(30px,70%);min-height:4px;border-radius:7px 7px 3px 3px;background:var(--petrol)}
+.trend-col strong{font-size:11px;font-weight:700}
+.trend-col small{font-size:10.5px;color:var(--ink2)}
+.share-box{background:var(--petrol-t);border-radius:14px;padding:12px;margin:10px 0}
+.swiping{transition:transform .16s,opacity .16s}
+
 </style>
 </head>
 <body>
@@ -458,9 +490,12 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, v); } catch (e) { memStore[KEY] = v; } }
 };
 const DEFAULT = {
-  settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '' },
+  settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '',
+    showDeadlines: true, showDocs: true, showShopping: true, lastBackupAt: null, backupReminderDismissedAt: null },
+  modelCache: null,
   bills: [], expenses: [], fridge: [], tasks: [], reminders: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
-  ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all' }
+  ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all',
+    search: '', taskSort: 'due', sortDirection: 'asc' }
 };
 function load() {
   const base = JSON.parse(JSON.stringify(DEFAULT));
@@ -474,17 +509,40 @@ function load() {
   return base;
 }
 let S = load();
+S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDocs = S.settings.showDocs !== false; S.settings.showShopping = S.settings.showShopping !== false;
+(function importSharedShop(){
+  const m=location.hash.match(/^#shop=(.+)$/);
+  if(!m) return;
+  try{
+    const data=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if(data && Array.isArray(data.items)){
+      S.shop={created:today(),nasvet:'Skupni seznam, prejet prek povezave.',obroki_teden:[],items:data.items.map(x=>({...x,id:x.id||uid()}))};
+      S.ui.tab='fridge'; S.ui.search=''; save();
+      history.replaceState(null,'',location.href.split('#')[0]);
+      setTimeout(()=>toast('Skupni nakupovalni seznam je odprt.'),0);
+    }
+  }catch(e){}
+})();
+
 const save = () => store.set(JSON.stringify(S));
 const busy = { plan: false, meals: false, shop: false };
 let deferredPrompt = null;
 
 /* ---------- toast ---------- */
-let toastT;
-function toast(msg) {
+let toastT, undoAction = null;
+function toast(msg, undo) {
   const t = $('#toast'), host = sheet.open ? sheet : document.body;
   if (t.parentNode !== host) host.appendChild(t);
-  t.textContent = msg; t.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3400);
+  t.innerHTML = '';
+  const span = document.createElement('span'); span.textContent = msg; t.appendChild(span);
+  undoAction = typeof undo === 'function' ? undo : null;
+  if (undoAction) {
+    const b = document.createElement('button');
+    b.className = 'btn sm'; b.dataset.act = 'undo'; b.type = 'button';
+    b.style.marginLeft = '10px'; b.textContent = 'Razveljavi'; t.appendChild(b);
+  }
+  t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => { t.classList.remove('on'); undoAction = null; }, undoAction ? 5000 : 3400);
 }
 
 /* ---------- Gemini ---------- */
@@ -645,6 +703,81 @@ function headerFor(tab) {
   const open = S.tasks.filter(t => !t.done).length;
   return { t: 'Opravila', s: open ? `${open} odprtih` : 'Nič odprtega' };
 }
+
+function countSoonFridge() { return S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).length; }
+function backupReminderHtml() {
+  const hasData = S.bills.length || S.fridge.length || S.tasks.length || S.expenses.length || S.docs.length || S.deadlines.length;
+  if (!hasData) return '';
+  const last = S.settings.lastBackupAt || S.settings.backupReminderDismissedAt;
+  if (last && dayDiff(last) < 30) return '';
+  return `<div class="alert warn"><div class="a-body"><strong>Čas za varnostno kopijo</strong><span>Slike računov ostanejo samo na tej napravi. Priporočam izvoz kopije.</span></div><div class="a-act"><button class="btn sm" data-act="export">Izvozi</button><button class="btn sm plain" data-act="dismissBackup">Kasneje</button></div></div>`;
+}
+function quickSummaryHtml() {
+  const tasks = S.tasks.filter(t => !t.done).length;
+  const bills = S.bills.filter(b => !b.paid).length;
+  const soon = countSoonFridge();
+  return `<div class="quick-summary" aria-label="Na hitro">
+    <div class="qs"><b>${tasks}</b><span>${tasks === 1 ? 'opravilo' : 'opravil'}</span></div>
+    <div class="qs"><b>${bills}</b><span>${bills === 1 ? 'položnica' : 'položnic'}</span></div>
+    <div class="qs"><b>${soon}</b><span>${soon === 1 ? 'živilo se izteka' : 'živil se izteka'}</span></div>
+  </div>`;
+}
+function searchHtml(placeholder) {
+  return `<div class="searchbar"><input type="search" id="globalSearch" value="${esc(S.ui.search || '')}" placeholder="${esc(placeholder)}" aria-label="Iskanje"><button class="btn sm ghost" data-act="clearSearch">Počisti</button></div>`;
+}
+function monthsBack(n) {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n);
+  return d.toISOString().slice(0,7);
+}
+function trendHtml() {
+  const data = [];
+  for (let i = 5; i >= 0; i--) {
+    const key = monthsBack(i);
+    let total = 0;
+    S.expenses.forEach(e => { if ((e.date || '').startsWith(key)) total += Number(e.total || 0); });
+    S.bills.forEach(b => { if ((b.due || '').startsWith(key) && (b.currency || 'EUR') === 'EUR') total += Number(b.amount || 0); });
+    data.push({ key, total });
+  }
+  const max = Math.max(1, ...data.map(x => x.total));
+  return `<h2 class="sec">Poraba – zadnjih 6 mesecev</h2><div class="trend">${data.map(x => {
+    const pct = Math.max(4, Math.round(x.total / max * 100));
+    const [y,m] = x.key.split('-');
+    return `<div class="trend-col"><strong>${money(x.total)}</strong><i class="trend-bar" style="height:${pct}%"></i><small>${m}/${y.slice(2)}</small></div>`;
+  }).join('')}</div>`;
+}
+function icsEscape(v) { return String(v || '').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
+function icsStamp(dateObj = new Date()) { return dateObj.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z'); }
+function ymdToIcsDate(ymd) { return String(ymd || '').replace(/-/g,''); }
+function downloadICS(title, date, time, note='') {
+  if (!date) { toast('Za koledar manjka datum.'); return; }
+  const uidv = `${uid()}@lifeflow`;
+  const now = icsStamp();
+  let start, end, allDay = !time;
+  if (time) {
+    const safe = `${date}T${time}:00`;
+    const d = new Date(safe);
+    start = d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+    end = new Date(d.getTime() + 60*60*1000).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+  } else {
+    start = ymdToIcsDate(date);
+    const nd = new Date(date + 'T12:00:00'); nd.setDate(nd.getDate()+1);
+    end = nd.toISOString().slice(0,10).replace(/-/g,'');
+  }
+  const lines = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//LifeFlow AI//SL//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'BEGIN:VEVENT',`UID:${uidv}`,`DTSTAMP:${now}`,
+    allDay ? `DTSTART;VALUE=DATE:${start}` : `DTSTART:${start}`,
+    allDay ? `DTEND;VALUE=DATE:${end}` : `DTEND:${end}`,
+    `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(note)}`,'END:VEVENT','END:VCALENDAR'
+  ];
+  download(`${String(title).replace(/[^a-z0-9_-]+/gi,'-')}.ics`, lines.join('\r\n'));
+  toast('Koledarski dogodek je pripravljen.');
+}
+function billSearchMatch(b, q) { return !q || [b.recipient,b.category,b.purpose,b.iban,b.reference].filter(Boolean).join(' ').toLowerCase().includes(q); }
+function taskSearchMatch(t, q) { return !q || [t.title,t.prio,t.frame,t.due,t.time].filter(Boolean).join(' ').toLowerCase().includes(q); }
+function fridgeSearchMatch(f, q) { return !q || [f.name,f.qty,f.category,f.note].filter(Boolean).join(' ').toLowerCase().includes(q); }
+function makeSwipeProxy(act, id) { return { dataset:{act, id} }; }
+
 function renderToday() {
   const empty = !S.bills.length && !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.expenses.length && !S.docs.length && !S.deadlines.length && !S.shop;
   const n = (S.settings.name || '').trim();
@@ -660,6 +793,8 @@ function renderToday() {
         <button class="invite" data-act="capture" data-mode="text"><span class="ico">${ic('pen', 26)}</span><span>Seznam sestavin, ki jih imaš trenutno pri roki</span></button>
       </div></section>`;
   }
+  if (!empty) h += quickSummaryHtml();
+  h += backupReminderHtml();
   h += alertsHtml() + ctxHtml();
   if (!empty) h += planHtml();
   return h;
@@ -789,7 +924,7 @@ function shopHtml() {
   const g = {}; s.items.forEach(i => { (g[i.category] = g[i.category] || []).push(i); });
   const ord = k => { const i = SHOP_ORDER.indexOf(k); return i < 0 ? 99 : i; };
   const keys = Object.keys(g).sort((a, b) => ord(a) - ord(b));
-  let h = `<div class="sec-h" id="shopSec"><h2 class="sec">Nakupovalni seznam</h2>${s.items.some(i => i.done) ? `<button class="btn sm plain" data-act="clearShop">Počisti kupljeno</button>` : ''}</div>`;
+  let h = `<div class="sec-h" id="shopSec"><h2 class="sec">Nakupovalni seznam</h2><div class="set-actions">${s.items.some(i => i.done) ? `<button class="btn sm plain" data-act="clearShop">Počisti kupljeno</button>` : ''}<button class="btn sm ghost" data-act="shareShop">Deli seznam</button></div></div>`;
   if (s.nasvet) h += `<p class="advice">${esc(s.nasvet)}</p>`;
   h += keys.map(k => `<div class="shop-g"><h3>${esc(k)}</h3><ul class="list">${g[k].map(i => `<li class="row ${i.done ? 'done' : ''}">${chk(i.done, 'toggleShop', i.id, i.done ? 'Vrni na seznam' : 'Kupljeno')}<div class="grow"><strong>${esc(i.name)}</strong>${i.qty ? `<small>${esc(i.qty)}</small>` : ''}</div><button class="mini" data-act="delShop" data-id="${i.id}" aria-label="Odstrani: ${esc(i.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul></div>`).join('');
   h += `<div class="quick" style="margin-top:14px"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="btn" data-act="quickShop">Dodaj</button></div>`;
@@ -797,17 +932,19 @@ function shopHtml() {
   return h;
 }
 function renderFridge() {
-  let h = `<div class="toolbar">
+  let h = searchHtml('Išči živilo ali kategorijo …');
+  let h0 = `<div class="toolbar">
       <button class="btn" data-act="meals" ${busy.meals ? 'disabled' : ''}>${busy.meals ? '<span class="spin"></span> Pripravljam …' : ic('spark', 18) + ' Obroki za danes'}</button>
       <button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Sestavljam …' : ic('cart', 18) + ' Nakup za teden'}</button>
     </div>
     <div class="toolbar"><button class="switch" role="switch" aria-checked="${!!S.ui.mealprep}" data-act="mealprep"><i></i>Za v službo (meal-prep)</button></div>`;
-  h += mealsHtml() + shopHtml();
+  h += h0 + mealsHtml() + (S.settings.showShopping ? shopHtml() : '');
   if (!S.fridge.length) {
     return h + `<div class="empty"><p>Hladilnik je prazen. Slikaj hladilnik ali trgovinski račun, ali povej, kaj imaš pri roki. Sestavine in roke uporabe razberem sam.</p><button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj hladilnik ali račun</button></div>`;
   }
-  const list = [...S.fridge].sort((a, b) => (a.expires || '9999').localeCompare(b.expires || '9999'));
-  h += `<h2 class="sec">V hladilniku</h2><ul class="list">${list.map(f => `<li class="row"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>
+  const q = (S.ui.search || '').trim().toLowerCase();
+  const list = [...S.fridge].filter(f => fridgeSearchMatch(f,q)).sort((a, b) => (a.expires || '9999').localeCompare(b.expires || '9999'));
+  h += `<h2 class="sec">V hladilniku</h2><ul class="list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>
       ${fridgeBadge(f)}
       <button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check', 20)}</button>
       <button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
@@ -828,13 +965,14 @@ function billRow(b) {
       <span class="grow" style="flex:1;min-width:0"><strong>${esc(b.recipient)}</strong><br><small class="sub">${esc(b.category || 'Drugo')}${b.purpose ? ' · ' + esc(b.purpose) : ''}</small></span>
       <span class="b-amt">${money(b.amount, b.currency)}</span>${billBadge(b)}</summary>
     <div class="b-det">${kv('IBAN', b.iban)}${kv('Referenca', b.reference)}${kv('Namen', b.purpose)}${b.due ? `<div class="kv"><span>Rok</span><code>${fmtDate(b.due)} (${rel(dayDiff(b.due))})</code></div>` : ''}
-      <div><button class="btn sm ghost danger" data-act="delBill" data-id="${b.id}">${ic('trash', 16)} Izbriši</button></div></div></details>`;
+      <div class="set-actions">${b.due ? `<button class="btn sm ghost" data-act="addBillCal" data-id="${b.id}">${ic('download', 16)} Dodaj v koledar</button>` : ''}<button class="btn sm ghost" data-act="toggleBillRepeat" data-id="${b.id}">${b.repeatMonths ? '🔁 Ponavljajoča · mesečno' : '↻ Označi kot ponavljajočo'}</button><button class="btn sm ghost danger" data-act="delBill" data-id="${b.id}">${ic('trash', 16)} Izbriši</button></div></div></details>`;
 }
 function renderMoney() {
   const mk = today().slice(0, 7), f = S.ui.moneyFilter;
+  const q = (S.ui.search || '').trim().toLowerCase();
   const sub = b => f !== 'subs' || b.category === 'Naročnine';
-  const unpaid = S.bills.filter(b => !b.paid && sub(b)).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-  const paid = S.bills.filter(b => b.paid && sub(b)).sort((a, b) => (b.due || '').localeCompare(a.due || ''));
+  const unpaid = S.bills.filter(b => !b.paid && sub(b) && billSearchMatch(b,q)).sort((a, b) => (a.due || '9999').localeCompare(b.due || ''));
+  const paid = S.bills.filter(b => b.paid && sub(b) && billSearchMatch(b,q)).sort((a, b) => (b.due || '').localeCompare(a.due || ''));
   const unpaidSum = S.bills.filter(b => !b.paid && (b.currency || 'EUR') === 'EUR').reduce((s, b) => s + (b.amount || 0), 0);
   const shopSum = S.expenses.filter(e => (e.date || '').startsWith(mk)).reduce((s, e) => s + (e.total || 0), 0);
   const cat = {};
@@ -842,17 +980,18 @@ function renderMoney() {
   S.bills.filter(b => (b.due || '').startsWith(mk) && (b.currency || 'EUR') === 'EUR').forEach(b => { const k = b.category || 'Drugo'; cat[k] = (cat[k] || 0) + (b.amount || 0); });
   const cats = Object.entries(cat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
   const max = cats.length ? cats[0][1] : 1;
-  let h = `<div class="sums"><div><b>${money(unpaidSum)}</b><span>še za plačat</span></div><div><b>${money(shopSum)}</b><span>trgovine ta mesec</span></div></div>
+  let h = searchHtml('Išči položnico, trgovino ali kategorijo …') + `<div class="sums"><div><b>${money(unpaidSum)}</b><span>še za plačat</span></div><div><b>${money(shopSum)}</b><span>trgovine ta mesec</span></div></div>
     <div class="chips" role="group" aria-label="Filter"><button class="chip" data-act="mfilter" data-v="all" aria-pressed="${f === 'all'}">Vse</button><button class="chip" data-act="mfilter" data-v="subs" aria-pressed="${f === 'subs'}">Naročnine</button></div>`;
   h += `<h2 class="sec">Za plačilo</h2>`;
   h += unpaid.length ? unpaid.map(billRow).join('') : `<div class="empty"><p>${f === 'subs' ? 'Ni naročnin.' : 'Nič ni neplačanega. Slikaj položnico in jo dodam z opomnikom.'}</p>${f === 'subs' ? '' : `<button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj položnico</button>`}</div>`;
   if (paid.length) h += `<details class="fold"><summary>Plačano (${paid.length})</summary>${paid.map(billRow).join('')}</details>`;
-  if (f === 'all') h += deadlinesHtml() + docsHtml();
+  if (f === 'all') { if (S.settings.showDeadlines) h += deadlinesHtml(); if (S.settings.showDocs) h += docsHtml(); }
   if (cats.length) h += `<h2 class="sec">Ta mesec po kategorijah</h2><div class="bars">${cats.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(4, Math.round(v / max * 100))}%"></i><b>${money(v)}</b></div>`).join('')}</div>`;
   if (S.expenses.length) {
     const ex = [...S.expenses].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15);
     h += `<details class="fold"><summary>Trgovinski računi (${S.expenses.length})</summary><ul class="list">${ex.map(e => `<li class="row"><div class="grow"><strong>${esc(e.store)}</strong><small>${e.date ? fmtDate(e.date) : ''} · ${esc(e.category)}</small></div><span class="b-amt">${money(e.total)}</span><button class="mini" data-act="delExp" data-id="${e.id}" aria-label="Izbriši račun">${ic('trash', 19)}</button></li>`).join('')}</ul></details>`;
   }
+  h += trendHtml();
   return h;
 }
 const PRIO = { visoka: 0, srednja: 1, nizka: 2 };
@@ -867,15 +1006,20 @@ function taskReminderLabel(t) {
   return '';
 }
 function renderTasks() {
-  const open = S.tasks.filter(t => !t.done).sort((a, b) => PRIO[a.prio] - PRIO[b.prio] || (a.due || '9999').localeCompare(b.due || '9999'));
-  const done = S.tasks.filter(t => t.done);
+  const q = (S.ui.search || '').trim().toLowerCase();
+  const baseOpen = S.tasks.filter(t => !t.done && taskSearchMatch(t,q));
+  const open = [...baseOpen].sort((a, b) => S.ui.taskSort === 'due'
+    ? (a.due || '9999').localeCompare(b.due || '9999') || PRIO[a.prio]-PRIO[b.prio]
+    : PRIO[a.prio] - PRIO[b.prio] || (a.due || '9999').localeCompare(b.due || '9999'));
+  const done = S.tasks.filter(t => t.done && taskSearchMatch(t,q));
   const row = t => {
     const meta = [t.frame, t.time, t.min ? t.min + ' min' : null, t.due ? rel(dayDiff(t.due)) : null].filter(Boolean).join(' · ');
     const reminder = taskReminderLabel(t);
-    return `<li class="row ${t.done ? 'done' : ''}">${chk(t.done, 'toggleTask', t.id, t.done ? 'Vrni med odprta' : 'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong>${meta ? `<small>${esc(meta)}</small>` : ''}${reminder ? `<small class="task-rem ${t.reminder.type === 'location' ? 'location' : ''}">${ic(t.reminder.type === 'location' ? 'pin' : 'bell', 15)} ${esc(reminder)}</small>` : ''}</div>
-      <button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder ? 'Uredi opomnik' : 'Dodaj opomnik'} za opravilo">${ic('bell', 19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash', 19)}</button></li>`;
+    return `<li class="row ${t.done ? 'done' : ''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done, 'toggleTask', t.id, t.done ? 'Vrni med odprta' : 'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong>${meta ? `<small>${esc(meta)}</small>` : ''}${reminder ? `<small class="task-rem ${t.reminder.type === 'location' ? 'location' : ''}">${ic(t.reminder.type === 'location' ? 'pin' : 'bell', 15)} ${esc(reminder)}</small>` : ''}</div>
+      ${t.due ? `<button class="mini" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj v koledar">${ic('download', 19)}</button>` : ''}<button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder ? 'Uredi opomnik' : 'Dodaj opomnik'} za opravilo">${ic('bell', 19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash', 19)}</button></li>`;
   };
-  let h = `<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="btn" data-act="quickTask">Dodaj</button></div>`;
+  let h = searchHtml('Išči opravilo …') + `<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="btn" data-act="quickTask">Dodaj</button></div>
+  <div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${S.ui.taskSort === 'due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${S.ui.taskSort === 'priority'}">Po prioriteti</button></div>`;
   h += `<p class="help" style="margin:10px 0 0">Opomnik lahko sprožiš ob določeni uri ali ko prideš na določeno lokacijo.</p>`;
   const groups = [['visoka', 'Visoka prioriteta'], ['srednja', 'Srednja prioriteta'], ['nizka', 'Nizka prioriteta']];
   let any = false;
@@ -1201,6 +1345,33 @@ Pravila:
   busy.plan = false; render();
 }
 
+/* ---------- settings: izbira modela ---------- */
+const MODEL_KNOWN = [
+  { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite — najhitrejši in najcenejši, privzet' },
+  { id: 'gemini-3.1-flash', label: 'Gemini 3.1 Flash — zmogljivejši, malo počasnejši' },
+  { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro — najzmogljivejši, najdražji' }
+];
+function modelOptions() {
+  const cached = S.modelCache, cur = S.settings.model;
+  const list = cached && cached.length ? cached.map(m => ({ id: m, label: m })) : MODEL_KNOWN;
+  if (!list.some(m => m.id === cur)) list.unshift({ id: cur, label: cur + ' (trenuten)' });
+  return list;
+}
+async function refreshModels(btn) {
+  if (!(S.settings.apiKey || '').trim()) { toast('Najprej vnesi API ključ.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Iščem …'; }
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': S.settings.apiKey.trim() } });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new UserErr(apiErrText(res.status, data));
+    const ids = arr(data && data.models).filter(m => arr(m.supportedGenerationMethods).includes('generateContent') && /^models\/gemini/.test(m.name || ''))
+      .map(m => m.name.replace(/^models\//, '')).sort();
+    if (!ids.length) throw new UserErr('Ključ nima dostopa do nobenega Gemini modela.');
+    S.modelCache = ids; save();
+    if (sheet.open && sheet.dataset.kind === 'settings') openSettings();
+    toast(`Najdenih ${ids.length} modelov.`);
+  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); if (btn) { btn.disabled = false; btn.textContent = 'Osveži seznam'; } }
+}
 /* ---------- settings ---------- */
 function openSettings() {
   const s = S.settings, people = Math.max(1, Math.min(8, parseInt(s.people) || 2));
@@ -1211,8 +1382,11 @@ function openSettings() {
     <div class="field"><label for="setKey">Gemini API ključ</label>
       <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
       <p class="help">Ključ dobiš brezplačno v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Shranjen je samo v tej napravi; slike in zvok gredo neposredno h Googlu. V AI Studiu ključ po možnosti omeji.</p></div>
-    <div class="field"><label for="setModel">Model</label><input type="text" id="setModel" value="${esc(s.model)}" autocomplete="off" spellcheck="false"></div>
-    <div class="set-actions"><button class="btn" data-act="testKey">Preveri povezavo</button></div>
+    <div class="field"><label for="setModel">Model</label>
+      <select id="setModel">${modelOptions().map(m => `<option value="${esc(m.id)}" ${m.id === s.model ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}<option value="__custom" ${modelOptions().some(m => m.id === s.model) ? '' : 'selected'}>Drug model (vpišem sam) …</option></select>
+      <input type="text" id="setModelCustom" value="${esc(s.model)}" autocomplete="off" spellcheck="false" placeholder="npr. gemini-2.5-flash" ${modelOptions().some(m => m.id === s.model) ? 'hidden' : ''} style="margin-top:8px">
+      <p class="help">Modeli, ki jih tvoj ključ dejansko lahko uporablja, se razlikujejo. <strong>Osveži seznam</strong> ga prebere neposredno iz Googla.</p></div>
+    <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button><button class="btn" data-act="testKey">Preveri povezavo</button></div>
     ${isStandalone() ? '' : `<h3 class="rvh">Aplikacija</h3>
     <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('download', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
@@ -1224,8 +1398,16 @@ const onSettingInput = e => {
   if (id === 'setName') S.settings.name = e.target.value;
   else if (id === 'setPeople') S.settings.people = parseInt(e.target.value) || 2;
   else if (id === 'setDiet') S.settings.diet = e.target.value;
+  else if (id === 'setDeadlines') S.settings.showDeadlines = e.target.checked;
+  else if (id === 'setDocs') S.settings.showDocs = e.target.checked;
+  else if (id === 'setShopping') S.settings.showShopping = e.target.checked;
   else if (id === 'setKey') S.settings.apiKey = e.target.value.trim();
-  else if (id === 'setModel') S.settings.model = e.target.value.trim() || 'gemini-3.1-flash-lite';
+  else if (id === 'setModel') {
+    const c = $('#setModelCustom');
+    if (e.target.value === '__custom') { if (c) { c.hidden = false; c.focus(); } S.settings.model = (c && c.value.trim()) || S.settings.model; }
+    else { if (c) c.hidden = true; S.settings.model = e.target.value; }
+  }
+  else if (id === 'setModelCustom') S.settings.model = e.target.value.trim() || S.settings.model;
   else return;
   save();
 };
@@ -1303,7 +1485,7 @@ function deadlinesHtml() {
   const done = S.deadlines.filter(d => d.done);
   let h = `<div class="sec-h"><h2 class="sec">Roki in obnove</h2><button class="btn sm ghost" data-act="dlNew">${ic('plus', 16)} Dodaj rok</button></div>`;
   if (!open.length) h += `<p class="muted">Vinjeta, servis avtomobila, tehnični pregled, zavarovanje, potek garancije … Vpiši datum, jaz te opomnim vnaprej.</p>`;
-  else h += `<ul class="list">${open.map(d => `<li class="row">${chk(false, 'doneDl', d.id, d.repeat ? 'Opravljeno, premakni na naslednji rok' : 'Opravljeno')}<button class="rowbtn grow" data-act="dlEdit" data-id="${d.id}"><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${fmtDateY(d.due)}${d.repeat ? ' · vsakih ' + d.repeat + ' mes.' : ''}</small></button>${dlBadge(d)}<button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
+  else h += `<ul class="list">${open.map(d => `<li class="row">${chk(false, 'doneDl', d.id, d.repeat ? 'Opravljeno, premakni na naslednji rok' : 'Opravljeno')}<button class="rowbtn grow" data-act="dlEdit" data-id="${d.id}"><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${fmtDateY(d.due)}${d.repeat ? ' · vsakih ' + d.repeat + ' mes.' : ''}</small></button>${dlBadge(d)}<button class="mini" data-act="dlCal" data-id="${d.id}" aria-label="Dodaj v koledar">${ic('download', 19)}</button><button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
   if (done.length) h += `<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(d => `<li class="row done"><div class="grow"><strong>${esc(d.title)}</strong><small>${fmtDateY(d.due)}</small></div><button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash', 19)}</button></li>`).join('')}</ul></details>`;
   return h;
 }
@@ -1326,7 +1508,7 @@ function renderDeadline() {
     <div class="field"><label for="dl_due">Datum roka</label><input type="date" id="dl_due" value="${esc(f.due)}"></div>
     <div class="field"><div class="two"><div><label for="dl_lead">Opomni me</label>${sel('dl_lead', [[3, '3 dni prej'], [7, '7 dni prej'], [14, '14 dni prej'], [30, '30 dni prej'], [60, '60 dni prej']], f.lead)}</div><div><label for="dl_repeat">Ponovi</label>${sel('dl_repeat', [[0, 'Ne'], [6, 'Vsakih 6 mes.'], [12, 'Vsako leto'], [24, 'Vsaki 2 leti']], f.repeat)}</div></div></div>
     <div class="field"><label for="dl_note">Opomba</label><input type="text" id="dl_note" value="${esc(f.note)}" autocomplete="off"></div>
-    <div class="sheet-f"><button class="btn wide" data-act="dlSave">Shrani rok</button>${f.id ? `<button class="btn wide ghost danger" data-act="dlDelForm">Izbriši rok</button>` : ''}</div>`;
+    <div class="sheet-f"><button class="btn wide" data-act="dlSave">Shrani rok</button>${f.id ? `<button class="btn wide ghost" data-act="dlCalForm">Dodaj v koledar</button><button class="btn wide ghost danger" data-act="dlDelForm">Izbriši rok</button>` : ''}</div>`;
 }
 function saveDeadline() {
   syncDl(); const f = dlForm;
@@ -1598,6 +1780,18 @@ const byId = (list, id) => list.find(x => x.id === id);
 const A = {
   tab(b) { S.ui.tab = b.dataset.tab; save(); render(); window.scrollTo(0, 0); },
   settings() { openSettings(); },
+  undo() { if (undoAction) { const fn = undoAction; undoAction = null; fn(); $('#toast').classList.remove('on'); } },
+  clearSearch() { S.ui.search = ''; save(); render(); },
+  taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
+  dismissBackup() { S.settings.backupReminderDismissedAt = today(); save(); render(); },
+  addBillCal(b) { const x = byId(S.bills,b.dataset.id); if (x && x.due) downloadICS(`${x.recipient || 'Položnica'} – plačilo`, x.due, null, [x.purpose,x.reference,x.iban].filter(Boolean).join(' · ')); },
+  dlCal(b) { const x = byId(S.deadlines,b.dataset.id); if (x) downloadICS(x.title,x.due,null,x.note || x.category); },
+  dlCalForm() { syncDl(); const f=dlForm; downloadICS(f.title,f.due,null,f.note || f.category); },
+  toggleBillRepeat(b) {
+    const x = byId(S.bills,b.dataset.id); if (!x) return;
+    x.repeatMonths = x.repeatMonths ? 0 : 1; save(); render();
+    toast(x.repeatMonths ? 'Položnica se bo po plačilu predlagala naslednji mesec.' : 'Ponavljanje odstranjeno.');
+  },
   closeSheet() { sheet.close(); },
   capture(b) { openCapture(b.dataset.mode || 'open'); },
   pickCam() { cap.text = ($('#capText') || {}).value ?? cap.text; imgTarget = 'cap'; $('#fileCam').click(); },
@@ -1612,12 +1806,21 @@ const A = {
     const x = byId(S.bills, b.dataset.id); if (!x) return;
     x.paid = !x.paid;
     S.reminders.filter(r => r.billId === x.id).forEach(r => { r.done = x.paid; });
-    save(); render(); toast(x.paid ? 'Označeno kot plačano.' : 'Vrnjeno med neplačane.');
+    if (x.paid && x.repeatMonths) {
+      const nextDue = addMonths(x.due || today(), x.repeatMonths);
+      const exists = S.bills.some(v => v.recipient === x.recipient && v.due === nextDue && v.repeatMonths);
+      if (!exists) S.bills.push({...JSON.parse(JSON.stringify(x)), id:uid(), due:nextDue, paid:false});
+    }
+    save(); render(); toast(x.paid ? (x.repeatMonths ? 'Plačano. Naslednja položnica je pripravljena.' : 'Označeno kot plačano.') : 'Vrnjeno med neplačane.');
   },
-  delBill(b) { S.bills = S.bills.filter(x => x.id !== b.dataset.id); S.reminders = S.reminders.filter(r => r.billId !== b.dataset.id); save(); render(); },
-  delExp(b) { S.expenses = S.expenses.filter(x => x.id !== b.dataset.id); save(); render(); },
-  useFridge(b) { S.fridge = S.fridge.filter(x => x.id !== b.dataset.id); save(); render(); toast('Porabljeno.'); },
-  delFridge(b) { S.fridge = S.fridge.filter(x => x.id !== b.dataset.id); save(); render(); },
+  delBill(b) {
+    const id=b.dataset.id, x=byId(S.bills,id), rem=S.reminders.filter(r=>r.billId===id);
+    if(!x) return; S.bills=S.bills.filter(v=>v.id!==id); S.reminders=S.reminders.filter(r=>r.billId!==id); save(); render();
+    toast('Položnica izbrisana.',()=>{S.bills.push(x); S.reminders.push(...rem); save(); render();});
+  },
+  delExp(b) { const id=b.dataset.id,x=byId(S.expenses,id); if(!x)return; S.expenses=S.expenses.filter(v=>v.id!==id); save(); render(); toast('Račun izbrisan.',()=>{S.expenses.push(x);save();render();}); },
+  useFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Porabljeno.',()=>{S.fridge.push(x);save();render();}); },
+  delFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Živilo izbrisano.',()=>{S.fridge.push(x);save();render();}); },
   mealprep() { S.ui.mealprep = !S.ui.mealprep; save(); render(); },
   mfilter(b) { S.ui.moneyFilter = b.dataset.v; save(); render(); },
   subs(b) { S.ui.tab = 'money'; S.ui.moneyFilter = 'subs'; save(); render(); window.scrollTo(0, 0); },
@@ -1633,19 +1836,21 @@ const A = {
   },
   toggleTask(b) { const t = byId(S.tasks, b.dataset.id); if (t) { t.done = !t.done; save(); render(); startReminderMonitoring(); } },
   taskReminder(b) { taskReminder(b.dataset.id); },
+  taskCal(b) { const x=byId(S.tasks,b.dataset.id); if(x && x.due) downloadICS(x.title,x.due,x.time||null,[x.frame,x.min?x.min+' min':''].filter(Boolean).join(' · ')); },
   saveTaskReminder() { saveTaskReminder(); },
   removeTaskReminder() { removeTaskReminder(); },
   useCurrentLocation() { useCurrentLocation(); },
   requestNotifications() { ensureNotifyPermission().then(p => toast(p === 'granted' ? 'Obvestila so dovoljena.' : p === 'denied' ? 'Obvestila so blokirana v brskalniku.' : 'Obvestila niso podprta.')); },
-  delTask(b) { S.tasks = S.tasks.filter(x => x.id !== b.dataset.id); save(); render(); },
+  delTask(b) { const id=b.dataset.id,x=byId(S.tasks,id); if(!x)return; S.tasks=S.tasks.filter(v=>v.id!==id); save(); render(); toast('Opravilo izbrisano.',()=>{S.tasks.push(x);save();render();}); },
   doneRem(b) { const r = byId(S.reminders, b.dataset.id); if (r) { r.done = true; save(); render(); } },
-  delRem(b) { S.reminders = S.reminders.filter(x => x.id !== b.dataset.id); save(); render(); },
+  delRem(b) { const id=b.dataset.id,x=byId(S.reminders,id); if(!x)return; S.reminders=S.reminders.filter(v=>v.id!==id); save(); render(); toast('Opomnik izbrisan.',()=>{S.reminders.push(x);save();render();}); },
   quickTask() {
     const i = $('#quickTask'), v = i && i.value.trim(); if (!v) return;
     S.tasks.push({ id: uid(), title: v, prio: 'srednja', frame: null, due: null, time: null, min: null, done: false });
     save(); render(); const n = $('#quickTask'); n && n.focus();
   },
   copy(b) { const v = b.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Kopirano.')).catch(() => toast('Kopiranje ni uspelo.')); },
+  refreshModels(b) { refreshModels(b); },
   showKey(b) { const i = $('#setKey'); i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Pokaži' : 'Skrij'; },
   async testKey(b) {
     if (!(S.settings.apiKey || '').trim()) { toast('Najprej vnesi ključ.'); return; }
@@ -1654,7 +1859,7 @@ const A = {
     catch (e) { toast(e.message); }
     b.disabled = false; b.textContent = 'Preveri povezavo';
   },
-  export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1)); },
+  export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1)); S.settings.lastBackupAt=today(); save(); render(); },
   import() { $('#fileImport').click(); },
   wipe() {
     if (!confirm('Res izbrišem vse podatke (položnice, hladilnik, opravila)? Ključ API ostane.')) return;
@@ -1675,8 +1880,19 @@ Object.assign(A, {
     toast(n ? 'Dodano na nakupovalni seznam.' : 'To je že na seznamu.');
   },
   toggleShop(b) { const i = S.shop && S.shop.items.find(x => x.id === b.dataset.id); if (i) { i.done = !i.done; save(); render(); } },
-  delShop(b) { if (S.shop) { S.shop.items = S.shop.items.filter(x => x.id !== b.dataset.id); save(); render(); } },
+  delShop(b) { if (S.shop) { const id=b.dataset.id, x=S.shop.items.find(v=>v.id===id); if(!x)return; S.shop.items=S.shop.items.filter(v=>v.id!==id); save(); render(); toast('Artikel odstranjen.',()=>{S.shop.items.push(x);save();render();}); } },
   clearShop() { if (S.shop) { S.shop.items = S.shop.items.filter(x => !x.done); save(); render(); } },
+
+  shareShop() {
+    if(!S.shop || !S.shop.items.length){ toast('Nakupovalni seznam je prazen.'); return; }
+    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({v:1,items:S.shop.items}))));
+    const url = location.href.split('#')[0] + '#shop=' + payload;
+    if(navigator.share){
+      navigator.share({title:'LifeFlow – nakupovalni seznam',text:'Skupni nakupovalni seznam',url}).catch(()=>{});
+    } else {
+      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(()=>toast('Povezava za deljenje je kopirana.')).catch(()=>toast('Povezave ni bilo mogoče kopirati.'));
+    }
+  },
   quickShop() {
     const i = $('#quickShop'), v = i && i.value.trim(); if (!v) return;
     addToShop([v]); save(); render(); const n = $('#quickShop'); if (n) n.focus();
@@ -1692,8 +1908,8 @@ Object.assign(A, {
     renderDeadline();
   },
   dlSave() { saveDeadline(); },
-  dlDel(b) { S.deadlines = S.deadlines.filter(x => x.id !== b.dataset.id); save(); render(); },
-  dlDelForm() { S.deadlines = S.deadlines.filter(x => x.id !== dlForm.id); save(); sheet.close(); render(); },
+  dlDel(b) { const id=b.dataset.id,x=byId(S.deadlines,id); if(!x)return; S.deadlines=S.deadlines.filter(v=>v.id!==id); save(); render(); toast('Rok izbrisan.',()=>{S.deadlines.push(x);save();render();}); },
+  dlDelForm() { const x=byId(S.deadlines,dlForm.id); if(!x)return; S.deadlines=S.deadlines.filter(v=>v.id!==dlForm.id); save(); sheet.close(); render(); toast('Rok izbrisan.',()=>{S.deadlines.push(x);save();render();}); },
   doneDl(b) {
     const d = byId(S.deadlines, b.dataset.id); if (!d) return;
     if (d.repeat) {
@@ -1709,7 +1925,7 @@ Object.assign(A, {
   dfAI() { docAI(); },
   rmDfImg(b) { syncDoc(); docForm.images.splice(+b.dataset.i, 1); renderDocForm(); },
   docSave() { saveDoc(); },
-  delDoc(b) { removeDoc(b.dataset.id); toast('Račun izbrisan.'); },
+  delDoc(b) { const id=b.dataset.id, x=byId(S.docs,id); if(!x)return; removeDoc(id); toast('Račun izbrisan.'); },
   viewImg(b) {
     openSheet(`<div class="sheet-h"><h2>Račun</h2>${closeBtn}</div><img class="viewimg" data-img="${esc(b.dataset.id)}" alt="Slika računa">`, 'view');
     hydrateImgs($('#sheetBody'));
@@ -1719,6 +1935,30 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = A[b.dataset.act]; if (f) f(b, e);
 });
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'globalSearch') { S.ui.search = e.target.value; save(); render(); const n=$('#globalSearch'); if(n){n.focus(); n.setSelectionRange(n.value.length,n.value.length);} }
+});
+let swipeStart = null;
+document.addEventListener('touchstart', e => {
+  const row=e.target.closest('.swiping'); if(!row || e.target.closest('button,input,select,textarea')) return;
+  const t=e.changedTouches[0]; swipeStart={row,x:t.clientX,y:t.clientY};
+},{passive:true});
+document.addEventListener('touchend', e => {
+  if(!swipeStart) return;
+  const {row,x,y}=swipeStart; swipeStart=null; const t=e.changedTouches[0];
+  const dx=t.clientX-x, dy=t.clientY-y;
+  if(Math.abs(dx)<65 || Math.abs(dx)<Math.abs(dy)*1.25) return;
+  const id=row.dataset.id, kind=row.dataset.swipeKind;
+  if(kind==='task') {
+    if(dx>0) A.toggleTask(makeSwipeProxy('toggleTask',id));
+    else A.delTask(makeSwipeProxy('delTask',id));
+  } else if(kind==='fridge') {
+    if(dx>0) A.useFridge(makeSwipeProxy('useFridge',id));
+    else A.delFridge(makeSwipeProxy('delFridge',id));
+  }
+});
+
 document.addEventListener('change', e => {
   if (e.target.id === 'planFrom') { S.ui.from = tm(e.target.value) || '08:00'; save(); }
   if (e.target.id === 'planTo') { S.ui.to = tm(e.target.value) || '21:00'; save(); }
