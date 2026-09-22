@@ -474,6 +474,7 @@ const arr = v => Array.isArray(v) ? v : [];
 
 const ICON = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+  moon: '<path d="M20.5 15.2A8.8 8.8 0 0110.8 3.5 8.9 8.9 0 1020.5 15.2z"/>',
   fridge: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/>',
   euro: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.6a4.6 4.6 0 100 6.8M7.5 10.8h5.5M7.5 13.2h5.5"/>',
   list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
@@ -536,9 +537,10 @@ function applyTheme(theme, persist = false) {
   const b = document.getElementById('themeToggle');
   if (b) {
     const toDark = chosen !== 'dark';
-    b.innerHTML = ic(toDark ? 'moon' : 'sun', 22);
+    // Ikona prikazuje trenutno izbrano temo: sonček za svetlo, lunica za temno.
+    b.innerHTML = ic(chosen === 'dark' ? 'moon' : 'sun', 22);
     b.setAttribute('aria-label', toDark ? 'Preklopi na temno temo' : 'Preklopi na svetlo temo');
-    b.setAttribute('title', toDark ? 'Temna tema' : 'Svetla tema');
+    b.setAttribute('title', toDark ? 'Preklopi na temno temo' : 'Preklopi na svetlo temo');
   }
   if (persist) { S.ui.theme = chosen; save(); }
 }
