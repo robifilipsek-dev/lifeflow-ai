@@ -509,7 +509,7 @@ const DEFAULT = {
   modelCache: null,
   bills: [], expenses: [], fridge: [], tasks: [], reminders: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all',
-    search: '', taskSort: 'due', sortDirection: 'asc', theme: null }
+    search: '', taskSort: 'due', sortDirection: 'asc', theme: null, mealMode: 'fridge' }
 };
 function load() {
   const base = JSON.parse(JSON.stringify(DEFAULT));
@@ -524,6 +524,7 @@ function load() {
 }
 let S = load();
 S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDocs = S.settings.showDocs !== false; S.settings.showShopping = S.settings.showShopping !== false;
+S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 
 function preferredTheme() {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -877,24 +878,35 @@ function householdTxt() {
   const n = Math.max(1, Math.min(8, parseInt(S.settings.people) || 2)), d = (S.settings.diet || '').trim();
   return `Gospodinjstvo: ${oseb(n)}.${d ? ' Prehranske želje in omejitve: ' + d + '.' : ''}`;
 }
-async function genMeals() {
+async function genMeals(mode = S.ui.mealMode || 'fridge') {
   if (busy.meals) return;
-  if (!S.fridge.length) { toast('Hladilnik je prazen. Najprej dodaj sestavine.'); render(); return; }
+  mode = mode === 'standalone' ? 'standalone' : 'fridge';
+  if (mode === 'fridge' && !S.fridge.length) { toast('Hladilnik je prazen. Izberi "Samostojno" ali najprej dodaj sestavine.'); render(); return; }
   if (!needKey()) return;
   const tmr = new Date(); tmr.setDate(tmr.getDate() + 1);
   const workTomorrow = ![0, 6].includes(tmr.getDay());
   const mp = S.ui.mealprep && workTomorrow;
+  const fridgeTxt = mode === 'fridge'
+    ? `Vsebina hladilnika (to so glavne sestavine, ki jih moraš upoštevati): ${JSON.stringify(fridgeForAI())}`
+    : 'Hladilnika NE upoštevaj kot omejitev. Jedilnik sestavi samostojno in uporabi sestavine, ki so smiselne za izbrane jedi.';
+  const modeRules = mode === 'fridge'
+    ? `- Uporabi predvsem živila iz hladilnika, najprej tista z najmanjšim "dni_do_izteka".
+- Če kakšna jed zahteva dokup, ga navedi v "manjka".`
+    : `- Hladilnik ni omejitev in lahko predlagaš poljubne običajne sestavine.
+- Ker uporabnik lahko začne s popolnoma praznim hladilnikom, mora biti jedilnik samostojen in izvedljiv z nakupom vseh potrebnih sestavin.`;
   const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
 ${householdTxt()}
-Vsebina hladilnika: ${JSON.stringify(fridgeForAI())}
+${fridgeTxt}
 Pripravi CELOTEN jedilnik za današnji dan. Vedno vrni natanko štiri glavne obroke: zajtrk, malico, kosilo in večerjo. Ne izpuščaj obroka samo zato, ker je njegova običajna ura že mimo.
 Vrni JSON:
-{"nasvet":"1 stavek: kaj je najbolj nujno porabiti in kako je dan zastavljen","obroki":[{"tip":"zajtrk|malica|kosilo|vecerja","naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":["živila iz hladilnika"],"manjka":["kar je treba dokupiti, lahko prazno"],"koraki":["3-6 kratkih korakov"],"nasvet":"kratek nasvet ali null"}]}
+{"nasvet":"1 stavek: kako je dan zastavljen","obroki":[{"tip":"zajtrk|malica|kosilo|vecerja","naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":["živila, ki so dejansko uporabljena iz hladilnika; lahko prazno"],"manjka":["kar je treba dokupiti, lahko prazno"],"sestavine":[{"ime":"","kolicina":"","kategorija":"Zelenjava|Sadje|Meso in ribe|Mlečno|Jajca|Kruh in pekovski|Žita in testenine|Konzerve in suho|Zamrznjeno|Pijače|Omake in začimbe|Drugo"}],"koraki":["3-6 kratkih korakov"],"nasvet":"kratek nasvet ali null"}]}
 Pravila:
 - Vrni po en obrok tipa "zajtrk", "malica", "kosilo" in "vecerja".
-- Uporabi predvsem živila iz hladilnika, najprej tista z najmanjšim "dni_do_izteka".
+${modeRules}
+- Pri vsakem obroku navedi VSE njegove bistvene sestavine v polju "sestavine" z realnimi količinami za ${Math.max(1, Math.min(8, parseInt(S.settings.people) || 2))} oseb.
+- "iz_hladilnika" naj vsebuje samo živila, ki jih obrok res uporablja.
+- "manjka" naj vsebuje tista potrebna živila, ki jih uporabnik glede na način priprave nima v hladilniku; pri samostojnem načinu naj bo lahko celoten nabor manjkajočih živil.
 - Preprosti postopki brez pretirane kompliciranosti. Osnovne stvari (olje, sol, poper, začimbe, moka, sladkor, kis) imajo vedno.
-- V "manjka" navedi največ 3-4 stvari; če gre brez dokupa, pusti prazno.
 - Količine in porcije prilagodi številu oseb.
 ${mp ? '- Malico oblikuj kot praktično malico za v službo: naj bo primerna za posodo, dobra hladna ali pogreta in čim bolj enostavna za pripravo.' : ''}`;
   busy.meals = true; render();
@@ -903,13 +915,47 @@ ${mp ? '- Malico oblikuj kot praktično malico za v službo: naj bo primerna za 
     const obroki = arr(r.obroki).filter(x => x && x.naziv).map(x => ({
       tip: MEAL_TAG[x.tip] ? x.tip : 'kosilo', naziv: str(x.naziv), cas: num(x.cas_min), porcije: num(x.porcije),
       iz: arr(x.iz_hladilnika).map(str).filter(Boolean), manjka: arr(x.manjka).map(str).filter(Boolean),
+      sestavine: arr(x.sestavine).filter(y => y && y.ime).map(y => ({ ime: str(y.ime), kolicina: str(y.kolicina), kategorija: SHOP_ORDER.includes(y.kategorija) ? y.kategorija : 'Drugo' })),
       koraki: arr(x.koraki).map(str).filter(Boolean), nasvet: str(x.nasvet)
     }));
-    if (!obroki.length) throw new UserErr('Tokrat nisem našel predlogov. Poskusi znova ali dodaj več sestavin.');
-    S.meals = { date: today(), nasvet: str(r.nasvet) || '', obroki };
+    if (!obroki.length) throw new UserErr('Tokrat nisem našel predlogov. Poskusi znova ali preveri API ključ.');
+    S.ui.mealMode = mode;
+    S.meals = { date: today(), mode, nasvet: str(r.nasvet) || '', obroki };
     save();
   } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
   busy.meals = false; render();
+}
+async function genShopFromMeals() {
+  if (busy.shop) return;
+  const m = S.meals && S.meals.date === today() ? S.meals : null;
+  if (!m || !m.obroki || !m.obroki.length) { toast('Najprej pripravi jedilnik za danes.'); render(); return; }
+  if (S.shop && S.shop.items.some(i => !i.done) && !confirm('Nadomestim obstoječi nakupovalni seznam z novim seznamom glede na jedilnik?')) return;
+  if (!needKey()) return;
+  const prompt = `Trenutni datum: ${today()} (${weekday()}, Europe/Ljubljana).
+${householdTxt()}
+Način jedilnika: ${m.mode === 'standalone' ? 'samostojni, brez omejitve hladilnika' : 'iz hladilnika'}
+Trenutna vsebina hladilnika: ${JSON.stringify(fridgeForAI())}
+Današnji jedilnik: ${JSON.stringify(m.obroki)}
+Sestavi NAKUPOVALNI SEZNAM NATANČNO ZA TA JEDILNIK za ${Math.max(1, Math.min(8, parseInt(S.settings.people) || 2))} oseb.
+Vrni JSON:
+{"nasvet":"1 stavek","seznam":[{"ime":"","kolicina":"npr. 500 g, 6 kos","kategorija":"${SHOP_ORDER.join('|')}"}]}
+Pravila:
+- Vključi vsa potrebna živila, ki jih za pripravo jedilnika uporabnik nima dovolj.
+- Pri načinu "samostojno" obravnavaj prazen hladilnik kot začetno stanje in zato dodaj praktično VSE potrebne nenujne sestavine za ta jedilnik.
+- Pri načinu "iz hladilnika" odštej sestavine, ki jih je v hladilniku dovolj, in upoštevaj njihove količine, če so navedene.
+- Ne vključuj osnovnih stvari: olje, sol, poper, sladkor, moko in osnovne začimbe, razen če jih jedilnik nujno potrebuje v posebni različici.
+- Združi ponavljajoča se živila v en artikel in seštej količine.
+- Naj bo največ 40 artiklov, količine pa realne za eno gospodinjstvo.
+- Če je seznam prazen, vrni prazen seznam.`;
+  busy.shop = true; render();
+  try {
+    const r = await callGemini([{ text: prompt }]);
+    const items = arr(r.seznam).filter(x => x && x.ime).map(x => ({ id: uid(), name: str(x.ime), qty: str(x.kolicina), category: SHOP_ORDER.includes(x.kategorija) ? x.kategorija : 'Drugo', done: false }));
+    S.shop = { created: today(), nasvet: str(r.nasvet) || 'Nakupovalni seznam je sestavljen glede na današnji jedilnik.', obroki_teden: [], source: 'meals', items };
+    save();
+    toast(`Nakup glede na jedilnik je pripravljen: ${items.length} artiklov.`);
+  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
+  busy.shop = false; render();
 }
 async function genShop() {
   if (busy.shop) return;
@@ -945,12 +991,15 @@ function addToShop(names) {
 function mealsHtml() {
   const m = S.meals && S.meals.date === today() ? S.meals : null;
   if (!m) return '';
-  let h = `<h2 class="sec">Obroki za danes</h2>`;
+  const modeLabel = m.mode === 'standalone' ? 'samostojni jedilnik' : 'iz hladilnika';
+  let h = `<div class="sec-h"><h2 class="sec">Obroki za danes</h2><button class="btn sm ghost" data-act="shopFromMeals" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Nakupujem …' : ic('cart', 16) + ' Nakup iz jedilnika'}</button></div>`;
+  h += `<p class="help" style="margin-top:-4px">Način: <strong>${modeLabel}</strong></p>`;
   if (m.nasvet) h += `<p class="advice">${esc(m.nasvet)}</p>`;
   h += m.obroki.map((x, i) => `<details class="meal"><summary><span class="tag ${x.tip}">${MEAL_TAG[x.tip]}</span><span class="grow"><strong>${esc(x.naziv)}</strong></span><small class="sub">${x.cas ? x.cas + ' min' : ''}</small></summary>
     <div class="meal-b">
       ${x.iz.length ? `<p><strong>Iz hladilnika:</strong> ${esc(x.iz.join(', '))}</p>` : ''}
       ${x.manjka.length ? `<p><strong>Manjka:</strong> ${esc(x.manjka.join(', '))}</p><button class="btn sm ghost" data-act="addMissing" data-i="${i}">Dodaj na nakupovalni seznam</button>` : ''}
+      ${x.sestavine && x.sestavine.length ? `<details class="fold"><summary>Vse sestavine</summary><ul class="list">${x.sestavine.map(s => `<li class="row"><div class="grow"><strong>${esc(s.ime)}</strong>${s.kolicina ? `<small>${esc(s.kolicina)}</small>` : ''}</div></li>`).join('')}</ul></details>` : ''}
       ${x.koraki.length ? `<ol>${x.koraki.map(k => `<li>${esc(k)}</li>`).join('')}</ol>` : ''}
       ${x.nasvet ? `<p class="tipbox">${esc(x.nasvet)}</p>` : ''}
     </div></details>`).join('');
@@ -970,7 +1019,8 @@ function shopHtml() {
 }
 function renderFridge() {
   let h = searchHtml('Išči živilo ali kategorijo …');
-  let h0 = `<div class="toolbar">
+  let h0 = `<div class="ctl-row meal-mode-row"><span class="lbl">Jedilnik</span><div class="seg" role="group" aria-label="Način generiranja jedilnika"><button data-act="mealMode" data-v="fridge" aria-pressed="${S.ui.mealMode === 'fridge'}">Iz hladilnika</button><button data-act="mealMode" data-v="standalone" aria-pressed="${S.ui.mealMode === 'standalone'}">Samostojno</button></div></div>
+    <div class="toolbar">
       <button class="btn" data-act="meals" ${busy.meals ? 'disabled' : ''}>${busy.meals ? '<span class="spin"></span> Pripravljam …' : ic('spark', 18) + ' Obroki za danes'}</button>
       <button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Sestavljam …' : ic('cart', 18) + ' Nakup za teden'}</button>
     </div>
@@ -1860,6 +1910,7 @@ const A = {
   useFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Porabljeno.',()=>{S.fridge.push(x);save();render();}); },
   delFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Živilo izbrisano.',()=>{S.fridge.push(x);save();render();}); },
   mealprep() { S.ui.mealprep = !S.ui.mealprep; save(); render(); },
+  mealMode(b) { S.ui.mealMode = b.dataset.v === 'standalone' ? 'standalone' : 'fridge'; save(); render(); },
   mfilter(b) { S.ui.moneyFilter = b.dataset.v; save(); render(); },
   subs(b) { S.ui.tab = 'money'; S.ui.moneyFilter = 'subs'; save(); render(); window.scrollTo(0, 0); },
   dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
@@ -1908,9 +1959,10 @@ const A = {
 };
 Object.assign(A, {
   install() { installApp(); },
-  meals() { S.ui.tab = 'fridge'; save(); genMeals(); },
+  meals() { S.ui.tab = 'fridge'; save(); genMeals(S.ui.mealMode || 'fridge'); },
   cook() { S.ui.tab = 'fridge'; save(); genMeals(); },
   shopGen() { S.ui.tab = 'fridge'; save(); genShop(); },
+  shopFromMeals() { S.ui.tab = 'fridge'; save(); genShopFromMeals(); },
   openShop() { S.ui.tab = 'fridge'; save(); render(); setTimeout(() => { const el = $('#shopSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.scrollTo(0, 0); }, 30); },
   addMissing(b) {
     const m = S.meals && S.meals.obroki[+b.dataset.i]; if (!m) return;
