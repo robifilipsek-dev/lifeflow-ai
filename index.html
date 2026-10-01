@@ -437,6 +437,14 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
   .row .cal-action{flex:0 0 auto;width:44px;min-height:44px;padding:0}
   .meal-actions{grid-template-columns:1fr}
 }
+
+.g-user{display:flex;align-items:center;gap:10px;margin:0 0 8px}.g-user img{border-radius:50%}.g-user small{display:block;color:var(--ink2)}
+.g-steps{margin:8px 0 0;padding-left:20px}.g-steps li{margin:6px 0;font-size:14px}
+code{font-size:.9em;background:var(--blue-soft);padding:1px 5px;border-radius:6px}
+.gcal-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
+.gcal-row{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}.gcal-row:last-child{border-bottom:0}
+.gcal-row time{flex:0 0 52px;font:800 14px var(--font-h);color:var(--petrol)}
+.gcal-row div{min-width:0;flex:1}.gcal-row strong{display:block;font-size:14px;overflow-wrap:anywhere}.gcal-row small{display:block;color:var(--ink2);font-size:12px}
 </style>
 </head>
 <body>
@@ -571,6 +579,18 @@ const ICON = {
 };
 const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
 
+/* ---------- FIREBASE (vpiši svoje podatke tukaj) ----------
+   Firebase konzola → Project settings → Your apps → firebaseConfig.
+   Podatki niso skrivnost, zato jih lahko hraniš v datoteki. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAPGnfJJmibL1XoKyYm32yvZW9ZmlBhprA",
+  authDomain: "lifeflow-a0831.firebaseapp.com",
+  projectId: "lifeflow-a0831",
+  storageBucket: "lifeflow-a0831.firebasestorage.app",
+  messagingSenderId: "629653470714",
+  appId: "1:629653470714:web:658daa774a30ebc6fdb843"
+};
+
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
 const memStore = {};
@@ -580,7 +600,7 @@ const store = {
 };
 const DEFAULT = {
   settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '',
-    showDeadlines: true, showDocs: true, showShopping: true, lastBackupAt: null, backupReminderDismissedAt: null },
+    showDeadlines: true, showDocs: true, showShopping: true, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
   modelCache: null,
   bills: [], expenses: [], fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all',
@@ -1022,6 +1042,7 @@ function renderToday() {
     h += `<section class="welcome compact-welcome"><p>Začni z eno stvarjo: fotografiraj račun, povej opravilo ali pokaži, kaj imaš v hladilniku.</p><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',22)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',22)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',22)}<span>Tekst</span></button></div></section>`;
   }
   h += dashOverviewHtml();
+  h += gcalHtml();
   h += dashInboxHtml();
   h += backupReminderHtml();
   h += dashUrgentHtml();
@@ -1768,6 +1789,7 @@ sheet.addEventListener('input', e => {
 /* ---------- planner ---------- */
 async function genPlan() {
   if (busy.plan || !needKey()) return;
+  if (gcalOn()) await gcalLoadToday(true);
   const u = S.ui, t = today();
   const ctx = {
     tasks: S.tasks.filter(x => !x.done).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, ura: x.time || null, trajanje_min: x.min || null })),
@@ -1775,7 +1797,8 @@ async function genPlan() {
     fridge: S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).map(f => f.name),
     rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t && !r.billId).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
     obroki: S.meals && S.meals.date === t ? S.meals.obroki.map(m => ({ tip: m.tip, naziv: m.naziv, cas_min: m.cas })) : [],
-    roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due }))
+    roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due })),
+    kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : []
   };
   const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
 Sestavi realen dnevni načrt za danes.
@@ -1786,6 +1809,7 @@ Položnice, ki zapadejo v 7 dneh: ${JSON.stringify(ctx.bills)}
 Opomniki za danes: ${JSON.stringify(ctx.rem)}
 Predlagani obroki za danes: ${JSON.stringify(ctx.obroki)}
 Roki v naslednjih 14 dneh (garancije, servis, vinjeta …): ${JSON.stringify(ctx.roki)}
+Dogodki v Google koledarju danes (fiksni, ne prekrivaj jih): ${JSON.stringify(ctx.kol)}
 Vrni JSON:
 {"nasvet":"en kratek stavek o tem, kako naj uporabnik pristopi k današnjemu dnevu","bloki":[{"od":"HH:MM","do":"HH:MM","naslov":"","tip":"opravilo|fiksno|obrok|odmor|rekreacija|opomnik","task_id":"id opravila ali null"}],"opozorila":["kratko opozorilo, če je dan prenatrpan ali se kaj ne izide"]}
 Pravila:
@@ -1795,6 +1819,7 @@ Pravila:
 - V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek (npr. plačilo položnice, ki kmalu zapade). Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
 - Če so podani predlagani obroki, jih vstavi kot bloke tipa "obrok" ob smiselnih urah (naziv jedi v naslovu).
 - Če se kak rok izteče v 3 dneh, ga nevsiljivo vstavi kot kratek blok tipa "opomnik" v prosto okno.
+- Dogodke iz Google koledarja vstavi kot bloke tipa "fiksno" točno ob njihovi uri in čez njih ne načrtuj ničesar drugega.
 - Bloki se ne prekrivajo, "do" je za "od", največ 12 blokov. Če blok izhaja iz opravila, nastavi task_id.`;
   busy.plan = true; render();
   try {
@@ -1808,6 +1833,164 @@ Pravila:
   } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
   busy.plan = false; render();
 }
+
+
+/* ---------- Google prijava (Firebase) + Google koledar ---------- */
+const FB_VER = '10.14.1';
+const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const GTZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Ljubljana'; } catch (e) { return 'Europe/Ljubljana'; } })();
+const gcal = { fb: null, user: null, token: null, exp: 0, events: [], loadedAt: 0, loading: false, err: null, busy: false };
+try { const t = JSON.parse(sessionStorage.getItem('lf.gtoken') || 'null'); if (t && t.exp > Date.now()) { gcal.token = t.token; gcal.exp = t.exp; } } catch (e) {}
+const fbCfg = () => (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.authDomain && FIREBASE_CONFIG.projectId) ? FIREBASE_CONFIG : parseFbConfig(S.settings.fbConfig);
+const gcalOn = () => !!(gcal.token && gcal.exp > Date.now());
+const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function parseFbConfig(txt) {
+  txt = String(txt || '').trim(); if (!txt) return null;
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}'); if (a < 0 || b <= a) return null;
+  const body = txt.slice(a, b + 1); let o = null;
+  try { o = JSON.parse(body); } catch (e) {
+    try { o = JSON.parse(body.replace(/(^|[\s,])\/\/[^\n\"]*$/gm, '$1').replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g, '$1"$2":').replace(/'/g, '"').replace(/,\s*}/g, '}')); } catch (e2) { return null; }
+  }
+  return o && o.apiKey && o.authDomain && o.projectId ? o : null;
+}
+function fbErrMsg(e) {
+  const c = e && e.code;
+  if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') return 'Prijava je bila prekinjena.';
+  if (c === 'auth/unauthorized-domain') return 'Ta domena ni dovoljena. V Firebase dodaj domeno pod Authentication → Settings → Authorized domains.';
+  if (c === 'auth/operation-not-allowed') return 'Google prijava ni vklopljena v Firebase (Authentication → Sign-in method).';
+  if (c === 'auth/operation-not-supported-in-this-environment') return 'Prijava tu ni podprta. Aplikacija mora teči na https:// ali localhost.';
+  return (e && e.message) || 'Prijava ni uspela.';
+}
+async function fbInit() {
+  if (gcal.fb) return gcal.fb;
+  const cfg = fbCfg();
+  if (!cfg) throw new UserErr('Firebase podatki niso vpisani v datoteki index.html (FIREBASE_CONFIG).');
+  let appM, M;
+  try { [appM, M] = await Promise.all([import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`), import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`)]); }
+  catch (e) { throw new UserErr('Firebase se ni naložil. Preveri internet.'); }
+  const app = appM.getApps().length ? appM.getApp() : appM.initializeApp(cfg);
+  const auth = M.getAuth(app);
+  gcal.fb = { auth, M };
+  M.onAuthStateChanged(auth, u => { gcal.user = u ? { name: u.displayName, email: u.email, photo: u.photoURL } : null; refreshGoogleUi(); });
+  M.getRedirectResult(auth).then(r => { if (r) gotCred(r); }).catch(() => {});
+  return gcal.fb;
+}
+function gotCred(result) {
+  const M = gcal.fb.M, c = M.GoogleAuthProvider.credentialFromResult(result);
+  if (c && c.accessToken) {
+    gcal.token = c.accessToken; gcal.exp = Date.now() + 3500 * 1000; gcal.loadedAt = 0;
+    try { sessionStorage.setItem('lf.gtoken', JSON.stringify({ token: gcal.token, exp: gcal.exp })); } catch (e) {}
+  }
+  const u = result.user;
+  if (u && u.displayName && !(S.settings.name || '').trim()) { S.settings.name = u.displayName.split(' ')[0]; save(); }
+}
+function clearGToken() { gcal.token = null; gcal.exp = 0; gcal.events = []; try { sessionStorage.removeItem('lf.gtoken'); } catch (e) {} }
+async function gSignIn() {
+  if (gcal.busy) return;
+  gcal.busy = true; refreshGoogleUi();
+  try {
+    const { auth, M } = await fbInit();
+    const p = new M.GoogleAuthProvider(); p.addScope(GCAL_SCOPE);
+    p.setCustomParameters(gcal.user && gcal.user.email ? { login_hint: gcal.user.email } : { prompt: 'select_account' });
+    let res;
+    try { res = await M.signInWithPopup(auth, p); }
+    catch (e) {
+      if (e.code === 'auth/popup-blocked') { await M.signInWithRedirect(auth, p); return; }
+      throw e;
+    }
+    gotCred(res);
+    if (gcalOn()) toast('Povezano z Google koledarjem.'); else toast('Prijava je uspela, a dostop do koledarja ni bil odobren.');
+  } catch (e) { toast(fbErrMsg(e)); }
+  gcal.busy = false; refreshGoogleUi();
+}
+async function gSignOut() {
+  try { if (gcal.fb) await gcal.fb.M.signOut(gcal.fb.auth); } catch (e) {}
+  clearGToken(); gcal.user = null; refreshGoogleUi(); toast('Odjavljen.');
+}
+function refreshGoogleUi() {
+  const gb = $('#gBlock'); if (gb) gb.innerHTML = googleBlockInner();
+  if (!(sheet.open && sheet.dataset.kind !== 'settings')) render();
+}
+function googleBlockInner() {
+  const ok = !!fbCfg(), u = gcal.user;
+  let h = '';
+  if (u) h += `<div class="g-user">${u.photo ? `<img src="${esc(u.photo)}" alt="" width="40" height="40" referrerpolicy="no-referrer">` : ''}<div><strong>${esc(u.name || 'Google račun')}</strong><small>${esc(u.email || '')}</small></div></div>`;
+  h += `<p class="help" style="margin:0 0 8px">Google koledar: ${gcalOn() ? '<strong>povezan</strong> (približno 1 uro)' : u ? 'povezava je potekla, poveži znova' : 'ni povezan'}</p>`;
+  h += `<div class="set-actions">`;
+  if (!gcalOn()) h += `<button class="btn" data-act="gSignIn" ${!ok || gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 17) + (u ? ' Poveži znova' : ' Prijava z Google')}</button>`;
+  else h += `<button class="btn ghost" data-act="gRefresh">Osveži dogodke</button>`;
+  if (u) h += `<button class="btn ghost" data-act="gSignOut">Odjava</button>`;
+  h += `</div>`;
+  if (!ok && (S.settings.fbConfig || '').trim()) h += `<p class="help" style="color:#8E2C10">Konfiguracije ni mogoče prebrati. Potrebni so vsaj apiKey, authDomain in projectId.</p>`;
+  return h;
+}
+async function gapi(path, opts = {}) {
+  if (!gcalOn()) throw new UserErr('GCAL_AUTH');
+  const r = await fetch('https://www.googleapis.com/calendar/v3/' + path, { ...opts, headers: { Authorization: 'Bearer ' + gcal.token, 'Content-Type': 'application/json' } });
+  if (r.status === 401) { clearGToken(); throw new UserErr('GCAL_AUTH'); }
+  if (r.status === 403) throw new UserErr('Google koledar je zavrnil dostop. V Google Cloud vklopi Google Calendar API in preveri soglasje.');
+  if (r.status === 404 || r.status === 410) throw new UserErr('NOTFOUND');
+  if (!r.ok) throw new UserErr('Google koledar ni uspel (' + r.status + ').');
+  return r.status === 204 ? null : r.json();
+}
+function gEventBody(title, date, time, note) {
+  const body = { summary: title || 'Dogodek', description: note || '', reminders: { useDefault: true } };
+  if (time) {
+    const t = tm(time), d = new Date(`${date}T${t}:00`), e = new Date(d.getTime() + 3600000);
+    body.start = { dateTime: `${date}T${t}:00`, timeZone: GTZ };
+    body.end = { dateTime: `${ymd(e)}T${pad(e.getHours())}:${pad(e.getMinutes())}:00`, timeZone: GTZ };
+  } else { body.start = { date }; body.end = { date: addDays(date, 1) }; }
+  return body;
+}
+async function addToCalendar(title, date, time, note, obj) {
+  if (!date && !time) { toast('Za koledar manjka datum ali ura.'); return; }
+  date = date || today();
+  if (!gcalOn() && gcal.user && fbCfg()) await gSignIn();
+  if (!gcalOn()) { downloadICS(title, date, time, note); return; }
+  try {
+    const body = JSON.stringify(gEventBody(title, date, time, note));
+    let ev = null, updated = false;
+    if (obj && obj.gcalId) {
+      try { ev = await gapi(`calendars/primary/events/${encodeURIComponent(obj.gcalId)}`, { method: 'PATCH', body }); updated = true; }
+      catch (e) { if (e.message !== 'NOTFOUND') throw e; }
+    }
+    if (!ev) ev = await gapi('calendars/primary/events', { method: 'POST', body });
+    if (obj && ev && ev.id) { obj.gcalId = ev.id; save(); }
+    gcal.loadedAt = 0; render();
+    toast(updated ? 'Dogodek v Google koledarju je posodobljen.' : 'Dodano v Google koledar.');
+  } catch (e) {
+    if (e.message === 'GCAL_AUTH') { toast('Povezava z Google koledarjem je potekla, zato sem pripravil datoteko.'); downloadICS(title, date, time, note); }
+    else toast(e.message);
+  }
+}
+async function gcalLoadToday(force) {
+  if (!gcalOn() || gcal.loading) return;
+  if (!force && Date.now() - gcal.loadedAt < 5 * 60000) return;
+  gcal.loading = true; gcal.loadedAt = Date.now();
+  try {
+    const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a); b.setDate(b.getDate() + 1);
+    const q = new URLSearchParams({ timeMin: a.toISOString(), timeMax: b.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '25' });
+    const r = await gapi('calendars/primary/events?' + q);
+    gcal.events = arr(r && r.items).filter(e => e.status !== 'cancelled' && e.start).map(e => ({
+      id: e.id, title: e.summary || '(brez naslova)', allDay: !!e.start.date,
+      start: e.start.dateTime ? new Date(e.start.dateTime) : null, end: e.end && e.end.dateTime ? new Date(e.end.dateTime) : null, loc: e.location || ''
+    }));
+    gcal.err = null;
+  } catch (e) { gcal.err = e.message === 'GCAL_AUTH' ? null : e.message; }
+  gcal.loading = false;
+  if (S.ui.tab === 'today' && !sheet.open) render();
+}
+function gcalHtml() {
+  if (!fbCfg()) return '';
+  if (!gcalOn()) {
+    return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Google koledar</h2><p class="dash-sub">${gcal.user ? 'Povezava je potekla. Poveži znova.' : 'Poveži koledar in vidi današnje dogodke.'}</p></div><button class="btn sm" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span>' : ic('calendar', 16)} Poveži</button></div></section>`;
+  }
+  gcalLoadToday(false);
+  const ev = gcal.events;
+  const rows = ev.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong>${e.loc ? `<small>${esc(e.loc)}</small>` : ''}</div></li>`).join('');
+  return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar danes</h2><p class="dash-sub">${gcal.loading && !ev.length ? 'Nalagam …' : gcal.err ? esc(gcal.err) : ev.length ? `${ev.length} ${ev.length === 1 ? 'dogodek' : 'dogodkov'} v Google koledarju` : 'Danes ni dogodkov.'}</p></div><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button></div>${rows ? `<ul class="gcal-list">${rows}</ul>` : ''}</section>`;
+}
+if (fbCfg()) fbInit().catch(() => {});
 
 /* ---------- settings: izbira modela ---------- */
 const MODEL_KNOWN = [
@@ -1851,6 +2034,16 @@ function openSettings() {
       <input type="text" id="setModelCustom" value="${esc(s.model)}" autocomplete="off" spellcheck="false" placeholder="npr. gemini-2.5-flash" ${modelOptions().some(m => m.id === s.model) ? 'hidden' : ''} style="margin-top:8px">
       <p class="help">Modeli, ki jih tvoj ključ dejansko lahko uporablja, se razlikujejo. <strong>Osveži seznam</strong> ga prebere neposredno iz Googla.</p></div>
     <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button><button class="btn" data-act="testKey">Preveri povezavo</button></div>
+    <h3 class="rvh">Google račun in koledar</h3>
+    ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:#8E2C10">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code> in vpiši vrednosti iz Firebase konzole.</p>`}
+    <div id="gBlock">${googleBlockInner()}</div>
+    <details class="fold"><summary>Kako to nastavim?</summary><ol class="g-steps">
+      <li>V <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase konzoli</a> odpri projekt, <strong>Authentication → Sign-in method</strong> in vklopi <strong>Google</strong>.</li>
+      <li>V <strong>Authentication → Settings → Authorized domains</strong> dodaj domeno, kjer teče aplikacija (npr. <code>uporabnik.github.io</code>).</li>
+      <li>V <strong>Project settings → Your apps</strong> dodaj spletno aplikacijo in vrednosti iz <code>firebaseConfig</code> vpiši v <code>FIREBASE_CONFIG</code> na vrhu skripte v <code>index.html</code>.</li>
+      <li>V <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Google Cloud</a> (isti projekt) vklopi <strong>Google Calendar API</strong>.</li>
+      <li>Na zaslonu za soglasje (OAuth consent screen) dodaj obseg <code>calendar.events</code>. Dokler je aplikacija v testnem načinu, dodaj svoj e-naslov med testne uporabnike.</li>
+    </ol></details>
     ${isStandalone() ? '' : `<h3 class="rvh">Aplikacija</h3>
     <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('download', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
@@ -1865,6 +2058,10 @@ const onSettingInput = e => {
   else if (id === 'setDeadlines') S.settings.showDeadlines = e.target.checked;
   else if (id === 'setDocs') S.settings.showDocs = e.target.checked;
   else if (id === 'setShopping') S.settings.showShopping = e.target.checked;
+  else if (id === 'setFbConfig') {
+    S.settings.fbConfig = e.target.value;
+    setTimeout(() => { const gb = $('#gBlock'); if (gb) gb.innerHTML = googleBlockInner(); if (e.type === 'change' && fbCfg()) fbInit().catch(() => {}); }, 0);
+  }
   else if (id === 'setKey') S.settings.apiKey = e.target.value.trim();
   else if (id === 'setModel') {
     const c = $('#setModelCustom');
@@ -1888,8 +2085,8 @@ $('#fileImport').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const o = JSON.parse(await f.text());
-    const key = S.settings.apiKey;
-    S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
+    const key = S.settings.apiKey, fbc = S.settings.fbConfig || '';
+    S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
     save(); render(); toast('Podatki uvoženi.');
   } catch (err) { toast('Datoteke ni bilo mogoče uvoziti.'); }
 });
@@ -2304,9 +2501,9 @@ const A = {
   undo() { if (undoAction) { const fn = undoAction; undoAction = null; fn(); $('#toast').classList.remove('on'); } },
   taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
   dismissBackup() { S.settings.backupReminderDismissedAt = today(); save(); render(); },
-  addBillCal(b) { const x = byId(S.bills,b.dataset.id); if (x && x.due) downloadICS(`${x.recipient || 'Položnica'} – plačilo`, x.due, null, [x.purpose,x.reference,x.iban].filter(Boolean).join(' · ')); },
-  dlCal(b) { const x = byId(S.deadlines,b.dataset.id); if (x) downloadICS(x.title,x.due,null,x.note || x.category); },
-  dlCalForm() { syncDl(); const f=dlForm; downloadICS(f.title,f.due,null,f.note || f.category); },
+  addBillCal(b) { const x = byId(S.bills,b.dataset.id); if (x && x.due) addToCalendar(`${x.recipient || 'Položnica'} – plačilo`, x.due, null, [x.purpose,x.reference,x.iban].filter(Boolean).join(' · '), x); },
+  dlCal(b) { const x = byId(S.deadlines,b.dataset.id); if (x) addToCalendar(x.title,x.due,null,x.note || x.category,x); },
+  dlCalForm() { syncDl(); const f=dlForm; addToCalendar(f.title,f.due,null,f.note || f.category, f.id ? byId(S.deadlines,f.id) : null); },
   billRepeat(b) { billRepeat(b.dataset.id); },
   saveBillRepeat() { saveBillRepeat(); },
   removeBillRepeat() { removeBillRepeat(); },
@@ -2395,7 +2592,7 @@ const A = {
   removeTaskRepeat() { removeTaskRepeat(); },
   taskCal(b) {
     const x=byId(S.tasks,b.dataset.id); if(!x)return;
-    downloadICS(x.title,x.due||today(),x.time||null,[x.frame,x.min?x.min+' min':'',x.time?`Ura: ${x.time}`:''].filter(Boolean).join(' · '));
+    addToCalendar(x.title,x.due||today(),x.time||null,[x.frame,x.min?x.min+' min':'',x.time?`Ura: ${x.time}`:''].filter(Boolean).join(' · '), x);
   },
   saveTaskReminder() { saveTaskReminder(); },
   removeTaskReminder() { removeTaskReminder(); },
@@ -2430,6 +2627,9 @@ const A = {
   }
 };
 Object.assign(A, {
+  gSignIn() { gSignIn(); },
+  gSignOut() { gSignOut(); },
+  gRefresh() { gcalLoadToday(true).then(() => { if (sheet.open) toast('Dogodki osveženi.'); }); },
   install() { installApp(); },
   meals() { S.ui.tab = 'fridge'; save(); genMeals(S.ui.mealMode || 'fridge'); },
   cook() { S.ui.tab = 'fridge'; save(); genMeals(); },
