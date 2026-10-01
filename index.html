@@ -240,7 +240,7 @@ details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--i
 .fridge-manual-card .section-mini-head{align-items:flex-start}
 .fridge-manual-card .section-mini-head .btn{flex:0 0 auto}
 .manual-fridge-form{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--blue-soft)}
-.fridge-empty-inline{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:16px 0 4px}
+.fridge-empty-inline{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;padding:16px 0 4px}
 .fridge-empty-inline p{margin:3px 0 0;color:var(--ink2);font-size:13.5px}
 .fridge-photo-row{display:flex;align-items:center;gap:10px;padding-top:10px}
 .section-tab-wrap{padding:0 0 8px}
@@ -662,7 +662,7 @@ const ICON = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
   moon: '<path d="M20.5 15.2A8.8 8.8 0 0110.8 3.5 8.9 8.9 0 1020.5 15.2z"/>',
   fridge: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/>',
-  utensils: '<path d="M6 3v7M4 3v4a2 2 0 004 0V3M6 7v14M17 3v18M17 3c2 2 2 5 0 7"/>',
+  utensils: '<circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="2.3"/><path d="M3.6 3.5v5a1.7 1.7 0 003.4 0v-5M5.3 3.5v17M20.4 20.5v-17c-2.2 1.3-3.2 3.6-3.2 6.2v2.8h3.2"/>',
   euro: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.6a4.6 4.6 0 100 6.8M7.5 10.8h5.5M7.5 13.2h5.5"/>',
   list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
   camera: '<path d="M3.5 8.5h3.2l1.6-2.5h7.4l1.6 2.5h3.2v11h-17z"/><circle cx="12" cy="13.5" r="3.6"/>',
@@ -1460,8 +1460,9 @@ function renderFridge() {
     <div class="field two"><div><label for="fridgeExpires">Rok uporabe</label><input id="fridgeExpires" type="date"></div><div><label for="fridgeNote">Opomba</label><input id="fridgeNote" type="text" placeholder="npr. odprto"></div></div>
     <div class="set-actions"><button class="btn" data-act="fridgeSave">${ic('save',16)} Shrani v hladilnik</button><button class="btn ghost" data-act="fridgeCancel">Prekliči</button></div>
   </div>`;
+  h += `<div class="quick fridge-quick" style="margin-top:14px"><input type="text" id="quickFridge" placeholder="Dodaj sestavino …" aria-label="Nova sestavina" autocomplete="off"><button class="icon-btn quick-mic" data-act="fridgeVoice" aria-label="Povej sestavino na glas">${ic('mic',20)}</button><button class="btn" data-act="quickFridge">Dodaj</button></div>`;
   if (!S.fridge.length) {
-    h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine ročno, fotografiraj hladilnik ali uporabi samostojni način za pripravo obrokov.</p></div><button class="btn ghost" data-act="capture" data-mode="camera">${ic('camera',18)} Slikaj hladilnik</button></div>`;
+    h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine ročno, z glasom ali s fotografijo ali pa uporabi samostojni način za pripravo obrokov.</p></div></div>`;
   } else {
     const list = [...S.fridge].sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
     h += `<div class="swipe-hint"><span class="s-good">→ Porabljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list fridge-list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>${fridgeBadge(f)}<button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check',20)}</button><button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
@@ -1564,7 +1565,7 @@ function renderTasks() {
     const calDate=t.due|| (t.time?today():null);
     return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
-  let h=`<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><select id="quickTaskRepeat" aria-label="Ponavljanje opravila">${REPEAT_OPTIONS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select><button class="btn" data-act="quickTask">Dodaj</button></div><div class="set-actions" style="margin-top:10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
+  let h=`<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="icon-btn quick-mic" data-act="taskVoice" aria-label="Povej opravilo na glas">${ic('mic',20)}</button><select id="quickTaskRepeat" aria-label="Ponavljanje opravila">${REPEAT_OPTIONS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select><button class="btn" data-act="quickTask">Dodaj</button></div><div class="set-actions" style="margin-top:10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
   h+=`<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
   if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Povej ali napiši, kaj moraš urediti, in jih razvrstim.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
   else if(sortMode==='priority'){
@@ -3326,6 +3327,64 @@ function toggleShopVoice() {
   try { r.start(); } catch(e) { shopRecognition=null; if(btn)btn.classList.remove('recording'); toast('Glasovnega vnosa ni bilo mogoče zagnati.'); }
 }
 
+let quickRecognition = null;
+const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+function splitVoiceTasks(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().replace(/[.?!]+$/, '')
+    .split(/\s*[,;]\s*|\s+ter\s+|[.?!]\s+/i).map(x => capFirst(x.trim())).filter(Boolean).slice(0, 12);
+}
+function addFridgeItems(names) {
+  const added = [];
+  names.forEach(n => {
+    const name = capFirst(String(n || '').trim()); if (!name) return;
+    if (S.fridge.some(f => (f.name || '').toLowerCase() === name.toLowerCase())) return;
+    S.fridge.push({ id: uid(), name, qty: null, category: 'Drugo', expires: null, est: false, note: null });
+    added.push(name);
+  });
+  return added;
+}
+function addTasksFromText(titles) {
+  const repeat = $('#quickTaskRepeat') ? $('#quickTaskRepeat').value : '';
+  titles.forEach(title => {
+    const task = { id: uid(), title, prio: 'srednja', frame: null, due: repeat ? today() : null, time: null, min: null, repeat, done: false };
+    S.tasks.push(task); autoSyncNewTask(task);
+  });
+}
+function toggleQuickVoice(kind) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Ta brskalnik ne podpira glasovnega vnosa. Poskusi Chrome na telefonu ali računalniku.'); return; }
+  if (quickRecognition) { try { quickRecognition.stop(); } catch(e){}; return; }
+  const cfg = kind === 'fridge'
+    ? { input: '#quickFridge', btn: '[data-act="fridgeVoice"]' }
+    : { input: '#quickTask', btn: '[data-act="taskVoice"]' };
+  const input = $(cfg.input); if (!input) return;
+  const btn = $(cfg.btn);
+  const r = new SR(); quickRecognition = r;
+  r.lang = 'sl-SI'; r.interimResults = true; r.continuous = false;
+  if (btn) btn.classList.add('recording');
+  r.onresult = ev => {
+    let finalText = '', interim = '';
+    for (const res of ev.results) { const txt = res[0]?.transcript || ''; res.isFinal ? finalText += txt : interim += txt; }
+    input.value = (finalText + ' ' + interim).trim();
+  };
+  r.onerror = ev => { toast(ev.error === 'not-allowed' ? 'Dovoli mikrofon za glasovni vnos.' : 'Glasovnega vnosa ni bilo mogoče uporabiti.'); quickRecognition = null; if (btn) btn.classList.remove('recording'); };
+  r.onend = () => {
+    quickRecognition = null; if (btn) btn.classList.remove('recording');
+    const textNow = (input.value || '').trim(); if (!textNow) return;
+    if (kind === 'fridge') {
+      const added = addFridgeItems(splitVoiceShopping(textNow));
+      input.value = ''; save(); render();
+      toast(added.length ? `V hladilnik dodano: ${added.join(', ')}` : 'Te sestavine so že v hladilniku.');
+    } else {
+      const titles = splitVoiceTasks(textNow);
+      if (!titles.length) return;
+      addTasksFromText(titles); input.value = ''; save(); render();
+      toast(titles.length === 1 ? `Opravilo dodano: ${titles[0]}` : `Dodanih opravil: ${titles.length}`);
+    }
+  };
+  try { r.start(); } catch(e) { quickRecognition = null; if (btn) btn.classList.remove('recording'); toast('Glasovnega vnosa ni bilo mogoče zagnati.'); }
+}
+
 const A = {
   tab(b) {
     const next = b.dataset.tab;
@@ -3485,6 +3544,14 @@ Object.assign(A, {
   fridgeCancel() { cancelManualFridge(); },
   shopTab(b) { S.ui.shopTab = b.dataset.v === 'docs' ? 'docs' : 'list'; save(); render({ preserve: false }); window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); },
   shopVoice() { toggleShopVoice(); },
+  fridgeVoice() { toggleQuickVoice('fridge'); },
+  taskVoice() { toggleQuickVoice('task'); },
+  quickFridge() {
+    const i = $('#quickFridge'), v = i && i.value.trim(); if (!v) return;
+    const added = addFridgeItems(splitVoiceShopping(v)); save(); render();
+    toast(added.length ? `V hladilnik dodano: ${added.join(', ')}` : 'Te sestavine so že v hladilniku.');
+    const n = $('#quickFridge'); if (n) n.focus();
+  },
   cook() { S.ui.tab = 'fridge'; save(); genMeals(); },
   shopGen() { S.ui.tab = 'shop'; save(); genShop(); },
   shopFromMeals() { S.ui.tab = 'shop'; save(); genShopFromMeals(); },
@@ -3584,6 +3651,7 @@ document.addEventListener('change', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
   if (e.key === 'Enter' && e.target.id === 'quickShop') { e.preventDefault(); A.quickShop(); }
+  if (e.key === 'Enter' && e.target.id === 'quickFridge') { e.preventDefault(); A.quickFridge(); }
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkTaskTimeReminders(); if (!sheet.open) render(); } });
 
