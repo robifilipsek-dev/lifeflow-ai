@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0A5C6B">
-<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F7F8F6">
+<meta name="color-scheme" content="light">
 <title>LifeFlow AI</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -234,6 +234,31 @@ details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--i
 .inbox-card-top .grow{min-width:0}.inbox-card-top strong,.inbox-card-top small{display:block;overflow-wrap:anywhere}.inbox-card-top small{color:var(--ink2);font-size:12.5px;margin-top:2px}.inbox-card p{margin:10px 0;color:var(--ink2);font-size:14px;line-height:1.35}
 .inbox-card-actions{display:flex;gap:8px}.inbox-empty{text-align:center}.inbox-empty h3{margin:10px 0 3px;font:800 20px var(--font-h)}.inbox-empty-ico{width:68px;height:68px;margin:4px auto 0;border-radius:20px;background:var(--blue-soft);display:grid;place-items:center;color:var(--petrol-d)}
 @media(max-width:520px){.capture-actions{grid-template-columns:1fr}.inbox-card-actions{display:grid;grid-template-columns:1fr 1fr}.inbox-card-actions .btn{width:100%}}
+
+/* meals / manual fridge / section tabs */
+.fridge-manual-card{padding:16px;margin-top:16px}
+.fridge-manual-card .section-mini-head{align-items:flex-start}
+.fridge-manual-card .section-mini-head .btn{flex:0 0 auto}
+.manual-fridge-form{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--blue-soft)}
+.fridge-empty-inline{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:16px 0 4px}
+.fridge-empty-inline p{margin:3px 0 0;color:var(--ink2);font-size:13.5px}
+.fridge-photo-row{display:flex;align-items:center;gap:10px;padding-top:10px}
+.section-tab-wrap{padding:0 0 8px}
+.section-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:4px;background:var(--blue-soft);border:1px solid var(--line);border-radius:14px;margin-bottom:14px}
+.section-tab{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 10px;border:0;border-radius:11px;background:transparent;color:var(--ink2);font:700 13px var(--font-b);cursor:pointer}
+.section-tab.on{background:#fff;color:var(--petrol-d);box-shadow:0 1px 3px rgba(15,37,48,.08)}
+.shop-docs{padding-top:2px}
+.shop-quick{align-items:center}
+.quick-mic{flex:0 0 42px;width:42px;height:42px;border-radius:12px}
+.quick-mic.recording{background:var(--coral-t);color:#8E2C10;animation:pulse 1s ease-in-out infinite}
+.quick-shop-empty{max-width:520px;margin:18px auto 0}
+@media(max-width:700px){
+  .fridge-empty-inline{grid-template-columns:1fr}
+  .fridge-empty-inline .welcome-ico{margin-bottom:-4px}
+  .fridge-photo-row{align-items:flex-start;flex-direction:column}
+  .section-tabs{grid-template-columns:1fr}
+  .quick-mic{flex:0 0 42px}
+}
 
 /* quick add */
 .quick{display:flex;gap:8px;margin-bottom:6px}.quick select{flex:0 0 150px;min-width:0}
@@ -471,6 +496,63 @@ a.btn.plain{text-decoration:none;color:var(--ink2);background:transparent;border
 .sync-status.ok{color:#16834b}
 .sync-status.busy{color:#a36b00}
 .sync-status.err{color:#b23b2f}
+
+/* ---------- modern light redesign ---------- */
+:root{
+  --mist:#F3F6F5; --paper:#FFFFFF; --ink:#17252A; --ink2:#617178; --line:#DFE7E5;
+  --petrol:#1B6B68; --petrol-d:#145451; --petrol-t:#E6F2EF;
+  --gold:#D89423; --gold-t:#FCF0D8;
+  --coral:#CF5A3C; --coral-t:#FBE7E1;
+  --blue:#B8E0DA; --blue-hover:#9DD2CB; --blue-soft:#EFF8F6; --blue-ink:#175A57; --blue-placeholder:#7F9998;
+  --moss:#2E7C58; --moss-t:#E2F1E9;
+}
+html{background:var(--mist);color-scheme:light}
+body{background:linear-gradient(180deg,#F7FAF9 0%,#EFF4F2 100%);color:var(--ink)}
+#app{max-width:760px;padding:calc(18px + env(safe-area-inset-top,0px)) 18px 150px}
+.top{align-items:center;margin-bottom:18px;padding:4px 2px}.top h1{font-size:30px;letter-spacing:-.035em}.top p{margin-top:3px;font-size:15px;color:var(--petrol-d);font-weight:700;text-transform:capitalize}
+.top-a{gap:8px}.top-a .btn{min-height:40px}
+.icon-btn{width:42px;height:42px;border-radius:13px;background:var(--paper);box-shadow:0 1px 2px rgba(16,43,44,.05);border:1px solid var(--line)}
+.icon-btn:hover{background:var(--petrol-t);color:var(--petrol-d)}
+h2.sec{font-size:20px;margin:24px 0 11px}.help,.hint,.muted{color:var(--ink2)}
+.btn{min-height:44px;padding:0 18px;border-radius:14px;border:1px solid var(--petrol);background:var(--petrol);color:#fff;box-shadow:0 2px 6px rgba(27,107,104,.12)}
+.btn:hover{background:var(--petrol-d);border-color:var(--petrol-d)}
+.btn.ghost{background:var(--paper);color:var(--petrol-d);box-shadow:none;border-color:#BFD7D2}.btn.ghost:hover{background:var(--petrol-t);border-color:#9FC5BF}
+.btn.plain{background:transparent;color:var(--petrol-d);border-color:transparent;box-shadow:none}
+.btn.sm{min-height:38px;padding:0 13px;border-radius:12px;font-size:13.5px}
+input[type=time],input[type=date],input[type=datetime-local],input[type=number],input[type=text],input[type=password],input[type=search],select,textarea{background:#FBFDFC;border-color:#D5E2E0;border-radius:12px;min-height:45px}
+input:focus,select:focus,textarea:focus{border-color:var(--petrol);box-shadow:0 0 0 3px rgba(27,107,104,.11)}
+nav{background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(18,50,50,.06)}
+nav .in{max-width:760px;padding:7px 10px}.in nav{}
+nav button{min-height:58px;border-radius:15px;gap:4px;color:#718084;font-size:11.5px}.
+nav button[aria-current=page]{background:var(--petrol-t);color:var(--petrol-d)}
+nav button[aria-current=page]::before{display:none}
+.fab{right:max(18px,calc((100vw - 760px)/2 + 18px));bottom:calc(82px + env(safe-area-inset-bottom,0px));min-height:52px;padding:0 18px;border-radius:15px;background:var(--ink);box-shadow:0 8px 24px rgba(23,37,42,.22)}
+.fab:hover{background:#0E181C}
+.day-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.84);box-shadow:0 4px 18px rgba(20,45,45,.04)}
+.day-actions strong{display:block;font-size:14px;letter-spacing:-.01em}.day-kicker{display:block;color:var(--petrol);font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.day-actions-btns{display:flex;gap:7px;flex:0 0 auto}.hero-count{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:3px;padding:0 5px;border-radius:999px;background:var(--coral-t);color:var(--coral);font-size:11px;font-weight:800}
+.day-plan-card,.meal-builder,.ingredient-card,.shop-panel,.shop-empty,.dash-section,.inbox-card,.dash-clear,.next-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:0 7px 22px rgba(24,57,55,.05)}
+.day-plan-card{padding:17px 17px 14px;margin:0 0 18px}.day-plan-header,.meal-builder-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.day-plan-header h2,.meal-builder-top h2{margin:2px 0 2px;font:800 23px var(--font-h);letter-spacing:-.025em}.day-plan-header p,.meal-builder-top p{margin:0;color:var(--ink2);font-size:13px}.plan-mark{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:12px;background:var(--petrol-t);color:var(--petrol-d)}
+.day-plan-card>.sec,.day-plan-card>.plan-title{display:none}.day-plan-card .ctl-row{margin-top:18px}.day-plan-card .flow{margin-top:14px}.day-plan-card .advice{background:#F6F2E5;color:#6E5826;border:1px solid #EBDCB1}.day-plan-card .warns{margin-bottom:0}
+.flow li::before{left:68px;width:2px;background:#D9E9E6}.flow time{color:var(--petrol-d)}.node{box-shadow:0 0 0 4px var(--paper);border:3px solid var(--paper)}.blk{padding:7px 10px 9px;margin:2px 0;border:1px solid transparent;border-radius:13px;background:#FCFEFD}.blk:hover{background:var(--petrol-t);border-color:#C9E3DE}.blk .t{font-size:15px}.blk .k{font-size:12px;color:var(--ink2)}.edit-hint{display:inline-block;margin-top:4px;color:var(--petrol);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.is-done .blk{opacity:.68}.is-done .t{text-decoration:line-through}
+.seg{background:var(--blue-soft);border:1px solid #BFD7D2;border-radius:13px;padding:3px}.seg button{min-height:39px;border-radius:10px;color:var(--petrol-d)}.seg button[aria-pressed=true]{background:var(--paper);color:var(--petrol-d);box-shadow:0 2px 7px rgba(20,84,81,.09)}
+.dash-overview{margin:0 0 18px}.dash-stat{border-color:var(--line);background:var(--paper);border-radius:16px}.dash-stat:hover{background:var(--petrol-t)}.dash-section{padding:14px}.dash-section+.dash-section{margin-top:12px}.dash-list{border-color:var(--line);border-radius:14px}.meal-highlight{border-color:var(--line);background:#FBFDFC}.
+.welcome.compact-welcome{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin:10px 0 18px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}.welcome-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--petrol-t);color:var(--petrol-d);flex:0 0 auto}.compact-welcome strong{font-size:15px}.compact-welcome p{margin:3px 0 0;color:var(--ink2);font-size:13px}.compact-invites{grid-column:1/-1;margin:2px 0 0;grid-template-columns:repeat(3,1fr)}.compact-invites .invite{min-height:58px;padding:8px 10px;border:1px solid #C6DCD8;border-radius:13px;background:#FBFDFC;color:var(--petrol-d);justify-content:center;box-shadow:none}.compact-invites .invite .ico{background:transparent;color:var(--petrol);width:auto;height:auto}
+.meal-builder{padding:17px;margin-bottom:16px}.meal-builder .ctl-row{margin-top:16px}.meal-builder .toolbar{margin:11px 0 4px}.meal-mode-row .lbl{min-width:42px}.meal-builder .switch{margin-bottom:0}
+.meal-actions{grid-template-columns:1fr 1fr;gap:8px}.meal-b{padding:0 2px 16px}.meal details.fold{background:#FAFCFB;border-radius:12px;padding:0 10px;margin-top:8px}.meal-b .tipbox,.tipbox{background:#F6F2E5;border:1px solid #EBDCB1;border-radius:11px;padding:9px 11px}
+details.meal{border-bottom:1px solid var(--line)}details.meal:first-of-type{border-top:1px solid var(--line)}details.meal summary{min-height:62px}.tag{border-radius:9px;padding:3px 9px;background:var(--petrol-t);color:var(--petrol-d)}
+.ingredient-card{padding:15px;margin-top:16px}.ingredient-card.empty-ingredients{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}.ingredient-card.empty-ingredients h3{margin:0;font-size:17px}.ingredient-card.empty-ingredients p{margin:3px 0 0;color:var(--ink2);font-size:13px}.section-mini-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-mini-head h3{font:800 18px var(--font-h);margin:1px 0 0}
+.shop-empty{text-align:center;padding:28px 18px}.shop-empty .welcome-ico{margin:0 auto 10px}.shop-empty h2{font-size:24px;margin:3px 0}.shop-empty p{max-width:48ch;margin:6px auto 16px;color:var(--ink2)}.shop-empty-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:460px;margin:0 auto}.shop-panel{padding:15px}.shop-panel #shopSec{margin-top:0}.shop-head{align-items:flex-end}.shop-head-title{min-width:0}.shop-head .set-actions{margin:0 0 0 auto}.shop-g h3{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--petrol);margin:18px 0 5px}.share-box{background:var(--petrol-t);border:1px solid #C9E3DE}.share-box p{color:var(--petrol-d)}
+.row{min-height:56px;border-color:var(--line)}.row:hover{background:#FBFDFC}.swiping{background:transparent}.swiping.is-swipe-right{background:linear-gradient(90deg,var(--moss-t),transparent 46%)}.swiping.is-swipe-left{background:linear-gradient(270deg,var(--coral-t),transparent 46%)}
+.chk{width:42px;height:42px}.circle{border-color:var(--petrol)}.chk[aria-pressed=true] .circle{background:var(--petrol)}.mini{width:40px;height:40px;border-radius:11px}.mini:hover{background:var(--petrol-t);color:var(--petrol-d)}
+.fold{border-top:1px solid var(--line)}.fold>summary{font-weight:800;padding:11px 0}.quick{padding:10px;border:1px solid var(--line);border-radius:15px;background:#FAFCFB}.quick input,.quick select{background:#fff}.
+details.bill summary{min-height:62px}.
+#toast{bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);border-radius:13px;box-shadow:0 10px 26px rgba(23,37,42,.2)}
+dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0}.sheet-in{padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px))}.sheet-h h2{font-size:23px}.src{background:#F8FCFB;border-color:#C6DCD8;color:var(--petrol-d)}.src:hover{background:var(--petrol-t)}
+@media(max-width:700px){
+  #app{padding-left:14px;padding-right:14px}.top h1{font-size:26px}.top{margin-bottom:13px}.day-actions{align-items:flex-start}.day-actions-btns{flex-direction:column}.day-actions-btns .btn{white-space:nowrap}.day-plan-card{padding:14px 12px}.flow li{grid-template-columns:52px 20px 1fr}.flow li::before{left:61px}.flow time{font-size:13px}.blk{padding-left:8px}.shop-empty-actions,.ingredient-card.empty-ingredients{grid-template-columns:1fr}.shop-empty-actions .btn{width:100%}.ingredient-card.empty-ingredients .btn{justify-self:stretch}.meal-actions{grid-template-columns:1fr}.shop-head{align-items:flex-start}.shop-head .set-actions{width:100%;margin-top:8px}.shop-head .set-actions .btn{flex:1}.meal-builder-top h2{font-size:21px}
+}
+@media(max-width:460px){.day-actions-btns .btn{padding:0 10px}.day-plan-card .seg{width:100%}.day-plan-card .seg button{flex:1;padding:0 8px}.compact-invites .invite{font-size:12px}.row .badge{max-width:30vw}.fab{right:14px}
+}
 </style>
 </head>
 <body>
@@ -482,7 +564,6 @@ a.btn.plain{text-decoration:none;color:var(--ink2);background:transparent;border
     </div>
     <div class="top-a">
     <button class="btn sm" id="btnInstall" data-act="install" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/></svg>Namesti</button>
-    <button class="icon-btn theme-toggle" id="themeToggle" data-act="themeToggle" aria-label="Preklopi temo" title="Preklopi temo"></button>
     <button class="icon-btn" data-act="settings" aria-label="Nastavitve"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button>
     </div>
   </header>
@@ -581,6 +662,7 @@ const ICON = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
   moon: '<path d="M20.5 15.2A8.8 8.8 0 0110.8 3.5 8.9 8.9 0 1020.5 15.2z"/>',
   fridge: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M6 10h12M9.5 5.5v2M9.5 13v3"/>',
+  utensils: '<path d="M6 3v7M4 3v4a2 2 0 004 0V3M6 7v14M17 3v18M17 3c2 2 2 5 0 7"/>',
   euro: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.6a4.6 4.6 0 100 6.8M7.5 10.8h5.5M7.5 13.2h5.5"/>',
   list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
   camera: '<path d="M3.5 8.5h3.2l1.6-2.5h7.4l1.6 2.5h3.2v11h-17z"/><circle cx="12" cy="13.5" r="3.6"/>',
@@ -594,6 +676,8 @@ const ICON = {
   check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2.6l2.1 11h10.6l2-8H6.4"/>',
   download: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/>',
+  save: '<path d="M5 3.5h11l3 3v14H5z"/><path d="M8 3.5v6h8v-6M8.5 20.5v-5h7v5"/>',
+  bookmark: '<path d="M6 4.5a2 2 0 012-2h8a2 2 0 012 2v17l-6-3.5-6 3.5z"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7.5 3.5v3M16.5 3.5v3M3.5 9h17M8 13h3M13 13h3M8 17h3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   bell: '<path d="M18 9a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
@@ -617,7 +701,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-01 · v7 · Firebase sync';
+const APP_VERSION = '2026-10-01 · v8 · meals + shopping upgrades';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -632,7 +716,7 @@ const DEFAULT = {
   modelCache: null,
   bills: [], expenses: [], fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all',
-    taskSort: 'due', sortDirection: 'asc', theme: null, mealMode: 'fridge' }
+    taskSort: 'due', sortDirection: 'asc', theme: null, mealMode: 'fridge', shopTab: 'list' }
 };
 function load() {
   const base = JSON.parse(JSON.stringify(DEFAULT));
@@ -648,6 +732,8 @@ function load() {
 let S = load();
 S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDocs = S.settings.showDocs !== false; S.settings.showShopping = S.settings.showShopping !== false;
 S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
+S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
+if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
 S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
 function fixInbox() {
   S.inbox = (Array.isArray(S.inbox) ? S.inbox : []).filter(x => x && typeof x === 'object');
@@ -656,28 +742,16 @@ function fixInbox() {
 }
 fixInbox();
 
-function preferredTheme() {
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-function applyTheme(theme, persist = false) {
-  const chosen = theme === 'dark' || theme === 'light' ? theme : preferredTheme();
+function preferredTheme() { return 'light'; }
+function applyTheme(theme = 'light', persist = false) {
+  const chosen = 'light';
   document.documentElement.dataset.theme = chosen;
   document.documentElement.style.colorScheme = chosen;
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', chosen === 'dark' ? '#111E23' : '#8FD3E3');
-  const b = document.getElementById('themeToggle');
-  if (b) {
-    const toDark = chosen !== 'dark';
-    // Ikona prikazuje trenutno izbrano temo: sonček za svetlo, lunica za temno.
-    b.innerHTML = ic(chosen === 'dark' ? 'moon' : 'sun', 22);
-    b.setAttribute('aria-label', toDark ? 'Preklopi na temno temo' : 'Preklopi na svetlo temo');
-    b.setAttribute('title', toDark ? 'Preklopi na temno temo' : 'Preklopi na svetlo temo');
-  }
+  if (meta) meta.setAttribute('content', '#F7F8F6');
   if (persist) { S.ui.theme = chosen; save(); }
 }
-function initTheme() {
-  applyTheme(S.ui.theme || preferredTheme(), false);
-}
+function initTheme() { applyTheme('light', false); }
 function decodeSharedShop() {
   const m = location.hash.match(/^#shop=(.+)$/);
   if (!m) return null;
@@ -699,7 +773,7 @@ function decodeSharedShop() {
     else { const copy={...x,id:uid()}; existing.push(copy); map.set(key,copy); }
   });
   S.shop={...(S.shop||{}),created:today(),nasvet:'Skupni seznam, prejet prek povezave.',obroki_teden:S.shop?.obroki_teden||[],items:existing,shared:true};
-  S.ui.tab='fridge';
+  S.ui.tab='shop';
   save();
   try{history.replaceState(null,'',location.href.split('#')[0]);}catch(e){}
   setTimeout(()=>toast('Skupni nakupovalni seznam je odprt.'),0);
@@ -841,7 +915,7 @@ function computeAlerts() {
   const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const mk = today().slice(0, 7);
   if (last - now.getDate() <= 2 && !S.dismissed['subs' + mk]) {
-    out.push({ lvl: 'info', sort: 5, title: 'Konec meseca: pregled naročnin', text: 'Preveri, kaj se ti samodejno obnavlja, in ukini, česar ne uporabljaš.', btn: 'Odpri finance', act: 'subs', dismiss: 'subs' + mk });
+    out.push({ lvl: 'info', sort: 5, title: 'Konec meseca: pregled naročnin', text: 'Preveri, kaj se ti samodejno obnavlja, in ukini, česar ne uporabljaš.', btn: 'Odpri nakup', act: 'subs', dismiss: 'subs' + mk });
   }
   return out.sort((a, b) => a.sort - b.sort);
 }
@@ -874,11 +948,15 @@ const chk = (done, act, id, label, extra = '') => `<button class="chk" data-act=
 function headerFor(tab) {
   const h = new Date().getHours();
   const greet = h < 10 ? 'Dobro jutro' : h < 18 ? 'Dober dan' : 'Dober večer';
-  const n = (S.settings.name || '').trim();
-  if (tab === 'today') return { t: new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }), s: `${greet}${n ? ', ' + n : ''}` };
+  if (tab === 'today') return { t: new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }), s: greet };
   if (tab === 'fridge') {
+    const count = S.meals && S.meals.date === today() ? S.meals.obroki.length : 0;
     const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
-    return { t: 'Virtualni hladilnik', s: S.fridge.length ? `${S.fridge.length} živil${soon ? ' · ' + soon + ' se kmalu izteka' : ''}` : 'Zaenkrat prazen' };
+    return { t: 'Obroki', s: count ? `${count} današnjih obrokov${soon ? ' · ' + soon + ' živil se izteka' : ''}` : 'Načrtuj obroke in nakup' };
+  }
+  if (tab === 'shop') {
+    const un = S.shop ? S.shop.items.filter(i => !i.done).length : 0;
+    return { t: 'Nakupovalni seznam', s: un ? `${un} ${un === 1 ? 'artikel' : 'artiklov'} za kupiti` : 'Seznam je prazen' };
   }
   if (tab === 'money') {
     const un = S.bills.filter(b => !b.paid).length;
@@ -1072,12 +1150,12 @@ function dashInboxHtml() {
 }
 function renderToday() {
   const empty = !S.bills.length && !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.expenses.length && !S.docs.length && !S.deadlines.length && !S.shop;
-  const n = (S.settings.name || '').trim();
   const ib = inboxCount();
-  let h = `<section class="today-hero"><div><span class="eyebrow">${new Date().toLocaleDateString('sl-SI',{weekday:'long'}).toUpperCase()}</span><h2>Živjo${n ? ', ' + esc(n) : ''} 👋</h2><p>${new Date().toLocaleDateString('sl-SI',{day:'numeric',month:'long'})} · ${new Date().toLocaleTimeString('sl-SI',{hour:'2-digit',minute:'2-digit'})}</p></div><div class="today-actions"><button class="btn ghost" data-act="openInbox">${ic('inbox',18)} Inbox${ib ? ` <span class="hero-count">${ib}</span>` : ''}</button><button class="btn" data-act="capture" aria-label="Dodaj karkoli">${ic('plus',18)} Dodaj</button></div></section>`;
+  let h = `<div class="day-actions"><div><span class="day-kicker">Tvoj fokus za danes</span><strong>Plan, ki ga lahko sproti prilagajaš.</strong></div><div class="day-actions-btns"><button class="btn sm ghost" data-act="openInbox">${ic('bookmark',16)} Inbox${ib ? ` <span class="hero-count">${ib}</span>` : ''}</button><button class="btn sm" data-act="capture">${ic('plus',16)} Dodaj</button></div></div>`;
   if (empty) {
-    h += `<section class="welcome compact-welcome"><p>Začni z eno stvarjo: fotografiraj račun, povej opravilo ali pokaži, kaj imaš v hladilniku.</p><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',22)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',22)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',22)}<span>Tekst</span></button></div></section>`;
+    h += `<section class="welcome compact-welcome"><div class="welcome-ico">${ic('spark',22)}</div><div><strong>Začni brez kompliciranja.</strong><p>Fotografiraj račun, povej opravilo ali zapiši idejo in jo razvrstimo v tvoj dan.</p></div><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',20)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',20)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',20)}<span>Tekst</span></button></div></section>`;
   }
+  h += `<section class="day-plan-card"><div class="day-plan-header"><div><span class="day-kicker">DANES</span><h2>Moj dnevni načrt</h2><p>Glavni pogled dneva — dogodke odpri za urejanje.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>${alertsHtml()}${planHtml()}</section>`;
   h += dashOverviewHtml();
   h += gcalHtml();
   h += dashInboxHtml();
@@ -1087,14 +1165,13 @@ function renderToday() {
   h += dashMealsHtml();
   h += dashShopHtml();
   h += ctxHtml();
-  if (!empty) h += `<details class="fold dash-more"><summary>Podrobnosti in moj dnevni načrt</summary>${alertsHtml()}${planHtml()}</details>`;
   return h;
 }
 
 const TIP = { opravilo: 'Opravilo', fiksno: 'Fiksna obveznost', obrok: 'Obrok', odmor: 'Odmor', rekreacija: 'Rekreacija', opomnik: 'Opomnik' };
 function planHtml() {
   const u = S.ui, p = S.plan && S.plan.date === today() ? S.plan : null;
-  let h = `<h2 class="sec">Moj dan</h2>
+  let h = `<h2 class="sec plan-title">Moj dnevni načrt</h2>
     <div class="ctl-row"><span class="lbl" id="lblEn">Energija</span>
       <div class="seg" role="group" aria-labelledby="lblEn">${['nizka', 'srednja', 'visoka'].map(e => `<button data-act="energy" data-v="${e}" aria-pressed="${u.energy === e}">${e[0].toUpperCase() + e.slice(1)}</button>`).join('')}</div></div>
     <div class="ctl-row"><span class="lbl">Prost čas</span>
@@ -1110,7 +1187,7 @@ function planHtml() {
       items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
     }
     items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}"><time>${b.od}<small>${b.do}</small></time><i class="node"></i>
-      <button class="blk" data-act="blk" data-i="${i}" aria-pressed="${!!b.done}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}</span></button></li>`;
+      <button class="blk" data-act="blk" data-i="${i}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
   });
   h += p.nasvet ? `<p class="advice">${esc(p.nasvet)}</p>` : '';
   h += p.opozorila && p.opozorila.length ? `<ul class="warns">${p.opozorila.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '';
@@ -1358,33 +1435,50 @@ function shopHtml() {
   const g = {}; s.items.forEach(i => { (g[i.category] = g[i.category] || []).push(i); });
   const ord = k => { const i = SHOP_ORDER.indexOf(k); return i < 0 ? 99 : i; };
   const keys = Object.keys(g).sort((a, b) => ord(a) - ord(b));
-  let h = `<div class="sec-h" id="shopSec"><h2 class="sec">Nakupovalni seznam</h2><div class="set-actions">${s.items.some(i => i.done) ? `<button class="btn sm plain" data-act="clearShop">Počisti kupljeno</button>` : ''}<button class="btn sm ghost" data-act="shareShop">${ic('share', 16)} Deli seznam</button></div></div>`;
+  let h = `<div class="sec-h shop-head" id="shopSec"><div class="shop-head-title"><span class="day-kicker">PREGLED NAKUPA</span><h2 class="sec">Nakupovalni seznam</h2></div><span class="plan-mark">${ic('bookmark',20)}</span><div class="set-actions">${s.items.some(i => i.done) ? `<button class="btn sm plain" data-act="clearShop">Počisti kupljeno</button>` : ''}<button class="btn sm ghost" data-act="shareShop">${ic('bookmark', 16)} Shrani / deli seznam</button></div></div>`;
   if (s.shared) h += `<div class="share-box"><p><strong>Skupni seznam</strong><br>Pošlji povezavo Vanesi; na telefonu ga lahko odpre in označuje kupljene artikle.</p></div>`;
   if (s.nasvet) h += `<p class="advice">${esc(s.nasvet)}</p>`;
   h += `<div class="swipe-hint"><span class="s-good">→ Kupljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
   h += keys.map(k => `<div class="shop-g"><h3>${esc(k)}</h3><ul class="list">${g[k].map(i => `<li class="row ${i.done ? 'done' : ''} swiping" data-swipe-kind="shop" data-id="${i.id}">${chk(i.done, 'toggleShop', i.id, i.done ? 'Vrni na seznam' : 'Kupljeno')}<div class="grow"><strong>${esc(i.name)}</strong>${i.qty ? `<small>${esc(i.qty)}</small>` : ''}</div><button class="mini" data-act="delShop" data-id="${i.id}" aria-label="Odstrani: ${esc(i.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul></div>`).join('');
-  h += `<div class="quick" style="margin-top:14px"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="btn" data-act="quickShop">Dodaj</button></div>`;
+  h += `<div class="quick shop-quick" style="margin-top:14px"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="icon-btn quick-mic" data-act="shopVoice" aria-label="Povej artikel na glas">${ic('mic',20)}</button><button class="btn" data-act="quickShop">Dodaj</button></div>`;
   if (s.obroki_teden && s.obroki_teden.length) h += `<details class="fold"><summary>Predlagan meni za teden</summary><ul class="list">${s.obroki_teden.map(x => `<li class="row"><div class="grow">${esc(x)}</div></li>`).join('')}</ul></details>`;
   return h;
 }
 function renderFridge() {
-  let h = '';
-  let h0 = `<div class="ctl-row meal-mode-row"><span class="lbl">Jedilnik</span><div class="seg" role="group" aria-label="Način generiranja jedilnika"><button data-act="mealMode" data-v="fridge" aria-pressed="${S.ui.mealMode === 'fridge'}">Iz hladilnika</button><button data-act="mealMode" data-v="standalone" aria-pressed="${S.ui.mealMode === 'standalone'}">Samostojno</button></div></div>
-    <div class="toolbar">
-      <button class="btn" data-act="meals" ${busy.meals ? 'disabled' : ''}>${busy.meals ? '<span class="spin"></span> Pripravljam …' : ic('spark', 18) + ' Obroki za danes'}</button>
-      <button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Sestavljam …' : ic('cart', 18) + ' Nakup za teden'}</button>
-    </div>
-    <div class="toolbar"><button class="switch" role="switch" aria-checked="${!!S.ui.mealprep}" data-act="mealprep"><i></i>Za v službo (meal-prep)</button></div>`;
-  h += h0 + mealsHtml() + (S.settings.showShopping ? shopHtml() : '');
+  const cats = ['Zelenjava','Sadje','Meso in ribe','Mlečno','Jajca','Pijače','Kruh in pekovski','Žita in testenine','Konzerve in suho','Zamrznjeno','Omake in začimbe','Drugo'];
+  const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
+  let h = `<section class="meal-builder"><div class="meal-builder-top"><div><span class="day-kicker">NAČRTOVANJE HRANE</span><h2>Obroki</h2><p>Najprej sestavi obroke, nato iz njih pripravi nakupovalni seznam.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>
+    <div class="ctl-row meal-mode-row"><span class="lbl">Vir</span><div class="seg" role="group" aria-label="Način generiranja jedilnika"><button data-act="mealMode" data-v="fridge" aria-pressed="${S.ui.mealMode === 'fridge'}">Iz sestavin pri roki</button><button data-act="mealMode" data-v="standalone" aria-pressed="${S.ui.mealMode === 'standalone'}">Samostojno</button></div></div>
+    <div class="toolbar"><button class="btn" data-act="meals" ${busy.meals ? 'disabled' : ''}>${busy.meals ? '<span class="spin"></span> Pripravljam …' : ic('spark', 18) + ' Generiraj obroke'}</button><button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Sestavljam …' : ic('cart', 18) + ' Nakup za 7 dni'}</button></div>
+    <div class="toolbar"><button class="switch" role="switch" aria-checked="${!!S.ui.mealprep}" data-act="mealprep"><i></i>Prilagodi za malice v službi</button></div></section>`;
+  h += mealsHtml();
+
+  h += `<section class="ingredient-card fridge-manual-card"><div class="section-mini-head"><div><span class="day-kicker">SESTAVINE PRI ROKI</span><h3>Hladilnik</h3><p class="help" style="margin:3px 0 0">${S.fridge.length ? `${S.fridge.length} ${S.fridge.length === 1 ? 'sestavina' : 'sestavin'}${soon ? ` · ${soon} kmalu poteče` : ''}` : 'Trenutno še ni dodanih sestavin.'}</p></div><button class="btn sm" data-act="fridgeNew">${ic('plus',16)} Dodaj sestavino</button></div>`;
+  h += `<div class="manual-fridge-form" id="manualFridgeForm" hidden>
+    <div class="field"><label for="fridgeName">Sestavina</label><input id="fridgeName" type="text" placeholder="npr. piščančja prsa" autocomplete="off"></div>
+    <div class="field two"><div><label for="fridgeQty">Količina</label><input id="fridgeQty" type="text" placeholder="npr. 500 g"></div><div><label for="fridgeCategory">Kategorija</label><select id="fridgeCategory">${cats.map(c => `<option>${c}</option>`).join('')}</select></div></div>
+    <div class="field two"><div><label for="fridgeExpires">Rok uporabe</label><input id="fridgeExpires" type="date"></div><div><label for="fridgeNote">Opomba</label><input id="fridgeNote" type="text" placeholder="npr. odprto"></div></div>
+    <div class="set-actions"><button class="btn" data-act="fridgeSave">${ic('save',16)} Shrani v hladilnik</button><button class="btn ghost" data-act="fridgeCancel">Prekliči</button></div>
+  </div>`;
   if (!S.fridge.length) {
-    return h + `<div class="empty"><p>Hladilnik je prazen. Slikaj hladilnik ali trgovinski račun, ali povej, kaj imaš pri roki. Sestavine in roke uporabe razberem sam.</p><button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj hladilnik ali račun</button></div>`;
+    h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine ročno, fotografiraj hladilnik ali uporabi samostojni način za pripravo obrokov.</p></div><button class="btn ghost" data-act="capture" data-mode="camera">${ic('camera',18)} Slikaj hladilnik</button></div>`;
+  } else {
+    const list = [...S.fridge].sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
+    h += `<div class="swipe-hint"><span class="s-good">→ Porabljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list fridge-list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>${fridgeBadge(f)}<button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check',20)}</button><button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
   }
-  const list = [...S.fridge].sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
-  h += `<h2 class="sec">V hladilniku</h2><div class="swipe-hint"><span class="s-good">→ Porabljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>
-      ${fridgeBadge(f)}
-      <button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check', 20)}</button>
-      <button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul>`;
+  h += `<div class="fridge-photo-row"><button class="btn sm ghost" data-act="capture" data-mode="camera">${ic('camera',16)} Dodaj s fotografijo</button><span class="muted">Ali prepoznaj več sestavin naenkrat.</span></div></section>`;
   return h;
+}
+
+function renderShop() {
+  const s = S.shop;
+  const tab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
+  const tabs = `<div class="section-tabs" role="tablist" aria-label="Nakup in dokumenti"><button class="section-tab ${tab === 'list' ? 'on' : ''}" data-act="shopTab" data-v="list" aria-selected="${tab === 'list'}">${ic('cart',17)} Nakupovalni seznam</button><button class="section-tab ${tab === 'docs' ? 'on' : ''}" data-act="shopTab" data-v="docs" aria-selected="${tab === 'docs'}">${ic('bookmark',17)} Računi in garancije</button></div>`;
+  if (tab === 'docs') return `<section class="shop-panel"><div class="section-tab-wrap">${tabs}</div><div class="shop-docs">${docsHtml()}</div></section>`;
+  if (!s || !Array.isArray(s.items) || !s.items.length) {
+    return `<section class="shop-empty"><div class="section-tab-wrap">${tabs}</div><div class="welcome-ico">${ic('cart',24)}</div><span class="day-kicker">NAKUP</span><h2>Nakupovalni seznam</h2><p>Seznam lahko ustvariš iz današnjih obrokov ali ga dodajaš ročno oziroma z glasom.</p><div class="shop-empty-actions"><button class="btn" data-act="shopFromMeals" ${busy.shop ? 'disabled' : ''}>${ic('cart',18)} Nakup iz obrokov</button><button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${ic('spark',18)} Nakup za 7 dni</button></div><div class="quick quick-shop-empty"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="icon-btn quick-mic" data-act="shopVoice" aria-label="Povej artikel na glas">${ic('mic',20)}</button><button class="btn" data-act="quickShop">Dodaj</button></div></section>`;
+  }
+  return `<section class="shop-panel"><div class="section-tab-wrap">${tabs}</div>${shopHtml()}</section>`;
 }
 
 
@@ -1481,7 +1575,7 @@ function renderTasks() {
   if(done.length)h+=`<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(row).join('')}</ul></details>`;
   return h;
 }
-const NAV = [['today', 'Danes', 'sun'], ['fridge', 'Hladilnik', 'fridge'], ['money', 'Finance', 'euro'], ['tasks', 'Opravila', 'list']];
+const NAV = [['today', 'Danes', 'sun'], ['fridge', 'Obroki', 'utensils'], ['shop', 'Nakup', 'cart'], ['tasks', 'Opravila', 'list']];
 /* ---------- stable UI rendering ---------- */
 /*
  * render() lahko ponovno izriše vsebino, vendar ne sme izgubiti uporabnikovega
@@ -1566,7 +1660,7 @@ function render(options = {}) {
 
   $('#title').textContent = H.t;
   $('#sub').textContent = H.s;
-  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, money: renderMoney, tasks: renderTasks })[tab]();
+  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, shop: renderShop, money: renderMoney, tasks: renderTasks })[tab]();
   $('#nav').innerHTML = NAV.map(([id, l, i]) =>
     `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
   ).join('');
@@ -1607,7 +1701,7 @@ function renderCompose() {
     </div>
     <div id="attach"></div>
     ${cap.error ? `<p class="err" role="alert">${esc(cap.error)}</p>` : ''}
-    <div class="capture-actions"><button class="btn ghost" data-act="saveInboxDraft">${ic('inbox', 18)} ${cap.inboxId ? 'Shrani spremembe' : 'Shrani v Inbox'}</button><button class="btn" data-act="analyze">${ic('spark', 18)} Razberi z AI</button></div>`;
+    <div class="capture-actions"><button class="btn ghost" data-act="saveInboxDraft">${ic('save', 18)} ${cap.inboxId ? 'Shrani spremembe' : 'Shrani v Inbox'}</button><button class="btn" data-act="analyze">${ic('spark', 18)} Razberi z AI</button></div>`;
   updateAttach();
 }
 function updateAttach() {
@@ -2138,6 +2232,8 @@ async function startCloudSync(user) {
         S.settings.showDocs = S.settings.showDocs !== false;
         S.settings.showShopping = S.settings.showShopping !== false;
         S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
+S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
+if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
         S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
         fixInbox();
         store.set(JSON.stringify(S));
@@ -2176,6 +2272,8 @@ async function startCloudSync(user) {
       S.settings.showDocs = S.settings.showDocs !== false;
       S.settings.showShopping = S.settings.showShopping !== false;
       S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
+S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
+if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
       S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
       fixInbox();
       store.set(JSON.stringify(S));
@@ -2698,9 +2796,9 @@ function openSettings() {
     ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:#8E2C10">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code> in vpiši vrednosti iz Firebase konzole.</p>`}
     <div id="gBlock">${googleBlockInner()}</div>
     ${isStandalone() ? '' : `<h3 class="rvh">Aplikacija</h3>
-    <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('download', 16)} Namesti na telefon</button></div></div>`}
+    <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('save', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
-    <div class="set-actions"><button class="btn ghost" data-act="export">Izvozi varnostno kopijo</button><button class="btn ghost" data-act="import">Uvozi</button><button class="btn ghost danger" data-act="wipe">Izbriši vse podatke</button></div>
+    <div class="set-actions"><button class="btn ghost" data-act="export">${ic('save',16)} Izvozi varnostno kopijo</button><button class="btn ghost" data-act="import">Uvozi</button><button class="btn ghost danger" data-act="wipe">Izbriši vse podatke</button></div>
     <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz (slike računov niso v izvozu).</p>
     <p class="help muted">Različica aplikacije: ${esc(APP_VERSION)}</p>`, 'settings');
 }
@@ -3114,6 +3212,38 @@ function useCurrentLocation() {
   }, () => toast('GPS lokacije ni bilo mogoče določiti. Dovoli dostop do lokacije.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 }
 
+/* ---------- daily plan editing ---------- */
+let planBlockForm = { i: null, value: null };
+function openPlanBlockEdit(i) {
+  const p = S.plan && S.plan.date === today() ? S.plan : null;
+  const b = p && p.bloki ? p.bloki[i] : null;
+  if (!b) return;
+  planBlockForm = { i, value: JSON.parse(JSON.stringify(b)) };
+  const types = Object.entries(TIP).map(([k,v]) => `<option value="${k}" ${b.tip === k ? 'selected' : ''}>${v}</option>`).join('');
+  openSheet(`<div class="sheet-h"><div><span class="day-kicker">MOJ DNEVNI NAČRT</span><h2>Uredi dogodek</h2></div>${closeBtn}</div>
+    <p class="hint">Sprememba velja samo za današnji načrt. Ob naslednjem AI sestavljanju se lahko razpored ponovno prilagodi.</p>
+    <div class="field"><label for="planEditTitle">Naziv</label><input id="planEditTitle" type="text" value="${esc(b.naslov)}" autocomplete="off"></div>
+    <div class="field two"><div><label for="planEditFrom">Od</label><input id="planEditFrom" type="time" value="${esc(b.od)}"></div><div><label for="planEditTo">Do</label><input id="planEditTo" type="time" value="${esc(b.do)}"></div></div>
+    <div class="field"><label for="planEditType">Vrsta</label><select id="planEditType">${types}</select></div>
+    <label class="cal-check"><input id="planEditDone" type="checkbox" ${b.done ? 'checked' : ''}> Označi kot opravljeno</label>
+    <div class="sheet-f"><button class="btn wide" data-act="savePlanBlock">${ic('save',18)} Shrani spremembe</button></div>`, 'planEdit');
+}
+function savePlanBlock() {
+  const p = S.plan && S.plan.date === today() ? S.plan : null;
+  const i = planBlockForm.i; const b = p && p.bloki ? p.bloki[i] : null;
+  if (!b) return;
+  const naslov = ($('#planEditTitle')?.value || '').trim();
+  const od = tm($('#planEditFrom')?.value); const doo = tm($('#planEditTo')?.value);
+  const tip = $('#planEditType')?.value || 'opravilo';
+  const done = !!$('#planEditDone')?.checked;
+  if (!naslov) { toast('Vnesi naziv dogodka.'); return; }
+  if (!od || !doo || toM(doo) <= toM(od)) { toast('Čas "do" mora biti kasneje kot čas "od".'); return; }
+  b.naslov = naslov; b.od = od; b.do = doo; b.tip = TIP[tip] ? tip : 'opravilo'; b.done = done;
+  if (b.task_id) { const t = byId(S.tasks, b.task_id); if (t) t.done = done; }
+  p.bloki = p.bloki.slice().sort((a,c) => toM(a.od) - toM(c.od));
+  save(); sheet.close(); render(); toast('Dogodek je posodobljen.');
+}
+
 /* ---------- actions ---------- */
 const byId = (list, id) => list.find(x => x.id === id);
 let billRepeatForm = { id: null };
@@ -3148,6 +3278,54 @@ function addBillNextReminder(b) {
   }
 }
 
+let fridgeManualOpen = false;
+let shopRecognition = null;
+let shopVoiceBuffer = '';
+function toggleFridgeForm() {
+  fridgeManualOpen = !fridgeManualOpen;
+  const el = $('#manualFridgeForm');
+  if (el) el.hidden = !fridgeManualOpen;
+  if (fridgeManualOpen) setTimeout(() => $('#fridgeName')?.focus(), 50);
+}
+function saveManualFridge() {
+  const name = ($('#fridgeName')?.value || '').trim();
+  if (!name) { toast('Vpiši sestavino.'); return; }
+  const f = { id: uid(), name, qty: ($('#fridgeQty')?.value || '').trim() || null, category: ($('#fridgeCategory')?.value || 'Drugo'), expires: dt($('#fridgeExpires')?.value), est: false, note: ($('#fridgeNote')?.value || '').trim() || null };
+  S.fridge.push(f); save(); fridgeManualOpen = false; render(); toast(`${name} je dodan v hladilnik.`);
+}
+function cancelManualFridge() { fridgeManualOpen = false; render(); }
+function splitVoiceShopping(text) {
+  return String(text || '').replace(/\s+/g,' ').trim().replace(/[.?!]+$/,'')
+    .split(/\s*,\s*|\s+in\s+/i).map(x => x.trim()).filter(Boolean).slice(0, 12);
+}
+function toggleShopVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Ta brskalnik ne podpira glasovnega vnosa. Poskusi Chrome na telefonu ali računalniku.'); return; }
+  if (shopRecognition) { try { shopRecognition.stop(); } catch(e){}; return; }
+  const input = $('#quickShop');
+  if (!input) return;
+  shopVoiceBuffer = '';
+  const r = new SR(); shopRecognition = r;
+  r.lang = 'sl-SI'; r.interimResults = true; r.continuous = false;
+  const btn = $('.quick-mic');
+  if (btn) btn.classList.add('recording');
+  r.onresult = ev => {
+    let finalText=''; let interim='';
+    for (const res of ev.results) { const txt = res[0]?.transcript || ''; res.isFinal ? finalText += txt : interim += txt; }
+    const textNow = (shopVoiceBuffer + ' ' + finalText + ' ' + interim).trim();
+    input.value = textNow;
+  };
+  r.onerror = ev => { toast(ev.error === 'not-allowed' ? 'Dovoli mikrofon za glasovni vnos.' : 'Glasovnega vnosa ni bilo mogoče uporabiti.'); shopRecognition=null; if(btn)btn.classList.remove('recording'); };
+  r.onend = () => {
+    shopRecognition = null; if(btn)btn.classList.remove('recording');
+    const textNow = (input.value || '').trim();
+    if (!textNow) return;
+    const items = splitVoiceShopping(textNow);
+    if (items.length) { items.forEach(x => addToShop([x])); input.value=''; save(); render(); toast(`Na seznam dodano: ${items.join(', ')}`); }
+  };
+  try { r.start(); } catch(e) { shopRecognition=null; if(btn)btn.classList.remove('recording'); toast('Glasovnega vnosa ni bilo mogoče zagnati.'); }
+}
+
 const A = {
   tab(b) {
     const next = b.dataset.tab;
@@ -3160,7 +3338,7 @@ const A = {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   },
   settings() { openSettings(); },
-  themeToggle() { applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true); },
+  themeToggle() { applyTheme('light', true); },
   undo() { if (undoAction) { const fn = undoAction; undoAction = null; fn(); $('#toast').classList.remove('on'); } },
   taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
   syncGoogleTasks() { syncGoogleTasks(); },
@@ -3217,13 +3395,8 @@ const A = {
   dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
   energy(b) { S.ui.energy = b.dataset.v; save(); render(); },
   plan() { genPlan(); },
-  blk(b) {
-    const p = S.plan; if (!p) return;
-    const bl = p.bloki[+b.dataset.i]; if (!bl) return;
-    bl.done = !bl.done;
-    if (bl.task_id) { const t = byId(S.tasks, bl.task_id); if (t) t.done = bl.done; }
-    save(); render();
-  },
+  blk(b) { openPlanBlockEdit(+b.dataset.i); },
+  savePlanBlock() { savePlanBlock(); },
   toggleTask(b) {
     const t = byId(S.tasks, b.dataset.id); if (!t) return;
     if (!t.done && normalizedRepeatTask(t)) {
@@ -3307,10 +3480,15 @@ Object.assign(A, {
   gRefresh() { gcalLoadToday(true).then(() => { if (sheet.open) toast('Dogodki osveženi.'); }); },
   install() { installApp(); },
   meals() { S.ui.tab = 'fridge'; save(); genMeals(S.ui.mealMode || 'fridge'); },
+  fridgeNew() { toggleFridgeForm(); },
+  fridgeSave() { saveManualFridge(); },
+  fridgeCancel() { cancelManualFridge(); },
+  shopTab(b) { S.ui.shopTab = b.dataset.v === 'docs' ? 'docs' : 'list'; save(); render({ preserve: false }); window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); },
+  shopVoice() { toggleShopVoice(); },
   cook() { S.ui.tab = 'fridge'; save(); genMeals(); },
-  shopGen() { S.ui.tab = 'fridge'; save(); genShop(); },
-  shopFromMeals() { S.ui.tab = 'fridge'; save(); genShopFromMeals(); },
-  openShop() { S.ui.tab = 'fridge'; save(); render(); setTimeout(() => { const el = $('#shopSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.scrollTo(0, 0); }, 30); },
+  shopGen() { S.ui.tab = 'shop'; save(); genShop(); },
+  shopFromMeals() { S.ui.tab = 'shop'; save(); genShopFromMeals(); },
+  openShop() { S.ui.tab = 'shop'; save(); render({ preserve: false }); window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); },
   mealEdit(b) { openMealEdit(+b.dataset.i); },
   mealEditGo(b) { customizeMeal(+b.dataset.i); },
   mealRecipe(b) { genRecipe(+b.dataset.i); },
@@ -3337,7 +3515,7 @@ Object.assign(A, {
   },
   quickShop() {
     const i = $('#quickShop'), v = i && i.value.trim(); if (!v) return;
-    addToShop([v]); save(); render(); const n = $('#quickShop'); if (n) n.focus();
+    const items = splitVoiceShopping(v); items.forEach(x => addToShop([x])); save(); render(); const n = $('#quickShop'); if (n) n.focus();
   }
 });
 Object.assign(A, {
