@@ -439,12 +439,32 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 }
 
 .g-user{display:flex;align-items:center;gap:10px;margin:0 0 8px}.g-user img{border-radius:50%}.g-user small{display:block;color:var(--ink2)}
-.g-steps{margin:8px 0 0;padding-left:20px}.g-steps li{margin:6px 0;font-size:14px}
 code{font-size:.9em;background:var(--blue-soft);padding:1px 5px;border-radius:6px}
 .gcal-list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
 .gcal-row{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}.gcal-row:last-child{border-bottom:0}
 .gcal-row time{flex:0 0 52px;font:800 14px var(--font-h);color:var(--petrol)}
 .gcal-row div{min-width:0;flex:1}.gcal-row strong{display:block;font-size:14px;overflow-wrap:anywhere}.gcal-row small{display:block;color:var(--ink2);font-size:12px}
+
+.dash-btns{display:flex;gap:8px;flex:0 0 auto}
+.cal-nav{display:flex;align-items:center;gap:8px;margin:4px 0 10px}
+.cal-nav strong{flex:1;text-align:center;text-transform:capitalize;font:800 17px var(--font-h)}
+.cal-arrow{width:40px;height:40px;font-size:24px;line-height:1;border:1px solid var(--line);color:var(--ink)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.cal-dow{text-align:center;font-size:11.5px;font-weight:700;color:var(--ink2);padding:2px 0 4px}
+.cal-cell{min-height:46px;border:1.5px solid transparent;background:var(--blue-soft);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:700 14px var(--font-b);color:var(--ink);cursor:pointer;padding:2px;touch-action:manipulation}
+.cal-cell.other{opacity:.5}
+.cal-cell.today{border-color:var(--petrol)}
+.cal-cell.sel{background:var(--blue);color:var(--blue-ink);border-color:var(--blue)}
+.cal-dots{display:flex;gap:2px;height:5px}.cal-dots b{width:5px;height:5px;border-radius:50%;background:var(--petrol)}
+.cal-cell.sel .cal-dots b{background:currentColor}
+.cal-day-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 6px}
+.cal-day-h h3{margin:0;font:800 16px var(--font-h);text-transform:capitalize;min-width:0}
+.cal-day-h .btn{flex:0 0 auto}
+.cal-ev{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:11px 2px;cursor:pointer;color:inherit;font:inherit;min-height:56px}
+.cal-ev time{flex:0 0 78px;font:800 13px var(--font-h);color:var(--petrol);padding-top:2px}
+.cal-ev div{min-width:0;flex:1}.cal-ev strong{display:block;overflow-wrap:anywhere}.cal-ev small{display:block;color:var(--ink2);font-size:12.5px}
+.cal-check{display:flex!important;align-items:center;gap:10px;font-weight:700}.cal-check input{width:22px;height:22px;min-height:0;flex:0 0 auto}
+a.btn.plain{text-decoration:none;color:var(--ink2);background:transparent;border-color:transparent}
 </style>
 </head>
 <body>
@@ -621,6 +641,12 @@ let S = load();
 S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDocs = S.settings.showDocs !== false; S.settings.showShopping = S.settings.showShopping !== false;
 S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
+function fixInbox() {
+  S.inbox = (Array.isArray(S.inbox) ? S.inbox : []).filter(x => x && typeof x === 'object');
+  const seen = new Set();
+  S.inbox.forEach(x => { let id = (x.id == null || x.id === '') ? uid() : String(x.id); while (seen.has(id)) id = uid(); x.id = id; seen.add(id); });
+}
+fixInbox();
 
 function preferredTheme() {
   return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -1654,12 +1680,16 @@ async function loadInboxCapture(id) {
   openSheet(null, 'cap');
 }
 async function deleteInboxItem(id) {
-  const item = byId(S.inbox, id); if (!item) return;
-  for (const iid of item.imageIds || []) await idb.del(iid).catch(()=>{});
-  if (item.audioId) await idb.del(item.audioId).catch(()=>{});
-  S.inbox = S.inbox.filter(x => x.id !== id);
+  id = String(id);
+  const item = S.inbox.find(x => String(x.id) === id), before = S.inbox.length;
+  S.inbox = S.inbox.filter(x => String(x.id) !== id);
   if (cap.inboxId === id) cap.inboxId = null;
   save();
+  if (item) (async () => {
+    for (const iid of item.imageIds || []) await idb.del(iid).catch(() => {});
+    if (item.audioId) await idb.del(item.audioId).catch(() => {});
+  })();
+  return S.inbox.length < before;
 }
 function renderInbox() {
   const list = S.inbox.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -1909,6 +1939,7 @@ async function gSignOut() {
 }
 function refreshGoogleUi() {
   const gb = $('#gBlock'); if (gb) gb.innerHTML = googleBlockInner();
+  if (sheet.open && sheet.dataset.kind === 'cal') { calRender(); if (gcalOn() && !calUi.events.length && !calUi.loading) calLoad(); return; }
   if (!(sheet.open && sheet.dataset.kind !== 'settings')) render();
 }
 function googleBlockInner() {
@@ -1988,9 +2019,165 @@ function gcalHtml() {
   gcalLoadToday(false);
   const ev = gcal.events;
   const rows = ev.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong>${e.loc ? `<small>${esc(e.loc)}</small>` : ''}</div></li>`).join('');
-  return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar danes</h2><p class="dash-sub">${gcal.loading && !ev.length ? 'Nalagam …' : gcal.err ? esc(gcal.err) : ev.length ? `${ev.length} ${ev.length === 1 ? 'dogodek' : 'dogodkov'} v Google koledarju` : 'Danes ni dogodkov.'}</p></div><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button></div>${rows ? `<ul class="gcal-list">${rows}</ul>` : ''}</section>`;
+  return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar danes</h2><p class="dash-sub">${gcal.loading && !ev.length ? 'Nalagam …' : gcal.err ? esc(gcal.err) : ev.length ? `${ev.length} ${ev.length === 1 ? 'dogodek' : 'dogodkov'} v Google koledarju` : 'Danes ni dogodkov.'}</p></div><div class="dash-btns"><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button><button class="btn sm" data-act="calOpen">${ic('calendar', 16)} Koledar</button></div></div>${rows ? `<ul class="gcal-list">${rows}</ul>` : ''}</section>`;
 }
 if (fbCfg()) fbInit().catch(() => {});
+
+
+/* ---------- Pogled in urejanje Google koledarja ---------- */
+const calUi = { y: 0, m: 0, sel: null, events: [], loading: false, err: null, seq: 0, form: null, saving: false };
+const DAYN = ['Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob', 'Ned'];
+function calNorm(e) {
+  const allDay = !!e.start.date;
+  let sd, ed, st = null, en = null;
+  if (allDay) { sd = e.start.date; ed = addDays(e.end && e.end.date ? e.end.date : e.start.date, -1); if (ed < sd) ed = sd; }
+  else { st = new Date(e.start.dateTime); en = e.end && e.end.dateTime ? new Date(e.end.dateTime) : st; sd = ymd(st); ed = ymd(new Date(Math.max(st.getTime(), en.getTime() - 1))); }
+  return { id: e.id, title: e.summary || '(brez naslova)', allDay, sd, ed, start: st, end: en, loc: e.location || '', desc: e.description || '', link: e.htmlLink || '' };
+}
+function calRange() {
+  const first = new Date(calUi.y, calUi.m, 1), off = (first.getDay() + 6) % 7;
+  const start = new Date(calUi.y, calUi.m, 1 - off), end = new Date(start); end.setDate(start.getDate() + 42);
+  return { start, end };
+}
+function calRender() {
+  if (!(sheet.open && sheet.dataset.kind === 'cal')) return;
+  $('#sheetBody').innerHTML = calUi.form ? calFormHtml() : calHtml();
+}
+function calOpen() {
+  const t = new Date();
+  calUi.sel = today(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.form = null; calUi.err = null;
+  openSheet(calHtml(), 'cal'); calLoad();
+}
+async function calLoad() {
+  if (!gcalOn()) { calUi.loading = false; calRender(); return; }
+  const my = ++calUi.seq; calUi.loading = true; calUi.err = null; calRender();
+  try {
+    const { start, end } = calRange();
+    const q = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '250' });
+    const r = await gapi('calendars/primary/events?' + q);
+    if (my !== calUi.seq) return;
+    calUi.events = arr(r && r.items).filter(e => e.status !== 'cancelled' && e.start).map(calNorm);
+  } catch (e) {
+    if (my !== calUi.seq) return;
+    calUi.err = e.message === 'GCAL_AUTH' ? 'Povezava je potekla. Poveži znova.' : e.message; calUi.events = [];
+  }
+  calUi.loading = false; calRender();
+}
+function calEventsByDay() {
+  const map = {}, { start, end } = calRange(), lo = ymd(start), hi = ymd(new Date(end.getTime() - 1));
+  calUi.events.forEach(e => {
+    let d = e.sd < lo ? lo : e.sd; const stop = e.ed > hi ? hi : e.ed; let n = 0;
+    while (d <= stop && n++ < 45) { (map[d] = map[d] || []).push(e); d = addDays(d, 1); }
+  });
+  Object.values(map).forEach(l => l.sort((a, b) => (b.allDay - a.allDay) || ((a.start || 0) - (b.start || 0))));
+  return map;
+}
+function calTimeLabel(e, day) {
+  if (e.allDay) return e.sd === e.ed ? 'Cel dan' : 'Več dni';
+  if (e.sd !== e.ed) return day === e.sd ? hm(e.start) + ' →' : day === e.ed ? '→ ' + hm(e.end) : 'Cel dan';
+  return hm(e.start) + (e.end && e.end > e.start ? '–' + hm(e.end) : '');
+}
+function calHtml() {
+  let h = `<div class="sheet-h"><h2>Koledar</h2>${closeBtn}</div>`;
+  if (!gcalOn()) {
+    return h + `<div class="empty"><p>${gcal.user ? 'Povezava z Google koledarjem je potekla.' : 'Poveži Google koledar, da vidiš in urejaš dogodke.'}</p>${fbCfg() ? `<button class="btn" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 18) + (gcal.user ? ' Poveži znova' : ' Prijava z Google')}</button>` : '<p class="help">Firebase podatki niso vpisani v index.html.</p>'}</div>`;
+  }
+  const first = new Date(calUi.y, calUi.m, 1), label = first.toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' });
+  const { start } = calRange(), byDay = calEventsByDay(), t = today();
+  h += `<div class="cal-nav"><button class="mini cal-arrow" data-act="calPrev" aria-label="Prejšnji mesec">‹</button><strong>${esc(label)}</strong><button class="mini cal-arrow" data-act="calNext" aria-label="Naslednji mesec">›</button><button class="btn sm ghost" data-act="calToday">Danes</button></div>`;
+  h += `<div class="cal-grid">${DAYN.map(d => `<span class="cal-dow">${d}</span>`).join('')}`;
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const key = ymd(d), n = (byDay[key] || []).length;
+    h += `<button class="cal-cell${d.getMonth() !== calUi.m ? ' other' : ''}${key === t ? ' today' : ''}${key === calUi.sel ? ' sel' : ''}" data-act="calDay" data-d="${key}" aria-label="${esc(d.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long' }))}${n ? ', ' + n + ' dogodkov' : ''}"><span>${d.getDate()}</span><i class="cal-dots">${'<b></b>'.repeat(Math.min(n, 3))}</i></button>`;
+  }
+  h += `</div>`;
+  const sel = parseYmd(calUi.sel), list = byDay[calUi.sel] || [];
+  h += `<div class="cal-day-h"><h3>${esc(sel.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }))}</h3><button class="btn sm" data-act="calNew">${ic('plus', 16)} Nov dogodek</button></div>`;
+  if (calUi.err) h += `<p class="help" style="color:#8E2C10">${esc(calUi.err)}</p>`;
+  if (calUi.loading) h += `<p class="help"><span class="spin"></span> Nalagam …</p>`;
+  else if (!list.length && !calUi.err) h += `<p class="muted">Ta dan ni dogodkov.</p>`;
+  h += `<div class="cal-list">${list.map(e => `<button class="cal-ev" data-act="calEdit" data-id="${esc(e.id)}"><time>${esc(calTimeLabel(e, calUi.sel))}</time><div><strong>${esc(e.title)}</strong>${e.loc ? `<small>${esc(e.loc)}</small>` : ''}</div></button>`).join('')}</div>`;
+  return h;
+}
+function calFormHtml() {
+  const f = calUi.form;
+  return `<div class="sheet-h"><h2>${f.id ? 'Uredi dogodek' : 'Nov dogodek'}</h2>${closeBtn}</div>
+    <div class="field"><label for="calTitle">Naslov</label><input type="text" id="calTitle" value="${esc(f.title)}" autocomplete="off" placeholder="npr. Zobozdravnik"></div>
+    <div class="field"><label class="cal-check"><input type="checkbox" id="calAllDay" data-act="calToggleAllDay" ${f.allDay ? 'checked' : ''}> Cel dan</label></div>
+    <div class="field"><label for="calDate">Datum</label><input type="date" id="calDate" value="${esc(f.date)}"></div>
+    <div class="field" id="calEndDateWrap" ${f.allDay ? '' : 'hidden'}><label for="calDateEnd">Do datuma (neobvezno)</label><input type="date" id="calDateEnd" value="${esc(f.endDate || '')}"></div>
+    <div class="field" id="calTimes" ${f.allDay ? 'hidden' : ''}><div class="two"><div><label for="calStart">Od</label><input type="time" id="calStart" value="${esc(f.start)}"></div><div><label for="calEnd">Do</label><input type="time" id="calEnd" value="${esc(f.end)}"></div></div></div>
+    <div class="field"><label for="calLoc">Lokacija</label><input type="text" id="calLoc" value="${esc(f.loc)}" autocomplete="off"></div>
+    <div class="field"><label for="calDesc">Opis</label><textarea id="calDesc" rows="3">${esc(f.desc)}</textarea></div>
+    <div class="sheet-f">
+      <button class="btn wide" data-act="calSave" ${calUi.saving ? 'disabled' : ''}>${calUi.saving ? '<span class="spin"></span> Shranjujem …' : ic('check', 18) + ' Shrani'}</button>
+      <button class="btn wide ghost" data-act="calBack">Prekliči</button>
+      ${f.id ? `<button class="btn wide ghost danger" data-act="calDel" ${calUi.saving ? 'disabled' : ''}>${ic('trash', 18)} Izbriši dogodek</button>` : ''}
+      ${f.link ? `<a class="btn wide plain" href="${esc(f.link)}" target="_blank" rel="noopener">Odpri v Google koledarju</a>` : ''}
+    </div>`;
+}
+function calForm(e) {
+  const n = new Date(), nextH = new Date(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours() + 1, 0), isToday = calUi.sel === today();
+  if (e) return { id: e.id, title: e.title === '(brez naslova)' ? '' : e.title, allDay: e.allDay, date: e.sd, endDate: e.allDay && e.ed > e.sd ? e.ed : '', start: e.start ? hm(e.start) : '09:00', end: e.end ? hm(e.end) : '10:00', loc: e.loc, desc: e.desc, link: e.link };
+  const st = isToday && nextH.getDate() === n.getDate() ? hm(nextH) : '09:00', en = isToday && nextH.getDate() === n.getDate() ? hm(new Date(nextH.getTime() + 3600000)) : '10:00';
+  return { id: null, title: '', allDay: false, date: calUi.sel, endDate: '', start: st, end: en, loc: '', desc: '', link: '' };
+}
+function calBody(f) {
+  const body = { summary: f.title, location: f.loc, description: f.desc };
+  if (f.allDay) {
+    const last = dt(f.endDate) && f.endDate > f.date ? f.endDate : f.date;
+    body.start = { date: f.date }; body.end = { date: addDays(last, 1) };
+    if (f.id) { body.start.dateTime = null; body.end.dateTime = null; }
+  } else {
+    const st = tm(f.start) || '09:00', en = tm(f.end), s = new Date(`${f.date}T${st}:00`);
+    let e = en ? new Date(`${f.date}T${en}:00`) : null;
+    if (!e || e <= s) e = new Date(s.getTime() + 3600000);
+    body.start = { dateTime: `${f.date}T${st}:00`, timeZone: GTZ }; body.end = { dateTime: `${ymd(e)}T${hm(e)}:00`, timeZone: GTZ };
+    if (f.id) { body.start.date = null; body.end.date = null; }
+  }
+  return body;
+}
+async function calSave() {
+  const f = calUi.form; if (!f || calUi.saving) return;
+  const g = id => { const el = $('#' + id); return el ? el.value : ''; };
+  f.title = g('calTitle').trim(); f.allDay = !!($('#calAllDay') || {}).checked; f.date = g('calDate'); f.endDate = g('calDateEnd');
+  f.start = g('calStart'); f.end = g('calEnd'); f.loc = g('calLoc').trim(); f.desc = g('calDesc');
+  if (!f.title) { toast('Vpiši naslov dogodka.'); return; }
+  if (!dt(f.date)) { toast('Izberi datum.'); return; }
+  calUi.saving = true; calRender();
+  try {
+    const body = JSON.stringify(calBody(f));
+    if (f.id) await gapi(`calendars/primary/events/${encodeURIComponent(f.id)}`, { method: 'PATCH', body });
+    else await gapi('calendars/primary/events', { method: 'POST', body });
+    const d = parseYmd(f.date); calUi.sel = f.date; calUi.y = d.getFullYear(); calUi.m = d.getMonth(); calUi.form = null;
+    toast('Dogodek je shranjen.'); gcal.loadedAt = 0; gcalLoadToday(true);
+    calUi.saving = false; await calLoad(); return;
+  } catch (e) {
+    if (e.message === 'GCAL_AUTH') { calUi.form = null; toast('Povezava je potekla. Poveži znova.'); }
+    else toast(e.message === 'NOTFOUND' ? 'Dogodka ni več v koledarju.' : e.message);
+  }
+  calUi.saving = false; calRender();
+}
+async function calDel() {
+  const f = calUi.form; if (!f || !f.id || calUi.saving) return;
+  if (!confirm('Izbrišem ta dogodek iz Google koledarja?')) return;
+  calUi.saving = true; calRender();
+  try {
+    try { await gapi(`calendars/primary/events/${encodeURIComponent(f.id)}`, { method: 'DELETE' }); }
+    catch (e) { if (e.message !== 'NOTFOUND') throw e; }
+    calUi.form = null; toast('Dogodek izbrisan.'); gcal.loadedAt = 0; gcalLoadToday(true);
+    calUi.saving = false; await calLoad(); return;
+  } catch (e) {
+    if (e.message === 'GCAL_AUTH') { calUi.form = null; toast('Povezava je potekla. Poveži znova.'); } else toast(e.message);
+  }
+  calUi.saving = false; calRender();
+}
+function calShift(n) {
+  const d = new Date(calUi.y, calUi.m + n, 1); calUi.y = d.getFullYear(); calUi.m = d.getMonth();
+  const t = new Date(); calUi.sel = (t.getFullYear() === calUi.y && t.getMonth() === calUi.m) ? today() : ymd(d);
+  calLoad();
+}
 
 /* ---------- settings: izbira modela ---------- */
 const MODEL_KNOWN = [
@@ -2037,13 +2224,6 @@ function openSettings() {
     <h3 class="rvh">Google račun in koledar</h3>
     ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:#8E2C10">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code> in vpiši vrednosti iz Firebase konzole.</p>`}
     <div id="gBlock">${googleBlockInner()}</div>
-    <details class="fold"><summary>Kako to nastavim?</summary><ol class="g-steps">
-      <li>V <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase konzoli</a> odpri projekt, <strong>Authentication → Sign-in method</strong> in vklopi <strong>Google</strong>.</li>
-      <li>V <strong>Authentication → Settings → Authorized domains</strong> dodaj domeno, kjer teče aplikacija (npr. <code>uporabnik.github.io</code>).</li>
-      <li>V <strong>Project settings → Your apps</strong> dodaj spletno aplikacijo in vrednosti iz <code>firebaseConfig</code> vpiši v <code>FIREBASE_CONFIG</code> na vrhu skripte v <code>index.html</code>.</li>
-      <li>V <a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Google Cloud</a> (isti projekt) vklopi <strong>Google Calendar API</strong>.</li>
-      <li>Na zaslonu za soglasje (OAuth consent screen) dodaj obseg <code>calendar.events</code>. Dokler je aplikacija v testnem načinu, dodaj svoj e-naslov med testne uporabnike.</li>
-    </ol></details>
     ${isStandalone() ? '' : `<h3 class="rvh">Aplikacija</h3>
     <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('download', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
@@ -2087,7 +2267,7 @@ $('#fileImport').addEventListener('change', async e => {
     const o = JSON.parse(await f.text());
     const key = S.settings.apiKey, fbc = S.settings.fbConfig || '';
     S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
-    save(); render(); toast('Podatki uvoženi.');
+    fixInbox(); save(); render(); toast('Podatki uvoženi.');
   } catch (err) { toast('Datoteke ni bilo mogoče uvoziti.'); }
 });
 
@@ -2520,7 +2700,7 @@ const A = {
   },
   openInbox() { openSheet(renderInbox(), 'inbox'); },
   openInboxItem(b) { loadInboxCapture(b.dataset.id); },
-  deleteInbox(b) { const id=b.dataset.id; deleteInboxItem(id).then(()=>{ render(); if (sheet.open && sheet.dataset.kind === 'inbox') $('#sheetBody').innerHTML = renderInbox(); toast('Vnos izbrisan.'); }); },
+  deleteInbox(b) { deleteInboxItem(b.dataset.id).then(ok => { render(); if (sheet.open && sheet.dataset.kind === 'inbox') $('#sheetBody').innerHTML = renderInbox(); toast(ok ? 'Vnos izbrisan.' : 'Vnosa ni bilo mogoče najti.'); }); },
   backCompose() { cap.result = null; renderCompose(); },
   apply() { applyResult(); },
   pay(b) {
@@ -2629,6 +2809,17 @@ const A = {
 Object.assign(A, {
   gSignIn() { gSignIn(); },
   gSignOut() { gSignOut(); },
+  calOpen() { calOpen(); },
+  calPrev() { calShift(-1); },
+  calNext() { calShift(1); },
+  calToday() { const t = new Date(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.sel = today(); calLoad(); },
+  calDay(b) { calUi.sel = b.dataset.d; calRender(); },
+  calNew() { calUi.form = calForm(null); calRender(); },
+  calEdit(b) { const e = calUi.events.find(x => x.id === b.dataset.id); if (!e) return; calUi.form = calForm(e); calRender(); },
+  calBack() { calUi.form = null; calRender(); },
+  calSave() { calSave(); },
+  calDel() { calDel(); },
+  calToggleAllDay(b) { const on = b.checked; const t = $('#calTimes'), w = $('#calEndDateWrap'); if (t) t.hidden = on; if (w) w.hidden = !on; },
   gRefresh() { gcalLoadToday(true).then(() => { if (sheet.open) toast('Dogodki osveženi.'); }); },
   install() { installApp(); },
   meals() { S.ui.tab = 'fridge'; save(); genMeals(S.ui.mealMode || 'fridge'); },
