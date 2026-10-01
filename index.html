@@ -390,6 +390,14 @@ img[data-img]:not([src]){visibility:hidden}
 #toast.on:has(button){pointer-events:auto}
 dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 
+.gcal-day{margin:12px 0 6px;font:800 14px var(--font-h);color:var(--ink)}.gcal-day small{font-weight:600;color:var(--ink2);margin-left:6px;text-transform:capitalize}
+.gcal-empty{margin:0 0 4px;color:var(--ink2);font-size:13px}
+.work-line{display:flex;align-items:center;gap:6px;margin:-6px 0 12px}
+.work-days{display:flex;flex-wrap:wrap;gap:6px}
+.work-day{position:relative}.work-day input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.work-day span{display:inline-flex;align-items:center;justify-content:center;min-width:46px;min-height:40px;padding:0 10px;border:1px solid var(--line);border-radius:12px;font-weight:700;font-size:14px;background:var(--paper);color:var(--ink)}
+.work-day input:checked+span{background:var(--petrol);border-color:var(--petrol);color:#fff}
+.work-day input:focus-visible+span{outline:3px solid var(--blue-soft);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
 
 [data-theme="dark"]{
@@ -426,12 +434,6 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .trend-bar{width:min(30px,70%);min-height:4px;border-radius:7px 7px 3px 3px;background:var(--petrol)}
 .trend-col strong{font-size:11px;font-weight:700}
 .trend-col small{font-size:10.5px;color:var(--ink2)}
-.swiping{transition:transform .16s,opacity .16s;background:var(--paper);touch-action:pan-y;user-select:none}
-.swiping.is-swipe-right{background:linear-gradient(90deg,var(--moss-t),var(--paper) 34%)}
-.swiping.is-swipe-left{background:linear-gradient(270deg,var(--coral-t),var(--paper) 34%)}
-.swipe-hint{display:flex;gap:8px;align-items:center;margin:8px 0 12px;color:var(--ink2);font-size:13px}
-.swipe-hint .s-good{color:#1E6B3E;font-weight:700}
-.swipe-hint .s-bad{color:#8E2C10;font-weight:700}
 .share-box{display:flex;align-items:center;gap:12px;background:var(--petrol-t);border-radius:14px;padding:12px;margin:10px 0}
 .share-box p{margin:0;color:var(--petrol-d);font-size:13.5px}
 @media(max-width:560px){
@@ -563,7 +565,7 @@ nav button[aria-current=page]::before{display:none}
 details.meal{border-bottom:1px solid var(--line)}details.meal:first-of-type{border-top:1px solid var(--line)}details.meal summary{min-height:62px}.tag{border-radius:9px;padding:3px 9px;background:var(--petrol-t);color:var(--petrol-d)}
 .ingredient-card{padding:15px;margin-top:16px}.ingredient-card.empty-ingredients{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px}.ingredient-card.empty-ingredients h3{margin:0;font-size:17px}.ingredient-card.empty-ingredients p{margin:3px 0 0;color:var(--ink2);font-size:13px}.section-mini-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.section-mini-head h3{font:800 18px var(--font-h);margin:1px 0 0}
 .shop-empty{text-align:center;padding:28px 18px}.shop-empty .welcome-ico{margin:0 auto 10px}.shop-empty h2{font-size:24px;margin:3px 0}.shop-empty p{max-width:48ch;margin:6px auto 16px;color:var(--ink2)}.shop-empty-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:460px;margin:0 auto}.shop-panel{padding:15px}.shop-panel #shopSec{margin-top:0}.shop-head{align-items:flex-end}.shop-head-title{min-width:0}.shop-head .set-actions{margin:0 0 0 auto}.shop-g h3{font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--petrol);margin:18px 0 5px}.share-box{background:var(--petrol-t);border:1px solid #C9E3DE}.share-box p{color:var(--petrol-d)}
-.row{min-height:56px;border-color:var(--line)}.row:hover{background:#FBFDFC}.swiping{background:transparent}.swiping.is-swipe-right{background:linear-gradient(90deg,var(--moss-t),transparent 46%)}.swiping.is-swipe-left{background:linear-gradient(270deg,var(--coral-t),transparent 46%)}
+.row{min-height:56px;border-color:var(--line)}.row:hover{background:#FBFDFC}
 .chk{width:42px;height:42px}.circle{border-color:var(--petrol)}.chk[aria-pressed=true] .circle{background:var(--petrol)}.mini{width:40px;height:40px;border-radius:11px}.mini:hover{background:var(--petrol-t);color:var(--petrol-d)}
 .fold{border-top:1px solid var(--line)}.fold>summary{font-weight:800;padding:11px 0}.quick{padding:10px;border:1px solid var(--line);border-radius:15px;background:#FAFCFB}.quick input,.quick select{background:#fff}.
 details.bill summary{min-height:62px}.
@@ -732,7 +734,7 @@ const store = {
 };
 const DEFAULT = {
   settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '',
-    showDeadlines: true, showDocs: true, showShopping: true, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
+    showDeadlines: true, showDocs: true, showShopping: true, work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
   modelCache: null,
   fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true,
@@ -754,6 +756,29 @@ S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDo
 S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
 if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
+/* ---------- delovni čas ---------- */
+function workCfg() {
+  const w = (S.settings && S.settings.work) || {};
+  const okT = v => /^\d{2}:\d{2}$/.test(v || '');
+  const days = Array.isArray(w.days) ? w.days.map(Number).filter(d => d >= 0 && d <= 6) : [1, 2, 3, 4, 5];
+  return { on: w.on !== false, days, from: okT(w.from) ? w.from : '06:00', to: okT(w.to) ? w.to : '14:00', commute: w.commute == null ? 30 : Math.max(0, Math.min(180, parseInt(w.commute) || 0)) };
+}
+function workOn(dateStr) {
+  const w = workCfg();
+  if (!w.on) return null;
+  const d = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+  if (!w.days.includes(d.getDay())) return null;
+  const toMin = t => parseInt(t.slice(0, 2)) * 60 + parseInt(t.slice(3, 5));
+  const fmtM = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  const f = toMin(w.from), t = toMin(w.to);
+  if (t <= f) return null;
+  return { from: w.from, to: w.to, commute: w.commute, leave: fmtM(f - w.commute), back: fmtM(t + w.commute), backMin: t + w.commute };
+}
+function workLine(dateStr, who) {
+  const w = workOn(dateStr);
+  if (!w) return `${who}: ni delovnik (doma).`;
+  return `${who}: služba ${w.from}–${w.to}${w.commute ? `, pot v eno smer ${w.commute} min (odhod od doma ob ${w.leave}, nazaj doma okoli ${w.back})` : ''}.`;
+}
 S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
 function purgeFinance() {
   delete S.bills; delete S.expenses;
@@ -1023,7 +1048,6 @@ function taskSortList(list, mode) {
     return (PRIO[a.prio] ?? 9) - (PRIO[b.prio] ?? 9) || taskDueKey(a).localeCompare(taskDueKey(b));
   });
 }
-function makeSwipeProxy(act, id) { return { dataset:{act, id} }; }
 
 function todayKeyOfItem(x) {
   if (!x) return false;
@@ -1150,6 +1174,7 @@ function planHtml() {
     <div class="ctl-row plan-row"><span class="lbl">Prost čas</span>
       <div class="time-range"><label class="time">Od <input type="time" id="planFrom" value="${esc(u.from)}"></label>
       <label class="time">Do <input type="time" id="planTo" value="${esc(u.to)}"></label></div></div>
+    <p class="help work-line">${(() => { const w = workOn(); return w ? `${ic('calendar', 14)} Služba danes ${w.from}–${w.to}${w.commute ? ` · pot ${w.commute} min` : ''}` : `${ic('calendar', 14)} Danes ni službe`; })()}</p>
     <button class="btn" data-act="plan" ${busy.plan ? 'disabled' : ''}>${busy.plan ? '<span class="spin"></span> Sestavljam …' : ic('spark', 18) + (p ? ' Sestavi znova' : ' Sestavi moj dan')}</button>`;
   if (!p) return h;
   const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
@@ -1188,7 +1213,7 @@ async function genMeals(mode = S.ui.mealMode || 'fridge') {
   if (mode === 'fridge' && !S.fridge.length) { toast('Hladilnik je prazen. Izberi "Samostojno" ali najprej dodaj sestavine.'); render(); return; }
   if (!needKey()) return;
   const tmr = new Date(); tmr.setDate(tmr.getDate() + 1);
-  const workTomorrow = ![0, 6].includes(tmr.getDay());
+  const workTomorrow = !!workOn(ymd(tmr));
   const mp = S.ui.mealprep && workTomorrow;
   const fridgeTxt = mode === 'fridge'
     ? `Vsebina hladilnika (to so glavne sestavine, ki jih moraš upoštevati): ${JSON.stringify(fridgeForAI())}`
@@ -1411,8 +1436,7 @@ function shopHtml() {
   let h = `<div class="sec-h shop-head" id="shopSec"><div class="shop-head-title"><span class="day-kicker">PREGLED NAKUPA</span><h2 class="sec">Nakupovalni seznam</h2></div><span class="plan-mark">${ic('bookmark',20)}</span><div class="set-actions">${s.items.some(i => i.done) ? `<button class="btn sm plain" data-act="clearShop">Počisti kupljeno</button>` : ''}<button class="btn sm ghost" data-act="shareShop">${ic('bookmark', 16)} Shrani / deli seznam</button></div></div>`;
   if (s.shared) h += `<div class="share-box"><p><strong>Skupni seznam</strong><br>Pošlji povezavo Vanesi; na telefonu ga lahko odpre in označuje kupljene artikle.</p></div>`;
   if (s.nasvet) h += `<p class="advice">${esc(s.nasvet)}</p>`;
-  h += `<div class="swipe-hint"><span class="s-good">→ Kupljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
-  h += keys.map(k => `<div class="shop-g"><h3>${esc(k)}</h3><ul class="list">${g[k].map(i => `<li class="row ${i.done ? 'done' : ''} swiping" data-swipe-kind="shop" data-id="${i.id}">${chk(i.done, 'toggleShop', i.id, i.done ? 'Vrni na seznam' : 'Kupljeno')}<div class="grow"><strong>${esc(i.name)}</strong>${i.qty ? `<small>${esc(i.qty)}</small>` : ''}</div><button class="mini" data-act="delShop" data-id="${i.id}" aria-label="Odstrani: ${esc(i.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul></div>`).join('');
+  h += keys.map(k => `<div class="shop-g"><h3>${esc(k)}</h3><ul class="list">${g[k].map(i => `<li class="row ${i.done ? 'done' : ''}" data-id="${i.id}">${chk(i.done, 'toggleShop', i.id, i.done ? 'Vrni na seznam' : 'Kupljeno')}<div class="grow"><strong>${esc(i.name)}</strong>${i.qty ? `<small>${esc(i.qty)}</small>` : ''}</div><button class="mini" data-act="delShop" data-id="${i.id}" aria-label="Odstrani: ${esc(i.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul></div>`).join('');
   if (s.obroki_teden && s.obroki_teden.length) h += `<details class="fold"><summary>Predlagan meni za teden</summary><ul class="list">${s.obroki_teden.map(x => `<li class="row"><div class="grow">${esc(x)}</div></li>`).join('')}</ul></details>`;
   return h;
 }
@@ -1502,16 +1526,15 @@ function renderTasks() {
     const source=t.googleTask ? `Google Tasks${t.googleTaskListName ? ' · '+t.googleTaskListName : ''}` : 'LifeFlow';
     const reminder=taskReminderLabel(t);
     const calDate=t.due|| (t.time?today():null);
-    return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
+    return `<li class="row ${t.done?'done':''}" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
   let h=quickBar({id:'quickTask',placeholder:'Dodaj opravilo …',label:'Novo opravilo',voice:'taskVoice',add:'quickTask',multiline:true})+`<div class="set-actions" style="margin:0 0 10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
-  h+=`<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
   if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Povej ali napiši, kaj moraš urediti, in jih razvrstim.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
   else if(sortMode==='priority'){
     [['visoka','Visoka prioriteta'],['srednja','Srednja prioriteta'],['nizka','Nizka prioriteta']].forEach(([k,label])=>{const g=open.filter(t=>t.prio===k);if(g.length)h+=`<h2 class="sec">${label}</h2><ul class="list">${g.map(row).join('')}</ul>`;});
   } else h+=`<h2 class="sec">Odprta opravila</h2><ul class="list">${open.map(row).join('')}</ul>`;
   const rem=S.reminders.filter(r=>!r.done).sort((a,b)=>(a.at||'9').localeCompare(b.at||'9'));
-  if(rem.length){const lab=r=>r.trigger==='cas'&&r.at?`${fmtDate(r.at.slice(0,10))} ${r.at.slice(11,16)}`:({pred_odhodom:'Pred odhodom',v_trgovini:'V trgovini',konec_meseca:'Konec meseca'}[r.trigger]||'Kadarkoli');h+=`<h2 class="sec">Opomniki</h2><ul class="list">${rem.map(r=>`<li class="row swiping" data-swipe-kind="reminder" data-id="${r.id}">${chk(false,'doneRem',r.id,'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div><span class="badge plain">${esc(lab(r))}</span><button class="mini" data-act="delRem" data-id="${r.id}" aria-label="Izbriši opomnik">${ic('trash',19)}</button></li>`).join('')}</ul>`;}
+  if(rem.length){const lab=r=>r.trigger==='cas'&&r.at?`${fmtDate(r.at.slice(0,10))} ${r.at.slice(11,16)}`:({pred_odhodom:'Pred odhodom',v_trgovini:'V trgovini',konec_meseca:'Konec meseca'}[r.trigger]||'Kadarkoli');h+=`<h2 class="sec">Opomniki</h2><ul class="list">${rem.map(r=>`<li class="row" data-id="${r.id}">${chk(false,'doneRem',r.id,'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div><span class="badge plain">${esc(lab(r))}</span><button class="mini" data-act="delRem" data-id="${r.id}" aria-label="Izbriši opomnik">${ic('trash',19)}</button></li>`).join('')}</ul>`;}
   if(done.length)h+=`<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(row).join('')}</ul></details>`;
   return h;
 }
@@ -1960,21 +1983,28 @@ async function genPlan() {
     rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
     obroki: S.meals && S.meals.date === t ? S.meals.obroki.map(m => ({ tip: m.tip, naziv: m.naziv, cas_min: m.cas })) : [],
     roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due })),
-    kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : []
+    kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : [],
+    koljutri: gcalOn() ? gcal.eventsTmr.map(e => ({ naslov: e.title, od: e.allDay || !e.start ? 'cel dan' : hm(e.start) })) : []
   };
+  const wk = workOn(t), wkTmr = workOn(addDays(t, 1));
+  let freeFrom = u.from;
+  if (wk && wk.backMin < 1440 && toM(freeFrom) < wk.backMin) freeFrom = wk.back;
+  const workTxt = `${workLine(t, 'Danes')} ${workLine(addDays(t, 1), 'Jutri')}${wk ? ' Delovni čas in pot v službo sta fiksna: v načrt vstavi bloke tipa "fiksno" (npr. "Pot v službo", "Služba", "Pot domov"), ki še niso mimo trenutne ure, in v njih ne načrtuj ničesar drugega. Opravila, obroke in rekreacijo načrtuj samo v prostem času zunaj službe in poti.' : ' Danes je prost dan brez službe.'}`;
   const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
 Sestavi realen dnevni načrt za danes.
-Energija uporabnika: ${u.energy}. Prost čas: od ${u.from} do ${u.to}.
+Energija uporabnika: ${u.energy}. Prost čas: od ${freeFrom} do ${u.to}.
+Delovni urnik: ${workTxt}
 Odprta opravila: ${JSON.stringify(ctx.tasks)}
 Živila, ki se kmalu iztečejo: ${JSON.stringify(ctx.fridge)}
 Opomniki za danes: ${JSON.stringify(ctx.rem)}
 Predlagani obroki za danes: ${JSON.stringify(ctx.obroki)}
 Roki v naslednjih 14 dneh (garancije, servis, vinjeta …): ${JSON.stringify(ctx.roki)}
 Dogodki v Google koledarju danes (fiksni, ne prekrivaj jih): ${JSON.stringify(ctx.kol)}
+Dogodki v Google koledarju jutri (samo za pripravo, ne vstavljaj jih v današnji načrt; če je kaj zgodaj ali pomembno, nevsiljivo predlagaj pripravo zvečer): ${JSON.stringify(ctx.koljutri)}
 Vrni JSON:
 {"nasvet":"en kratek stavek o tem, kako naj uporabnik pristopi k današnjemu dnevu","bloki":[{"od":"HH:MM","do":"HH:MM","naslov":"","tip":"opravilo|fiksno|obrok|odmor|rekreacija|opomnik","task_id":"id opravila ali null"}],"opozorila":["kratko opozorilo, če je dan prenatrpan ali se kaj ne izide"]}
 Pravila:
-- Ne načrtuj pred trenutno uro in ne izven prostega časa. Opravila z uro postavi točno na to uro kot "fiksno".
+- Ne načrtuj pred trenutno uro in ne izven prostega časa (razen fiksnih blokov službe in poti). Opravila z uro postavi točno na to uro kot "fiksno".
 - Pri visoki energiji daj zahtevnejša opravila zgodaj; pri nizki energiji največ 2-3 zahtevna opravila in več odmorov.
 - Če je urnik natrpan, predlagaj hitre rešitve (15-minutno kosilo, kratek odmor). Obroke vključi ob običajnih urah, če jih prosti čas zajema.
 - V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek. Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
@@ -2001,7 +2031,7 @@ const FB_VER = '12.19.0';
 const GCAL_SCOPE = ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly'];
 const GTASK_SCOPE = 'https://www.googleapis.com/auth/tasks';
 const GTZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Ljubljana'; } catch (e) { return 'Europe/Ljubljana'; } })();
-const gcal = { fb: null, user: null, token: null, exp: 0, events: [], calendars: [], loadedAt: 0, loading: false, err: null, busy: false };
+const gcal = { fb: null, user: null, token: null, exp: 0, events: [], eventsTmr: [], calendars: [], loadedAt: 0, loading: false, err: null, busy: false };
 const gtask = { lists: [], defaultListId: '@default', loadedAt: 0, syncing: false, err: null };
 try { const t = JSON.parse(sessionStorage.getItem('lf.gtoken') || 'null'); if (t && t.exp > Date.now()) { gcal.token = t.token; gcal.exp = t.exp; } } catch (e) {}
 const fbCfg = () => (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.authDomain && FIREBASE_CONFIG.projectId) ? FIREBASE_CONFIG : parseFbConfig(S.settings.fbConfig);
@@ -2264,7 +2294,7 @@ function gotCred(result) {
   const u = result.user;
   if (u && u.displayName && !(S.settings.name || '').trim()) { S.settings.name = u.displayName.split(' ')[0]; save(); }
 }
-function clearGToken() { gcal.token = null; gcal.exp = 0; gcal.events = []; gcal.calendars = []; gtask.lists = []; gtask.loadedAt = 0; gtask.err = null; try { sessionStorage.removeItem('lf.gtoken'); } catch (e) {} }
+function clearGToken() { gcal.token = null; gcal.exp = 0; gcal.events = []; gcal.eventsTmr = []; gcal.calendars = []; gtask.lists = []; gtask.loadedAt = 0; gtask.err = null; try { sessionStorage.removeItem('lf.gtoken'); } catch (e) {} }
 async function gSignIn() {
   if (gcal.busy) return;
   gcal.busy = true; refreshGoogleUi();
@@ -2517,13 +2547,16 @@ async function gcalLoadToday(force) {
   if (!force && Date.now() - gcal.loadedAt < 5 * 60000) return;
   gcal.loading = true; gcal.loadedAt = Date.now();
   try {
-    const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a); b.setDate(b.getDate() + 1);
+    const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a); b.setDate(b.getDate() + 2);
     const raw = await loadEventsForCalendars(a, b);
-    gcal.events = raw.map(e => ({
+    const t0 = ymd(a), t1 = addDays(t0, 1);
+    const norm = raw.map(e => ({ n: calNorm(e), e }));
+    const mk = d => norm.filter(x => x.n.sd <= d && x.n.ed >= d).map(({ e }) => ({
       id: e.id, calendarId: e._calendarId, calendarName: e._calendarName, calendarColor: e._calendarColor,
       title: e.summary || '(brez naslova)', allDay: !!e.start.date,
       start: e.start.dateTime ? new Date(e.start.dateTime) : null, end: e.end && e.end.dateTime ? new Date(e.end.dateTime) : null, loc: e.location || ''
-    })).sort((a, b) => (a.allDay - b.allDay) || ((a.start || 0) - (b.start || 0)));
+    })).sort((x, y) => (x.allDay - y.allDay) || ((x.start || 0) - (y.start || 0)));
+    gcal.events = mk(t0); gcal.eventsTmr = mk(t1);
     gcal.err = null;
   } catch (e) { gcal.err = e.message === 'GCAL_AUTH' ? null : e.message; }
   gcal.loading = false;
@@ -2532,12 +2565,19 @@ async function gcalLoadToday(force) {
 function gcalHtml() {
   if (!fbCfg()) return '';
   if (!gcalOn()) {
-    return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Google koledar</h2><p class="dash-sub">${gcal.user ? 'Povezava je potekla. Poveži znova.' : 'Poveži koledar in vidi današnje dogodke.'}</p></div><button class="btn sm" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span>' : ic('calendar', 16)} Poveži</button></div></section>`;
+    return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Google koledar</h2><p class="dash-sub">${gcal.user ? 'Povezava je potekla. Poveži znova.' : 'Poveži koledar in vidi dogodke za danes in jutri.'}</p></div><button class="btn sm" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span>' : ic('calendar', 16)} Poveži</button></div></section>`;
   }
   gcalLoadToday(false);
-  const ev = gcal.events;
-  const rows = ev.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong><small>${esc(e.calendarName || 'Google koledar')}${e.loc ? ' · ' + esc(e.loc) : ''}</small></div></li>`).join('');
-  return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar danes</h2><p class="dash-sub">${gcal.loading && !ev.length ? 'Nalagam …' : gcal.err ? esc(gcal.err) : ev.length ? `${ev.length} ${ev.length === 1 ? 'dogodek' : 'dogodkov'} v Google koledarju` : 'Danes ni dogodkov.'}</p></div><div class="dash-btns"><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button><button class="btn sm" data-act="calOpen">${ic('calendar', 16)} Koledar</button></div></div>${rows ? `<ul class="gcal-list">${rows}</ul>` : ''}</section>`;
+  const ev = gcal.events, tm2 = gcal.eventsTmr;
+  const rowsOf = list => list.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong><small>${esc(e.calendarName || 'Google koledar')}${e.loc ? ' · ' + esc(e.loc) : ''}</small></div></li>`).join('');
+  const tmrD = new Date(); tmrD.setDate(tmrD.getDate() + 1);
+  const tmrLabel = tmrD.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' });
+  const cnt = n => `${n} ${n === 1 ? 'dogodek' : n === 2 ? 'dogodka' : 'dogodkov'}`;
+  const loading = gcal.loading && !ev.length && !tm2.length;
+  const sub = loading ? 'Nalagam …' : gcal.err ? esc(gcal.err) : `Danes: ${ev.length ? cnt(ev.length) : 'brez dogodkov'} · Jutri: ${tm2.length ? cnt(tm2.length) : 'brez dogodkov'}`;
+  const dayBlock = (title, list, empty) => `<h3 class="gcal-day">${title}</h3>${list.length ? `<ul class="gcal-list">${rowsOf(list)}</ul>` : `<p class="gcal-empty">${empty}</p>`}`;
+  const body = loading ? '' : dayBlock('Danes', ev, 'Danes ni dogodkov.') + dayBlock('Jutri <small>' + esc(tmrLabel) + '</small>', tm2, 'Jutri ni dogodkov.');
+  return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar</h2><p class="dash-sub">${sub}</p></div><div class="dash-btns"><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button><button class="btn sm" data-act="calOpen">${ic('calendar', 16)} Koledar</button></div></div>${body}</section>`;
 }
 if (fbCfg()) fbInit().catch(() => {});
 
@@ -2725,12 +2765,24 @@ async function refreshModels(btn) {
   } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); if (btn) { btn.disabled = false; btn.textContent = 'Osveži seznam'; } }
 }
 /* ---------- settings ---------- */
+function workSettingsHtml() {
+  const w = workCfg(), names = [['1', 'Pon'], ['2', 'Tor'], ['3', 'Sre'], ['4', 'Čet'], ['5', 'Pet'], ['6', 'Sob'], ['0', 'Ned']];
+  return `<h3 class="rvh">Delovni čas</h3>
+    <div class="field"><label class="cal-check"><input type="checkbox" id="setWorkOn" ${w.on ? 'checked' : ''}> Imam redno službo</label>
+    <p class="help">Dnevni načrt in obroki upoštevajo službo in pot. Dni brez službe so za načrt prosti.</p></div>
+    <div id="workFields" ${w.on ? '' : 'hidden'}>
+      <div class="field"><label>Delovni dnevi</label><div class="work-days">${names.map(([d, n]) => `<label class="work-day"><input type="checkbox" id="setWorkDay${d}" ${w.days.includes(+d) ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div></div>
+      <div class="field"><div class="two"><div><label for="setWorkFrom">Začetek dela</label><input type="time" id="setWorkFrom" value="${esc(w.from)}"></div><div><label for="setWorkTo">Konec dela</label><input type="time" id="setWorkTo" value="${esc(w.to)}"></div></div></div>
+      <div class="field"><label for="setWorkCommute">Pot v službo (minut v eno smer)</label><input type="number" id="setWorkCommute" min="0" max="180" step="5" inputmode="numeric" value="${w.commute}"></div>
+    </div>`;
+}
 function openSettings() {
   const s = S.settings, people = Math.max(1, Math.min(8, parseInt(s.people) || 2));
   openSheet(`<div class="sheet-h"><h2>Nastavitve</h2>${closeBtn}</div>
     <div class="field"><label for="setName">Ime</label><input type="text" id="setName" value="${esc(s.name)}" autocomplete="off"></div>
     <div class="field"><label for="setPeople">Za koliko oseb kuhaš</label><select id="setPeople">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${n === people ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
     <div class="field"><label for="setDiet">Prehranske želje ali omejitve</label><input type="text" id="setDiet" value="${esc(s.diet || '')}" autocomplete="off" placeholder="npr. brez laktoze, manj mesa …"><p class="help">Upošteva se pri obrokih in nakupovalnem seznamu.</p></div>
+    ${workSettingsHtml()}
     <div class="field"><label for="setKey">Gemini API ključ</label>
       <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
       <p class="help">Ključ dobiš brezplačno v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Shranjen je samo v tej napravi; slike in zvok gredo neposredno h Googlu. V AI Studiu ključ po možnosti omeji.</p></div>
@@ -2754,6 +2806,10 @@ const onSettingInput = e => {
   if (id === 'setName') S.settings.name = e.target.value;
   else if (id === 'setPeople') S.settings.people = parseInt(e.target.value) || 2;
   else if (id === 'setDiet') S.settings.diet = e.target.value;
+  else if (id === 'setWorkOn') { S.settings.work = { ...workCfg(), on: e.target.checked }; const wf = $('#workFields'); if (wf) wf.hidden = !e.target.checked; }
+  else if (/^setWorkDay[0-6]$/.test(id)) { const w = workCfg(), d = +id.slice(-1); w.days = e.target.checked ? [...new Set([...w.days, d])] : w.days.filter(x => x !== d); S.settings.work = w; }
+  else if (id === 'setWorkFrom' || id === 'setWorkTo') { if (/^\d{2}:\d{2}$/.test(e.target.value)) S.settings.work = { ...workCfg(), [id === 'setWorkFrom' ? 'from' : 'to']: e.target.value }; }
+  else if (id === 'setWorkCommute') S.settings.work = { ...workCfg(), commute: Math.max(0, Math.min(180, parseInt(e.target.value) || 0)) };
   else if (id === 'setDeadlines') S.settings.showDeadlines = e.target.checked;
   else if (id === 'setDocs') S.settings.showDocs = e.target.checked;
   else if (id === 'setShopping') S.settings.showShopping = e.target.checked;
@@ -2846,7 +2902,7 @@ function deadlinesHtml() {
   const done = S.deadlines.filter(d => d.done);
   let h = `<div class="sec-h"><h2 class="sec">Roki in obnove</h2><button class="btn sm ghost" data-act="dlNew">${ic('plus', 16)} Dodaj rok</button></div>`;
   if (!open.length) h += `<p class="muted">Vinjeta, servis avtomobila, tehnični pregled, zavarovanje, potek garancije … Vpiši datum, jaz te opomnim vnaprej.</p>`;
-  else h += `<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list">${open.map(d => `<li class="row swiping" data-swipe-kind="deadline" data-id="${d.id}">${chk(false, 'doneDl', d.id, d.repeat ? 'Opravljeno, premakni na naslednji rok' : 'Opravljeno')}<button class="rowbtn grow" data-act="dlEdit" data-id="${d.id}"><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${fmtDateY(d.due)}${d.repeat ? ' · vsakih ' + d.repeat + ' mes.' : ''}</small></button>${dlBadge(d)}<button class="btn sm ghost cal-action" data-act="dlCal" data-id="${d.id}" aria-label="Dodaj ${esc(d.title)} v koledar">${ic('calendar',16)} Dodaj v koledar</button><button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
+  else h += `<ul class="list">${open.map(d => `<li class="row" data-id="${d.id}">${chk(false, 'doneDl', d.id, d.repeat ? 'Opravljeno, premakni na naslednji rok' : 'Opravljeno')}<button class="rowbtn grow" data-act="dlEdit" data-id="${d.id}"><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${fmtDateY(d.due)}${d.repeat ? ' · vsakih ' + d.repeat + ' mes.' : ''}</small></button>${dlBadge(d)}<button class="btn sm ghost cal-action" data-act="dlCal" data-id="${d.id}" aria-label="Dodaj ${esc(d.title)} v koledar">${ic('calendar',16)} Dodaj v koledar</button><button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
   if (done.length) h += `<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(d => `<li class="row done"><div class="grow"><strong>${esc(d.title)}</strong><small>${fmtDateY(d.due)}</small></div><button class="mini" data-act="dlDel" data-id="${d.id}" aria-label="Izbriši: ${esc(d.title)}">${ic('trash', 19)}</button></li>`).join('')}</ul></details>`;
   return h;
 }
@@ -3580,24 +3636,41 @@ document.addEventListener('click', e => {
   const f = A[b.dataset.act]; if (f) f(b, e);
 });
 
-let swipeState=null;
-let suppressClickUntil=0;
-function resetSwipeRow(row){if(!row)return;row.style.transform='';row.classList.remove('is-swipe-right','is-swipe-left');}
-function finishSwipe(row,dx){
-  if(!row)return;
-  const id=row.dataset.id,kind=row.dataset.swipeKind,proxy=act=>makeSwipeProxy(act,id);resetSwipeRow(row);
-  if(Math.abs(dx)<65)return;suppressClickUntil=Date.now()+350;
-  if(kind==='task')dx>0?A.toggleTask(proxy('toggleTask')):A.delTask(proxy('delTask'));
-  else if(kind==='shop')dx>0?A.toggleShop(proxy('toggleShop')):A.delShop(proxy('delShop'));
-  else if(kind==='deadline')dx>0?A.doneDl(proxy('doneDl')):A.dlDel(proxy('dlDel'));
-  else if(kind==='reminder')dx>0?A.doneRem(proxy('doneRem')):A.delRem(proxy('delRem'));
+/* Drsanje levo/desno preklaplja zaslone: Danes, Obroki, Nakup, Opravila */
+let tabSwipe = null;
+function canTabSwipe(el) {
+  if (sheet.open) return false;
+  if (!el || !el.closest) return false;
+  if (el.closest('input,textarea,select,[contenteditable="true"],.seg,.cal-grid,.time-range')) return false;
+  for (let n = el; n && n !== document.body; n = n.parentElement) {
+    if (n.scrollWidth > n.clientWidth + 4) {
+      const ox = getComputedStyle(n).overflowX;
+      if (ox === 'auto' || ox === 'scroll') return false;
+    }
   }
-document.addEventListener('touchstart',e=>{const row=e.target.closest('.swiping');if(!row||e.target.closest('button,input,select,textarea,a'))return;const t=e.changedTouches[0];swipeState={row,x:t.clientX,y:t.clientY,active:false};},{passive:true});
-document.addEventListener('touchmove',e=>{if(!swipeState)return;const t=e.changedTouches[0],dx=t.clientX-swipeState.x,dy=t.clientY-swipeState.y;if(!swipeState.active){if(Math.abs(dx)<10||Math.abs(dx)<=Math.abs(dy)*1.15)return;swipeState.active=true;}e.preventDefault();const off=Math.max(-105,Math.min(105,dx));swipeState.row.style.transform=`translateX(${off}px)`;swipeState.row.classList.toggle('is-swipe-right',off>0);swipeState.row.classList.toggle('is-swipe-left',off<0);},{passive:false});
-document.addEventListener('touchend',e=>{if(!swipeState)return;const row=swipeState.row,t=e.changedTouches[0],dx=t.clientX-swipeState.x,dy=t.clientY-swipeState.y,active=swipeState.active;swipeState=null;if(!active||Math.abs(dx)<65||Math.abs(dx)<=Math.abs(dy)*1.2){resetSwipeRow(row);return;}finishSwipe(row,dx);},{passive:true});
-document.addEventListener('touchcancel',()=>{if(!swipeState)return;resetSwipeRow(swipeState.row);swipeState=null;});
-document.addEventListener('click',e=>{if(Date.now()<suppressClickUntil){e.preventDefault();e.stopPropagation();}},true);
-
+  return true;
+}
+document.addEventListener('touchstart', e => {
+  tabSwipe = null;
+  if (e.touches.length !== 1 || !canTabSwipe(e.target)) return;
+  const t = e.touches[0];
+  tabSwipe = { x: t.clientX, y: t.clientY, t: Date.now() };
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!tabSwipe) return;
+  const s = tabSwipe; tabSwipe = null;
+  if (sheet.open) return;
+  const t = e.changedTouches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+  if (Date.now() - s.t > 800 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+  const i = NAV.findIndex(n => n[0] === S.ui.tab), j = i + (dx < 0 ? 1 : -1);
+  if (i < 0 || j < 0 || j >= NAV.length) return;
+  A.tab({ dataset: { tab: NAV[j][0] } });
+  const v = $('#view');
+  if (v && v.animate && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    v.animate([{ transform: `translateX(${dx < 0 ? 36 : -36}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: 'ease-out' });
+  }
+}, { passive: true });
+document.addEventListener('touchcancel', () => { tabSwipe = null; });
 document.addEventListener('change', e => {
   if (e.target.id === 'planFrom') { S.ui.from = tm(e.target.value) || '08:00'; save(); }
   if (e.target.id === 'planTo') { S.ui.to = tm(e.target.value) || '21:00'; save(); }
