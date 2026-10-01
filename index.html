@@ -1482,14 +1482,104 @@ function renderTasks() {
   return h;
 }
 const NAV = [['today', 'Danes', 'sun'], ['fridge', 'Hladilnik', 'fridge'], ['money', 'Finance', 'euro'], ['tasks', 'Opravila', 'list']];
-function render() {
+/* ---------- stable UI rendering ---------- */
+/*
+ * render() lahko ponovno izriše vsebino, vendar ne sme izgubiti uporabnikovega
+ * UI stanja. To je pomembno tudi pri Firebase onSnapshot(), ki lahko pride
+ * med urejanjem obrazca na drugi napravi.
+ */
+function captureRenderState() {
+  const view = $('#view');
+  if (!view) return null;
+
+  const details = Array.from(view.querySelectorAll('details')).map((el, index) => ({
+    index,
+    open: !!el.open
+  }));
+
+  const active = document.activeElement;
+  let focus = null;
+  if (active && view.contains(active) &&
+      /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) {
+    const all = Array.from(view.querySelectorAll('input,textarea,select'));
+    const index = all.indexOf(active);
+    focus = {
+      index,
+      id: active.id || '',
+      name: active.name || '',
+      start: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+      end: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+      direction: active.selectionDirection || 'none'
+    };
+  }
+
+  return {
+    tab: S.ui.tab,
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    details,
+    focus
+  };
+}
+
+function restoreRenderState(state) {
+  if (!state) return;
+  const view = $('#view');
+  if (!view) return;
+
+  Array.from(view.querySelectorAll('details')).forEach((el, index) => {
+    const saved = state.details && state.details[index];
+    if (saved) el.open = saved.open;
+  });
+
+  const f = state.focus;
+  if (f) {
+    let el = null;
+    if (f.id) el = document.getElementById(f.id);
+    if (!el && f.name) el = view.querySelector('[name="' + CSS.escape(f.name) + '"]');
+    if (!el) el = view.querySelectorAll('input,textarea,select')[f.index];
+
+    if (el) {
+      try {
+        el.focus({ preventScroll: true });
+        if (f.start != null && typeof el.setSelectionRange === 'function') {
+          const max = String(el.value ?? '').length;
+          el.setSelectionRange(
+            Math.min(f.start, max),
+            Math.min(f.end ?? f.start, max),
+            f.direction
+          );
+        }
+      } catch (e) {
+        try { el.focus(); } catch (e2) {}
+      }
+    }
+  }
+
+  window.scrollTo(state.scrollX || 0, state.scrollY || 0);
+}
+
+function render(options = {}) {
+  const preserve = options.preserve !== false;
+  const state = preserve ? captureRenderState() : null;
   const tab = S.ui.tab, H = headerFor(tab);
-  $('#title').textContent = H.t; $('#sub').textContent = H.s;
+
+  $('#title').textContent = H.t;
+  $('#sub').textContent = H.s;
   $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, money: renderMoney, tasks: renderTasks })[tab]();
-  $('#nav').innerHTML = NAV.map(([id, l, i]) => `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`).join('');
+  $('#nav').innerHTML = NAV.map(([id, l, i]) =>
+    `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
+  ).join('');
   document.title = 'LifeFlow AI';
-  const bi = $('#btnInstall'); if (bi) bi.hidden = isStandalone();
+
+  const bi = $('#btnInstall');
+  if (bi) bi.hidden = isStandalone();
+
   hydrateImgs();
+
+  if (preserve && state && state.tab === S.ui.tab) {
+    requestAnimationFrame(() => restoreRenderState(state));
+  }
 }
 
 /* ---------- capture (Zero-Input Engine) ---------- */
@@ -1966,6 +2056,9 @@ function cloudState() {
     delete x.settings.apiKey;   // ostane samo na tej napravi
     delete x.settings.fbConfig; // konfiguracija je v kodi
   }
+  // UI stanje je lokalno za posamezno napravo/brskalnik. Aktivni zavihek,
+  // filtri, tema in časovni plan ne smejo prihajati iz druge naprave.
+  delete x.ui;
   x.modelCache = null;           // začasni AI cache ni potreben na drugih napravah
   return x;
 }
@@ -2070,12 +2163,14 @@ async function startCloudSync(user) {
 
       cloudSync.applyingRemote = true;
       const localApiKey = S.settings.apiKey || '';
+      // Remote sync posodobi podatke, ne pa navigacije/UI trenutne naprave.
+      const localUi = JSON.parse(JSON.stringify(S.ui || DEFAULT.ui));
       const base = JSON.parse(JSON.stringify(DEFAULT));
       S = {
         ...base,
         ...remote,
         settings: { ...base.settings, ...(remote.settings || {}), apiKey: localApiKey },
-        ui: { ...base.ui, ...(remote.ui || {}) }
+        ui: localUi
       };
       S.settings.showDeadlines = S.settings.showDeadlines !== false;
       S.settings.showDocs = S.settings.showDocs !== false;
@@ -3054,7 +3149,16 @@ function addBillNextReminder(b) {
 }
 
 const A = {
-  tab(b) { S.ui.tab = b.dataset.tab; save(); render(); window.scrollTo(0, 0); },
+  tab(b) {
+    const next = b.dataset.tab;
+    if (!next || next === S.ui.tab) return;
+
+    // Samo pravi preklop zavihka resetira scroll. Navadni render() ga ne.
+    S.ui.tab = next;
+    save();
+    render({ preserve: false });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  },
   settings() { openSettings(); },
   themeToggle() { applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true); },
   undo() { if (undoAction) { const fn = undoAction; undoAction = null; fn(); $('#toast').classList.remove('on'); } },
