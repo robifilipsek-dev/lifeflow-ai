@@ -307,6 +307,19 @@ dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
 .ck small{color:var(--ink2);font-size:14px}
 .rv-in{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 0 4px 34px}
 .rv-in label{display:grid;gap:2px;font-size:13.5px;color:var(--ink2)}
+/* unified quick-add bar */
+.qa{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:16px;background:#FAFCFB;margin:0 0 14px}
+.qa textarea,.qa input{background:#fff;min-height:48px;margin:0}
+.qa textarea{min-height:68px;resize:none;padding:11px 12px;line-height:1.35}
+.qa .quick-mic{flex:none;width:48px;height:48px;border-radius:13px}
+.qa>.btn{min-height:48px}
+.qa-extra{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qa-extra .help{margin:0}
+.ctl-row.plan-row{display:grid;grid-template-columns:1fr;gap:6px;margin-bottom:14px}
+.plan-row .lbl{font-weight:700}
+.time-range{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.time-range label.time{display:grid;grid-template-columns:1fr;gap:4px;font-size:13px;font-weight:700}
+.time-range label.time input{width:100%;min-width:0}
 .rv-edit{margin:2px 0 4px 34px}.rv-edit>summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:700;color:var(--petrol-d,#1d6b6e);padding:6px 0;list-style:none}.rv-edit>summary::-webkit-details-marker{display:none}.rv-edit .rv-in{padding-left:0}
 .rv-edit .rv-in label:first-child{grid-column:1/-1}
 .cap-ta{position:relative}.cap-ta textarea{padding-right:58px}.cap-mic{position:absolute;right:8px;bottom:10px}
@@ -370,6 +383,8 @@ img[data-img]:not([src]){visibility:hidden}
 
 #toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;max-width:min(92vw,520px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100}
 #toast.on{opacity:1;transform:translate(-50%,0)}
+#toast button{pointer-events:auto;cursor:pointer;min-height:36px}
+#toast.on:has(button){pointer-events:auto}
 dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
@@ -1162,6 +1177,7 @@ function renderToday() {
   if (empty) {
     h += `<section class="welcome compact-welcome"><div class="welcome-ico">${ic('spark',22)}</div><div><strong>Začni brez kompliciranja.</strong><p>Fotografiraj račun, povej opravilo ali zapiši idejo in jo razvrstimo v tvoj dan.</p></div><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',20)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',20)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',20)}<span>Tekst</span></button></div></section>`;
   }
+  h += quickBar({id:'quickTask',placeholder:'Dodaj opravilo za danes …',label:'Novo opravilo za danes',voice:'taskVoice',add:'quickTask',multiline:true});
   h += `<section class="day-plan-card"><div class="day-plan-header"><div><span class="day-kicker">DANES</span><h2>Moj dnevni načrt</h2><p>Glavni pogled dneva — dogodke odpri za urejanje.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>${alertsHtml()}${planHtml()}</section>`;
   h += dashOverviewHtml();
   h += gcalHtml();
@@ -1179,11 +1195,11 @@ const TIP = { opravilo: 'Opravilo', fiksno: 'Fiksna obveznost', obrok: 'Obrok', 
 function planHtml() {
   const u = S.ui, p = S.plan && S.plan.date === today() ? S.plan : null;
   let h = `<h2 class="sec plan-title">Moj dnevni načrt</h2>
-    <div class="ctl-row"><span class="lbl" id="lblEn">Energija</span>
+    <div class="ctl-row plan-row"><span class="lbl" id="lblEn">Energija</span>
       <div class="seg" role="group" aria-labelledby="lblEn">${['nizka', 'srednja', 'visoka'].map(e => `<button data-act="energy" data-v="${e}" aria-pressed="${u.energy === e}">${e[0].toUpperCase() + e.slice(1)}</button>`).join('')}</div></div>
-    <div class="ctl-row"><span class="lbl">Prost čas</span>
-      <label class="time">od <input type="time" id="planFrom" value="${esc(u.from)}"></label>
-      <label class="time">do <input type="time" id="planTo" value="${esc(u.to)}"></label></div>
+    <div class="ctl-row plan-row"><span class="lbl">Prost čas</span>
+      <div class="time-range"><label class="time">Od <input type="time" id="planFrom" value="${esc(u.from)}"></label>
+      <label class="time">Do <input type="time" id="planTo" value="${esc(u.to)}"></label></div></div>
     <button class="btn" data-act="plan" ${busy.plan ? 'disabled' : ''}>${busy.plan ? '<span class="spin"></span> Sestavljam …' : ic('spark', 18) + (p ? ' Sestavi znova' : ' Sestavi moj dan')}</button>`;
   if (!p) return h;
   const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
@@ -1447,34 +1463,33 @@ function shopHtml() {
   if (s.nasvet) h += `<p class="advice">${esc(s.nasvet)}</p>`;
   h += `<div class="swipe-hint"><span class="s-good">→ Kupljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
   h += keys.map(k => `<div class="shop-g"><h3>${esc(k)}</h3><ul class="list">${g[k].map(i => `<li class="row ${i.done ? 'done' : ''} swiping" data-swipe-kind="shop" data-id="${i.id}">${chk(i.done, 'toggleShop', i.id, i.done ? 'Vrni na seznam' : 'Kupljeno')}<div class="grow"><strong>${esc(i.name)}</strong>${i.qty ? `<small>${esc(i.qty)}</small>` : ''}</div><button class="mini" data-act="delShop" data-id="${i.id}" aria-label="Odstrani: ${esc(i.name)}">${ic('trash', 19)}</button></li>`).join('')}</ul></div>`).join('');
-  h += `<div class="quick shop-quick" style="margin-top:14px"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="icon-btn quick-mic" data-act="shopVoice" aria-label="Povej artikel na glas">${ic('mic',20)}</button><button class="btn" data-act="quickShop">Dodaj</button></div>`;
   if (s.obroki_teden && s.obroki_teden.length) h += `<details class="fold"><summary>Predlagan meni za teden</summary><ul class="list">${s.obroki_teden.map(x => `<li class="row"><div class="grow">${esc(x)}</div></li>`).join('')}</ul></details>`;
   return h;
 }
 function renderFridge() {
   const cats = ['Zelenjava','Sadje','Meso in ribe','Mlečno','Jajca','Pijače','Kruh in pekovski','Žita in testenine','Konzerve in suho','Zamrznjeno','Omake in začimbe','Drugo'];
   const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
-  let h = `<section class="meal-builder"><div class="meal-builder-top"><div><span class="day-kicker">NAČRTOVANJE HRANE</span><h2>Obroki</h2><p>Najprej sestavi obroke, nato iz njih pripravi nakupovalni seznam.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>
+  let h = quickBar({id:'quickFridge',placeholder:'Dodaj sestavino …',label:'Nova sestavina',voice:'fridgeVoice',add:'quickFridge',extra:`<button type="button" class="btn sm ghost" data-act="capture" data-mode="camera">${ic('camera',16)} Slikaj hladilnik</button><button type="button" class="btn sm ghost" data-act="fridgeNew">${ic('pen',16)} Podrobno</button>`})
+    + `<section class="meal-builder"><div class="meal-builder-top"><div><span class="day-kicker">NAČRTOVANJE HRANE</span><h2>Obroki</h2><p>Najprej sestavi obroke, nato iz njih pripravi nakupovalni seznam.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>
     <div class="ctl-row meal-mode-row"><span class="lbl">Vir</span><div class="seg" role="group" aria-label="Način generiranja jedilnika"><button data-act="mealMode" data-v="fridge" aria-pressed="${S.ui.mealMode === 'fridge'}">Iz sestavin pri roki</button><button data-act="mealMode" data-v="standalone" aria-pressed="${S.ui.mealMode === 'standalone'}">Samostojno</button></div></div>
     <div class="toolbar"><button class="btn" data-act="meals" ${busy.meals ? 'disabled' : ''}>${busy.meals ? '<span class="spin"></span> Pripravljam …' : ic('spark', 18) + ' Generiraj obroke'}</button><button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Sestavljam …' : ic('cart', 18) + ' Nakup za 7 dni'}</button></div>
     <div class="toolbar"><button class="switch" role="switch" aria-checked="${!!S.ui.mealprep}" data-act="mealprep"><i></i>Prilagodi za malice v službi</button></div></section>`;
   h += mealsHtml();
 
-  h += `<section class="ingredient-card fridge-manual-card"><div class="section-mini-head"><div><span class="day-kicker">SESTAVINE PRI ROKI</span><h3>Hladilnik</h3><p class="help" style="margin:3px 0 0">${S.fridge.length ? `${S.fridge.length} ${S.fridge.length === 1 ? 'sestavina' : 'sestavin'}${soon ? ` · ${soon} kmalu poteče` : ''}` : 'Trenutno še ni dodanih sestavin.'}</p></div><button class="btn sm" data-act="fridgeNew">${ic('plus',16)} Dodaj sestavino</button></div>`;
+  h += `<section class="ingredient-card fridge-manual-card"><div class="section-mini-head"><div><span class="day-kicker">SESTAVINE PRI ROKI</span><h3>Hladilnik</h3><p class="help" style="margin:3px 0 0">${S.fridge.length ? `${S.fridge.length} ${S.fridge.length === 1 ? 'sestavina' : 'sestavin'}${soon ? ` · ${soon} kmalu poteče` : ''}` : 'Trenutno še ni dodanih sestavin.'}</p></div></div>`;
   h += `<div class="manual-fridge-form" id="manualFridgeForm" hidden>
     <div class="field"><label for="fridgeName">Sestavina</label><input id="fridgeName" type="text" placeholder="npr. piščančja prsa" autocomplete="off"></div>
     <div class="field two"><div><label for="fridgeQty">Količina</label><input id="fridgeQty" type="text" placeholder="npr. 500 g"></div><div><label for="fridgeCategory">Kategorija</label><select id="fridgeCategory">${cats.map(c => `<option>${c}</option>`).join('')}</select></div></div>
     <div class="field two"><div><label for="fridgeExpires">Rok uporabe</label><input id="fridgeExpires" type="date"></div><div><label for="fridgeNote">Opomba</label><input id="fridgeNote" type="text" placeholder="npr. odprto"></div></div>
     <div class="set-actions"><button class="btn" data-act="fridgeSave">${ic('save',16)} Shrani v hladilnik</button><button class="btn ghost" data-act="fridgeCancel">Prekliči</button></div>
   </div>`;
-  h += `<div class="quick fridge-quick" style="margin-top:14px"><input type="text" id="quickFridge" placeholder="Dodaj sestavino …" aria-label="Nova sestavina" autocomplete="off"><button class="icon-btn quick-mic" data-act="fridgeVoice" aria-label="Povej sestavino na glas">${ic('mic',20)}</button><button class="btn" data-act="quickFridge">Dodaj</button></div>`;
   if (!S.fridge.length) {
-    h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine ročno, z glasom ali s fotografijo ali pa uporabi samostojni način za pripravo obrokov.</p></div></div>`;
+    h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine zgoraj: z besedilom, glasom ali fotografijo, ali pa uporabi samostojni način za pripravo obrokov.</p></div></div>`;
   } else {
     const list = [...S.fridge].sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
     h += `<div class="swipe-hint"><span class="s-good">→ Porabljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list fridge-list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>${fridgeBadge(f)}<button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check',20)}</button><button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
   }
-  h += `<div class="fridge-photo-row"><button class="btn sm ghost" data-act="capture" data-mode="camera">${ic('camera',16)} Dodaj s fotografijo</button><span class="muted">Ali prepoznaj več sestavin naenkrat.</span></div></section>`;
+  h += `</section>`;
   return h;
 }
 
@@ -1483,10 +1498,11 @@ function renderShop() {
   const tab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
   const tabs = `<div class="section-tabs" role="tablist" aria-label="Nakup in dokumenti"><button class="section-tab ${tab === 'list' ? 'on' : ''}" data-act="shopTab" data-v="list" aria-selected="${tab === 'list'}">${ic('cart',17)} Nakupovalni seznam</button><button class="section-tab ${tab === 'docs' ? 'on' : ''}" data-act="shopTab" data-v="docs" aria-selected="${tab === 'docs'}">${ic('bookmark',17)} Računi in garancije</button></div>`;
   if (tab === 'docs') return `<section class="shop-panel"><div class="section-tab-wrap">${tabs}</div><div class="shop-docs">${docsHtml()}</div></section>`;
+  const SHOPBAR = quickBar({id:'quickShop',placeholder:'Dodaj artikel …',label:'Nov artikel',voice:'shopVoice',add:'quickShop'});
   if (!s || !Array.isArray(s.items) || !s.items.length) {
-    return `<section class="shop-empty"><div class="section-tab-wrap">${tabs}</div><div class="welcome-ico">${ic('cart',24)}</div><span class="day-kicker">NAKUP</span><h2>Nakupovalni seznam</h2><p>Seznam lahko ustvariš iz današnjih obrokov ali ga dodajaš ročno oziroma z glasom.</p><div class="shop-empty-actions"><button class="btn" data-act="shopFromMeals" ${busy.shop ? 'disabled' : ''}>${ic('cart',18)} Nakup iz obrokov</button><button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${ic('spark',18)} Nakup za 7 dni</button></div><div class="quick quick-shop-empty"><input type="text" id="quickShop" placeholder="Dodaj artikel …" aria-label="Nov artikel" autocomplete="off"><button class="icon-btn quick-mic" data-act="shopVoice" aria-label="Povej artikel na glas">${ic('mic',20)}</button><button class="btn" data-act="quickShop">Dodaj</button></div></section>`;
+    return `<section class="shop-panel" style="padding-bottom:4px;margin-bottom:14px"><div class="section-tab-wrap">${tabs}</div>${SHOPBAR}</section><section class="shop-empty"><div class="section-tab-wrap" hidden></div><div class="welcome-ico">${ic('cart',24)}</div><span class="day-kicker">NAKUP</span><h2>Nakupovalni seznam</h2><p>Seznam lahko ustvariš iz današnjih obrokov ali ga dodajaš ročno oziroma z glasom.</p><div class="shop-empty-actions"><button class="btn" data-act="shopFromMeals" ${busy.shop ? 'disabled' : ''}>${ic('cart',18)} Nakup iz obrokov</button><button class="btn ghost" data-act="shopGen" ${busy.shop ? 'disabled' : ''}>${ic('spark',18)} Nakup za 7 dni</button></div></section>`;
   }
-  return `<section class="shop-panel"><div class="section-tab-wrap">${tabs}</div>${shopHtml()}</section>`;
+  return `<section class="shop-panel"><div class="section-tab-wrap">${tabs}</div>${SHOPBAR}${shopHtml()}</section>`;
 }
 
 
@@ -1561,6 +1577,12 @@ function taskReminderLabel(t) {
   if (r.type === 'location') return `ko si pri ${r.label || 'nastavljeni lokaciji'}`;
   return '';
 }
+function quickBar(o) {
+  const field = o.multiline
+    ? `<textarea id="${o.id}" rows="2" placeholder="${esc(o.placeholder)}" aria-label="${esc(o.label)}" autocomplete="off"></textarea>`
+    : `<input type="text" id="${o.id}" placeholder="${esc(o.placeholder)}" aria-label="${esc(o.label)}" autocomplete="off">`;
+  return `<div class="qa">${field}<button type="button" class="icon-btn quick-mic" data-act="${o.voice}" aria-label="Povej na glas">${ic('mic',20)}</button><button type="button" class="btn" data-act="${o.add}">${ic('plus',16)} Dodaj</button>${o.extra ? `<div class="qa-extra">${o.extra}</div>` : ''}</div>`;
+}
 function renderTasks() {
   const sortMode=S.ui.taskSort==='priority'?'priority':'due';
   const open=taskSortList(S.tasks.filter(t=>!t.done),sortMode);
@@ -1572,7 +1594,7 @@ function renderTasks() {
     const calDate=t.due|| (t.time?today():null);
     return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
-  let h=`<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><button class="icon-btn quick-mic" data-act="taskVoice" aria-label="Povej opravilo na glas">${ic('mic',20)}</button><select id="quickTaskRepeat" aria-label="Ponavljanje opravila">${REPEAT_OPTIONS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select><button class="btn" data-act="quickTask">Dodaj</button></div><div class="set-actions" style="margin-top:10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
+  let h=quickBar({id:'quickTask',placeholder:'Dodaj opravilo …',label:'Novo opravilo',voice:'taskVoice',add:'quickTask',multiline:true})+`<div class="set-actions" style="margin:0 0 10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
   h+=`<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
   if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Povej ali napiši, kaj moraš urediti, in jih razvrstim.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
   else if(sortMode==='priority'){
@@ -3381,9 +3403,10 @@ function addFridgeItems(names) {
   return added;
 }
 function addTasksFromText(titles) {
-  const repeat = $('#quickTaskRepeat') ? $('#quickTaskRepeat').value : '';
+  const repeat = '';
+  const dueToday = S.ui.tab === 'today' ? today() : null;
   titles.forEach(title => {
-    const task = { id: uid(), title, prio: 'srednja', frame: null, due: repeat ? today() : null, time: null, min: null, repeat, done: false };
+    const task = { id: uid(), title, prio: 'srednja', frame: null, due: dueToday, time: null, min: null, repeat: '', done: false };
     S.tasks.push(task); autoSyncNewTask(task);
   });
 }
@@ -3548,9 +3571,12 @@ const A = {
   delRem(b) { const id=b.dataset.id,x=byId(S.reminders,id); if(!x)return; S.reminders=S.reminders.filter(v=>v.id!==id); save(); render(); toast('Opomnik izbrisan.',()=>{S.reminders.push(x);save();render();}); },
   quickTask() {
     const i = $('#quickTask'), v = i && i.value.trim(); if (!v) return;
-    const repeat = $('#quickTaskRepeat') ? $('#quickTaskRepeat').value : '';
-    const task = { id: uid(), title: v, prio: 'srednja', frame: null, due: repeat ? today() : null, time: null, min: null, repeat, done: false };
-    S.tasks.push(task); save(); render(); autoSyncNewTask(task); const n = $('#quickTask'); if (n) n.focus();
+    const due = S.ui.tab === 'today' ? today() : null;
+    const titles = v.split(/\n+/).map(x => x.trim()).filter(Boolean).slice(0, 20);
+    const made = titles.map(title => ({ id: uid(), title: capFirst(title), prio: 'srednja', frame: null, due, time: null, min: null, repeat: '', done: false }));
+    made.forEach(t => S.tasks.push(t)); save(); render(); made.forEach(t => autoSyncNewTask(t));
+    toast(made.length === 1 ? 'Opravilo dodano.' : `Dodanih opravil: ${made.length}`);
+    const n = $('#quickTask'); if (n) n.focus();
   },
   copy(b) { const v = b.dataset.v; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('Kopirano.')).catch(() => toast('Kopiranje ni uspelo.')); },
   refreshModels(b) { refreshModels(b); },
@@ -3699,7 +3725,7 @@ document.addEventListener('change', e => {
   if (e.target.id === 'trType') toggleTaskReminderFields();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
+  if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
   if (e.key === 'Enter' && e.target.id === 'quickShop') { e.preventDefault(); A.quickShop(); }
   if (e.key === 'Enter' && e.target.id === 'quickFridge') { e.preventDefault(); A.quickFridge(); }
 });
