@@ -1878,9 +1878,9 @@ Pravila:
 
 /* ---------- Google prijava (Firebase) + Google koledar ---------- */
 const FB_VER = '12.19.0';
-const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+const GCAL_SCOPE = ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly'];
 const GTZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Ljubljana'; } catch (e) { return 'Europe/Ljubljana'; } })();
-const gcal = { fb: null, user: null, token: null, exp: 0, events: [], loadedAt: 0, loading: false, err: null, busy: false };
+const gcal = { fb: null, user: null, token: null, exp: 0, events: [], calendars: [], loadedAt: 0, loading: false, err: null, busy: false };
 try { const t = JSON.parse(sessionStorage.getItem('lf.gtoken') || 'null'); if (t && t.exp > Date.now()) { gcal.token = t.token; gcal.exp = t.exp; } } catch (e) {}
 const fbCfg = () => (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.authDomain && FIREBASE_CONFIG.projectId) ? FIREBASE_CONFIG : parseFbConfig(S.settings.fbConfig);
 const gcalOn = () => !!(gcal.token && gcal.exp > Date.now());
@@ -2116,19 +2116,20 @@ function stopCloudSync() {
 function gotCred(result) {
   const M = gcal.fb.M, c = M.GoogleAuthProvider.credentialFromResult(result);
   if (c && c.accessToken) {
-    gcal.token = c.accessToken; gcal.exp = Date.now() + 3500 * 1000; gcal.loadedAt = 0;
+    gcal.token = c.accessToken; gcal.exp = Date.now() + 3500 * 1000; gcal.loadedAt = 0; gcal.calendars = [];
     try { sessionStorage.setItem('lf.gtoken', JSON.stringify({ token: gcal.token, exp: gcal.exp })); } catch (e) {}
   }
   const u = result.user;
   if (u && u.displayName && !(S.settings.name || '').trim()) { S.settings.name = u.displayName.split(' ')[0]; save(); }
 }
-function clearGToken() { gcal.token = null; gcal.exp = 0; gcal.events = []; try { sessionStorage.removeItem('lf.gtoken'); } catch (e) {} }
+function clearGToken() { gcal.token = null; gcal.exp = 0; gcal.events = []; gcal.calendars = []; try { sessionStorage.removeItem('lf.gtoken'); } catch (e) {} }
 async function gSignIn() {
   if (gcal.busy) return;
   gcal.busy = true; refreshGoogleUi();
   try {
     const { auth, M } = await fbInit();
-    const p = new M.GoogleAuthProvider(); p.addScope(GCAL_SCOPE);
+    const p = new M.GoogleAuthProvider();
+    GCAL_SCOPE.forEach(scope => p.addScope(scope));
     p.setCustomParameters(gcal.user && gcal.user.email ? { login_hint: gcal.user.email } : { prompt: 'select_account' });
     let res;
     try { res = await M.signInWithPopup(auth, p); }
@@ -2170,12 +2171,55 @@ function googleBlockInner() {
 }
 async function gapi(path, opts = {}) {
   if (!gcalOn()) throw new UserErr('GCAL_AUTH');
-  const r = await fetch('https://www.googleapis.com/calendar/v3/' + path, { ...opts, headers: { Authorization: 'Bearer ' + gcal.token, 'Content-Type': 'application/json' } });
+  const r = await fetch('https://www.googleapis.com/calendar/v3/' + path, { ...opts, headers: { Authorization: 'Bearer ' + gcal.token, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
   if (r.status === 401) { clearGToken(); throw new UserErr('GCAL_AUTH'); }
-  if (r.status === 403) throw new UserErr('Google koledar je zavrnil dostop. V Google Cloud vklopi Google Calendar API in preveri soglasje.');
+  if (r.status === 403) throw new UserErr('Google koledar je zavrnil dostop. Preveri dovoljenja za Google Calendar.');
   if (r.status === 404 || r.status === 410) throw new UserErr('NOTFOUND');
   if (!r.ok) throw new UserErr('Google koledar ni uspel (' + r.status + ').');
   return r.status === 204 ? null : r.json();
+}
+
+async function gapiAllPages(path, params = {}) {
+  const items = [];
+  let pageToken = '';
+  do {
+    const q = new URLSearchParams({ ...params });
+    if (pageToken) q.set('pageToken', pageToken);
+    const r = await gapi(path + (q.toString() ? '?' + q.toString() : ''));
+    items.push(...arr(r && r.items));
+    pageToken = r && r.nextPageToken ? r.nextPageToken : '';
+  } while (pageToken);
+  return items;
+}
+
+async function loadGoogleCalendars(force = false) {
+  if (!gcalOn()) return [];
+  if (!force && gcal.calendars.length) return gcal.calendars;
+  const items = await gapiAllPages('users/me/calendarList', { maxResults: '250', showHidden: 'false' });
+  gcal.calendars = items
+    .filter(c => c && c.id)
+    .map(c => ({ id: c.id, name: c.summaryOverride || c.summary || c.id, color: c.backgroundColor || '', primary: !!c.primary, accessRole: c.accessRole || '' }));
+  if (!gcal.calendars.some(c => c.primary)) {
+    gcal.calendars.unshift({ id: 'primary', name: 'Moj koledar', color: '', primary: true, accessRole: 'owner' });
+  }
+  return gcal.calendars;
+}
+
+async function loadEventsForCalendars(start, end) {
+  const calendars = await loadGoogleCalendars(false);
+  const results = await Promise.all(calendars.map(async cal => {
+    try {
+      const items = await gapiAllPages(`calendars/${encodeURIComponent(cal.id)}/events`, {
+        timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '250'
+      });
+      return items.filter(e => e && e.status !== 'cancelled' && e.start).map(e => ({ ...e, _calendarId: cal.id, _calendarName: cal.name, _calendarColor: cal.color, _calendarAccessRole: cal.accessRole }));
+    } catch (e) {
+      // A calendar may be visible in the list but inaccessible for a particular event query.
+      console.warn('Google Calendar load failed:', cal.id, e);
+      return [];
+    }
+  }));
+  return results.flat();
 }
 function gEventBody(title, date, time, note) {
   const body = { summary: title || 'Dogodek', description: note || '', reminders: { useDefault: true } };
@@ -2213,12 +2257,12 @@ async function gcalLoadToday(force) {
   gcal.loading = true; gcal.loadedAt = Date.now();
   try {
     const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a); b.setDate(b.getDate() + 1);
-    const q = new URLSearchParams({ timeMin: a.toISOString(), timeMax: b.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '25' });
-    const r = await gapi('calendars/primary/events?' + q);
-    gcal.events = arr(r && r.items).filter(e => e.status !== 'cancelled' && e.start).map(e => ({
-      id: e.id, title: e.summary || '(brez naslova)', allDay: !!e.start.date,
+    const raw = await loadEventsForCalendars(a, b);
+    gcal.events = raw.map(e => ({
+      id: e.id, calendarId: e._calendarId, calendarName: e._calendarName, calendarColor: e._calendarColor,
+      title: e.summary || '(brez naslova)', allDay: !!e.start.date,
       start: e.start.dateTime ? new Date(e.start.dateTime) : null, end: e.end && e.end.dateTime ? new Date(e.end.dateTime) : null, loc: e.location || ''
-    }));
+    })).sort((a, b) => (a.allDay - b.allDay) || ((a.start || 0) - (b.start || 0)));
     gcal.err = null;
   } catch (e) { gcal.err = e.message === 'GCAL_AUTH' ? null : e.message; }
   gcal.loading = false;
@@ -2231,7 +2275,7 @@ function gcalHtml() {
   }
   gcalLoadToday(false);
   const ev = gcal.events;
-  const rows = ev.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong>${e.loc ? `<small>${esc(e.loc)}</small>` : ''}</div></li>`).join('');
+  const rows = ev.map(e => `<li class="gcal-row"><time>${e.allDay || !e.start ? 'Cel dan' : hm(e.start)}</time><div><strong>${esc(e.title)}</strong><small>${esc(e.calendarName || 'Google koledar')}${e.loc ? ' · ' + esc(e.loc) : ''}</small></div></li>`).join('');
   return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar danes</h2><p class="dash-sub">${gcal.loading && !ev.length ? 'Nalagam …' : gcal.err ? esc(gcal.err) : ev.length ? `${ev.length} ${ev.length === 1 ? 'dogodek' : 'dogodkov'} v Google koledarju` : 'Danes ni dogodkov.'}</p></div><div class="dash-btns"><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button><button class="btn sm" data-act="calOpen">${ic('calendar', 16)} Koledar</button></div></div>${rows ? `<ul class="gcal-list">${rows}</ul>` : ''}</section>`;
 }
 if (fbCfg()) fbInit().catch(() => {});
@@ -2245,7 +2289,7 @@ function calNorm(e) {
   let sd, ed, st = null, en = null;
   if (allDay) { sd = e.start.date; ed = addDays(e.end && e.end.date ? e.end.date : e.start.date, -1); if (ed < sd) ed = sd; }
   else { st = new Date(e.start.dateTime); en = e.end && e.end.dateTime ? new Date(e.end.dateTime) : st; sd = ymd(st); ed = ymd(new Date(Math.max(st.getTime(), en.getTime() - 1))); }
-  return { id: e.id, title: e.summary || '(brez naslova)', allDay, sd, ed, start: st, end: en, loc: e.location || '', desc: e.description || '', link: e.htmlLink || '' };
+  return { id: e.id, calendarId: e._calendarId || 'primary', calendarName: e._calendarName || 'Moj koledar', calendarColor: e._calendarColor || '', accessRole: e._calendarAccessRole || '', title: e.summary || '(brez naslova)', allDay, sd, ed, start: st, end: en, loc: e.location || '', desc: e.description || '', link: e.htmlLink || '' };
 }
 function calRange() {
   const first = new Date(calUi.y, calUi.m, 1), off = (first.getDay() + 6) % 7;
@@ -2266,10 +2310,9 @@ async function calLoad() {
   const my = ++calUi.seq; calUi.loading = true; calUi.err = null; calRender();
   try {
     const { start, end } = calRange();
-    const q = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '250' });
-    const r = await gapi('calendars/primary/events?' + q);
+    const raw = await loadEventsForCalendars(start, end);
     if (my !== calUi.seq) return;
-    calUi.events = arr(r && r.items).filter(e => e.status !== 'cancelled' && e.start).map(calNorm);
+    calUi.events = raw.map(calNorm);
   } catch (e) {
     if (my !== calUi.seq) return;
     calUi.err = e.message === 'GCAL_AUTH' ? 'Povezava je potekla. Poveži znova.' : e.message; calUi.events = [];
@@ -2310,12 +2353,13 @@ function calHtml() {
   if (calUi.err) h += `<p class="help" style="color:#8E2C10">${esc(calUi.err)}</p>`;
   if (calUi.loading) h += `<p class="help"><span class="spin"></span> Nalagam …</p>`;
   else if (!list.length && !calUi.err) h += `<p class="muted">Ta dan ni dogodkov.</p>`;
-  h += `<div class="cal-list">${list.map(e => `<button class="cal-ev" data-act="calEdit" data-id="${esc(e.id)}"><time>${esc(calTimeLabel(e, calUi.sel))}</time><div><strong>${esc(e.title)}</strong>${e.loc ? `<small>${esc(e.loc)}</small>` : ''}</div></button>`).join('')}</div>`;
+  h += `<div class="cal-list">${list.map(e => `<button class="cal-ev" data-act="calEdit" data-id="${esc(e.id)}"><time>${esc(calTimeLabel(e, calUi.sel))}</time><div><strong>${esc(e.title)}</strong><small>${esc(e.calendarName || 'Google koledar')}${e.loc ? ' · ' + esc(e.loc) : ''}</small></div></button>`).join('')}</div>`;
   return h;
 }
 function calFormHtml() {
   const f = calUi.form;
   return `<div class="sheet-h"><h2>${f.id ? 'Uredi dogodek' : 'Nov dogodek'}</h2>${closeBtn}</div>
+    ${f.id ? `<p class="help" style="margin-top:-4px">Koledar: <strong>${esc(f.calendarName || 'Google koledar')}</strong></p>` : ''}
     <div class="field"><label for="calTitle">Naslov</label><input type="text" id="calTitle" value="${esc(f.title)}" autocomplete="off" placeholder="npr. Zobozdravnik"></div>
     <div class="field"><label class="cal-check"><input type="checkbox" id="calAllDay" data-act="calToggleAllDay" ${f.allDay ? 'checked' : ''}> Cel dan</label></div>
     <div class="field"><label for="calDate">Datum</label><input type="date" id="calDate" value="${esc(f.date)}"></div>
@@ -2332,7 +2376,7 @@ function calFormHtml() {
 }
 function calForm(e) {
   const n = new Date(), nextH = new Date(n.getFullYear(), n.getMonth(), n.getDate(), n.getHours() + 1, 0), isToday = calUi.sel === today();
-  if (e) return { id: e.id, title: e.title === '(brez naslova)' ? '' : e.title, allDay: e.allDay, date: e.sd, endDate: e.allDay && e.ed > e.sd ? e.ed : '', start: e.start ? hm(e.start) : '09:00', end: e.end ? hm(e.end) : '10:00', loc: e.loc, desc: e.desc, link: e.link };
+  if (e) return { id: e.id, calendarId: e.calendarId || 'primary', calendarName: e.calendarName || 'Moj koledar', title: e.title === '(brez naslova)' ? '' : e.title, allDay: e.allDay, date: e.sd, endDate: e.allDay && e.ed > e.sd ? e.ed : '', start: e.start ? hm(e.start) : '09:00', end: e.end ? hm(e.end) : '10:00', loc: e.loc, desc: e.desc, link: e.link };
   const st = isToday && nextH.getDate() === n.getDate() ? hm(nextH) : '09:00', en = isToday && nextH.getDate() === n.getDate() ? hm(new Date(nextH.getTime() + 3600000)) : '10:00';
   return { id: null, title: '', allDay: false, date: calUi.sel, endDate: '', start: st, end: en, loc: '', desc: '', link: '' };
 }
@@ -2361,7 +2405,7 @@ async function calSave() {
   calUi.saving = true; calRender();
   try {
     const body = JSON.stringify(calBody(f));
-    if (f.id) await gapi(`calendars/primary/events/${encodeURIComponent(f.id)}`, { method: 'PATCH', body });
+    if (f.id) await gapi(`calendars/${encodeURIComponent(f.calendarId || 'primary')}/events/${encodeURIComponent(f.id)}`, { method: 'PATCH', body });
     else await gapi('calendars/primary/events', { method: 'POST', body });
     const d = parseYmd(f.date); calUi.sel = f.date; calUi.y = d.getFullYear(); calUi.m = d.getMonth(); calUi.form = null;
     toast('Dogodek je shranjen.'); gcal.loadedAt = 0; gcalLoadToday(true);
@@ -2377,7 +2421,7 @@ async function calDel() {
   if (!confirm('Izbrišem ta dogodek iz Google koledarja?')) return;
   calUi.saving = true; calRender();
   try {
-    try { await gapi(`calendars/primary/events/${encodeURIComponent(f.id)}`, { method: 'DELETE' }); }
+    try { await gapi(`calendars/${encodeURIComponent(f.calendarId || 'primary')}/events/${encodeURIComponent(f.id)}`, { method: 'DELETE' }); }
     catch (e) { if (e.message !== 'NOTFOUND') throw e; }
     calUi.form = null; toast('Dogodek izbrisan.'); gcal.loadedAt = 0; gcalLoadToday(true);
     calUi.saving = false; await calLoad(); return;
