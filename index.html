@@ -465,6 +465,12 @@ code{font-size:.9em;background:var(--blue-soft);padding:1px 5px;border-radius:6p
 .cal-ev div{min-width:0;flex:1}.cal-ev strong{display:block;overflow-wrap:anywhere}.cal-ev small{display:block;color:var(--ink2);font-size:12.5px}
 .cal-check{display:flex!important;align-items:center;gap:10px;font-weight:700}.cal-check input{width:22px;height:22px;min-height:0;flex:0 0 auto}
 a.btn.plain{text-decoration:none;color:var(--ink2);background:transparent;border-color:transparent}
+
+.sync-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.sync-status{font-size:.82rem;font-weight:700}
+.sync-status.ok{color:#16834b}
+.sync-status.busy{color:#a36b00}
+.sync-status.err{color:#b23b2f}
 </style>
 </head>
 <body>
@@ -611,6 +617,8 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
+const APP_VERSION = '2026-10-01 · v7 · Firebase sync';
+
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
 const memStore = {};
@@ -697,7 +705,10 @@ function decodeSharedShop() {
   setTimeout(()=>toast('Skupni nakupovalni seznam je odprt.'),0);
 })();
 
-const save = () => store.set(JSON.stringify(S));
+const save = () => {
+  store.set(JSON.stringify(S));
+  scheduleCloudSave();
+};
 const busy = { plan: false, meals: false, shop: false };
 let deferredPrompt = null;
 
@@ -1866,7 +1877,7 @@ Pravila:
 
 
 /* ---------- Google prijava (Firebase) + Google koledar ---------- */
-const FB_VER = '10.14.1';
+const FB_VER = '12.19.0';
 const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 const GTZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Ljubljana'; } catch (e) { return 'Europe/Ljubljana'; } })();
 const gcal = { fb: null, user: null, token: null, exp: 0, events: [], loadedAt: 0, loading: false, err: null, busy: false };
@@ -1895,16 +1906,213 @@ async function fbInit() {
   if (gcal.fb) return gcal.fb;
   const cfg = fbCfg();
   if (!cfg) throw new UserErr('Firebase podatki niso vpisani v datoteki index.html (FIREBASE_CONFIG).');
-  let appM, M;
-  try { [appM, M] = await Promise.all([import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`), import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`)]); }
-  catch (e) { throw new UserErr('Firebase se ni naložil. Preveri internet.'); }
+  let appM, M, FM;
+  try {
+    [appM, M, FM] = await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`),
+      import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`)
+    ]);
+  } catch (e) { throw new UserErr('Firebase se ni naložil. Preveri internetno povezavo.'); }
+
   const app = appM.getApps().length ? appM.getApp() : appM.initializeApp(cfg);
   const auth = M.getAuth(app);
-  gcal.fb = { auth, M };
-  M.onAuthStateChanged(auth, u => { gcal.user = u ? { name: u.displayName, email: u.email, photo: u.photoURL } : null; refreshGoogleUi(); });
+
+  let db;
+  try {
+    db = FM.initializeFirestore(app, {
+      localCache: FM.persistentLocalCache({ tabManager: FM.persistentMultipleTabManager() })
+    });
+  } catch (e) {
+    // Če je Firestore že inicializiran ali brskalnik ne podpira želene persistence,
+    // uporabimo obstoječo instanco.
+    try { db = FM.getFirestore(app); } catch (e2) { throw new UserErr('Firestore se ni mogel inicializirati.'); }
+  }
+
+  gcal.fb = { auth, M, FM, db };
+  M.onAuthStateChanged(auth, u => {
+    gcal.user = u ? { name: u.displayName, email: u.email, photo: u.photoURL, uid: u.uid } : null;
+    if (u) startCloudSync(u);
+    else stopCloudSync();
+    refreshGoogleUi();
+  });
   M.getRedirectResult(auth).then(r => { if (r) gotCred(r); }).catch(() => {});
   return gcal.fb;
 }
+
+/* ---------- Cloud sync (Google račun + Cloud Firestore) ----------
+   Vsak Google uporabnik ima svojo zbirko:
+   users/{uid}/app/state
+   API ključa za Gemini in Firebase konfiguracije namenoma ne pošiljamo v cloud.
+*/
+const cloudSync = {
+  uid: null,
+  FM: null,
+  db: null,
+  unsub: null,
+  timer: null,
+  applyingRemote: false,
+  ready: false,
+  pending: false,
+  lastJson: ''
+};
+
+function cloudState() {
+  const x = JSON.parse(JSON.stringify(S));
+  if (x.settings) {
+    delete x.settings.apiKey;   // ostane samo na tej napravi
+    delete x.settings.fbConfig; // konfiguracija je v kodi
+  }
+  x.modelCache = null;           // začasni AI cache ni potreben na drugih napravah
+  return x;
+}
+
+function cloudJson() {
+  return JSON.stringify(cloudState());
+}
+
+function cloudStatus(text, type = '') {
+  const el = document.querySelector('#syncStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.className = `sync-status ${type}`.trim();
+}
+
+function cloudPath() {
+  return cloudSync.uid ? cloudSync.FM.doc(cloudSync.db, 'users', cloudSync.uid, 'app', 'state') : null;
+}
+
+function scheduleCloudSave() {
+  if (!cloudSync.uid || !cloudSync.ready || cloudSync.applyingRemote) return;
+  cloudSync.pending = true;
+  clearTimeout(cloudSync.timer);
+  cloudSync.timer = setTimeout(() => pushCloudState().catch(() => {}), 700);
+}
+
+async function pushCloudState() {
+  if (!cloudSync.uid || !cloudSync.ready) return;
+  const json = cloudJson();
+  if (json === cloudSync.lastJson && !cloudSync.pending) return;
+  cloudSync.pending = false;
+  try {
+    cloudStatus('Sinhronizacija …', 'busy');
+    const ref = cloudPath();
+    await cloudSync.FM.setDoc(ref, {
+      state: JSON.parse(json),
+      updatedAt: cloudSync.FM.serverTimestamp()
+    }, { merge: false });
+    cloudSync.lastJson = json;
+    cloudStatus('Sinhronizirano', 'ok');
+  } catch (e) {
+    cloudSync.pending = true;
+    cloudStatus('Napaka pri sinhronizaciji', 'err');
+    console.warn('Cloud sync:', e);
+  }
+}
+
+async function startCloudSync(user) {
+  if (!gcal.fb || !user?.uid) return;
+  if (cloudSync.uid === user.uid && cloudSync.unsub) return;
+
+  stopCloudSync();
+  cloudSync.uid = user.uid;
+  cloudSync.FM = gcal.fb.FM;
+  cloudSync.db = gcal.fb.db;
+  cloudSync.ready = false;
+  cloudStatus('Nalagam podatke …', 'busy');
+
+  const ref = cloudPath();
+  const localApiKey = S.settings.apiKey || '';
+  try {
+    const snap = await cloudSync.FM.getDoc(ref);
+    if (snap.exists()) {
+      const remote = snap.data()?.state;
+      if (remote && typeof remote === 'object') {
+        cloudSync.applyingRemote = true;
+        const base = JSON.parse(JSON.stringify(DEFAULT));
+        S = {
+          ...base,
+          ...remote,
+          settings: { ...base.settings, ...(remote.settings || {}) },
+          ui: { ...base.ui, ...(remote.ui || {}) }
+        };
+        S.settings.apiKey = localApiKey;
+        S.settings.fbConfig = FIREBASE_CONFIG.apiKey ? '' : (S.settings.fbConfig || '');
+        S.settings.showDeadlines = S.settings.showDeadlines !== false;
+        S.settings.showDocs = S.settings.showDocs !== false;
+        S.settings.showShopping = S.settings.showShopping !== false;
+        S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
+        S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
+        fixInbox();
+        store.set(JSON.stringify(S));
+        cloudSync.lastJson = cloudJson();
+        cloudSync.applyingRemote = false;
+        render();
+        toast('Podatki so bili naloženi iz oblaka.');
+      }
+    } else {
+      // Prva prijava tega računa: obstoječe lokalne podatke prenesemo v cloud.
+      cloudSync.ready = true;
+      await pushCloudState();
+      cloudStatus('Sinhronizirano', 'ok');
+    }
+
+    cloudSync.ready = true;
+    cloudSync.unsub = cloudSync.FM.onSnapshot(ref, snap2 => {
+      if (!snap2.exists()) return;
+      const remote = snap2.data()?.state;
+      if (!remote || typeof remote !== 'object') return;
+      const json = JSON.stringify(remote);
+      if (json === cloudSync.lastJson) return;
+
+      cloudSync.applyingRemote = true;
+      const localApiKey = S.settings.apiKey || '';
+      const base = JSON.parse(JSON.stringify(DEFAULT));
+      S = {
+        ...base,
+        ...remote,
+        settings: { ...base.settings, ...(remote.settings || {}), apiKey: localApiKey },
+        ui: { ...base.ui, ...(remote.ui || {}) }
+      };
+      S.settings.showDeadlines = S.settings.showDeadlines !== false;
+      S.settings.showDocs = S.settings.showDocs !== false;
+      S.settings.showShopping = S.settings.showShopping !== false;
+      S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
+      S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
+      fixInbox();
+      store.set(JSON.stringify(S));
+      cloudSync.lastJson = cloudJson();
+      cloudSync.applyingRemote = false;
+      render();
+      cloudStatus('Posodobljeno', 'ok');
+    }, err => {
+      cloudStatus('Sinhronizacija ni na voljo', 'err');
+      console.warn('Firestore listener:', err);
+    });
+
+    cloudStatus('Sinhronizirano', 'ok');
+    refreshGoogleUi();
+  } catch (e) {
+    cloudSync.ready = false;
+    cloudStatus('Cloud sync ni uspela', 'err');
+    toast(`Sinhronizacija: ${e.code === 'permission-denied' ? 'preveri Firestore pravila.' : (e.message || 'napaka')}`);
+  }
+}
+
+function stopCloudSync() {
+  if (cloudSync.unsub) { try { cloudSync.unsub(); } catch (e) {} }
+  cloudSync.unsub = null;
+  clearTimeout(cloudSync.timer);
+  cloudSync.timer = null;
+  cloudSync.uid = null;
+  cloudSync.FM = null;
+  cloudSync.db = null;
+  cloudSync.ready = false;
+  cloudSync.pending = false;
+  cloudSync.lastJson = '';
+  cloudStatus('Ni povezano', '');
+}
+
 function gotCred(result) {
   const M = gcal.fb.M, c = M.GoogleAuthProvider.credentialFromResult(result);
   if (c && c.accessToken) {
@@ -1935,6 +2143,7 @@ async function gSignIn() {
 }
 async function gSignOut() {
   try { if (gcal.fb) await gcal.fb.M.signOut(gcal.fb.auth); } catch (e) {}
+  stopCloudSync();
   clearGToken(); gcal.user = null; refreshGoogleUi(); toast('Odjavljen.');
 }
 function refreshGoogleUi() {
@@ -1946,11 +2155,15 @@ function googleBlockInner() {
   const ok = !!fbCfg(), u = gcal.user;
   let h = '';
   if (u) h += `<div class="g-user">${u.photo ? `<img src="${esc(u.photo)}" alt="" width="40" height="40" referrerpolicy="no-referrer">` : ''}<div><strong>${esc(u.name || 'Google račun')}</strong><small>${esc(u.email || '')}</small></div></div>`;
-  h += `<p class="help" style="margin:0 0 8px">Google koledar: ${gcalOn() ? '<strong>povezan</strong> (približno 1 uro)' : u ? 'povezava je potekla, poveži znova' : 'ni povezan'}</p>`;
+  if (u) h += `<div class="sync-row"><span>☁️ Podatki</span><strong id="syncStatus" class="sync-status ${cloudSync.ready ? 'ok' : ''}">${cloudSync.ready ? 'Sinhronizirano' : 'Nalagam …'}</strong></div>`;
+  h += `<p class="help" style="margin:0 0 8px">Podatki se po prijavi sinhronizirajo prek Cloud Firestore med telefonom in računalnikom. Google koledar je ločena povezava.</p>`;
   h += `<div class="set-actions">`;
-  if (!gcalOn()) h += `<button class="btn" data-act="gSignIn" ${!ok || gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 17) + (u ? ' Poveži znova' : ' Prijava z Google')}</button>`;
-  else h += `<button class="btn ghost" data-act="gRefresh">Osveži dogodke</button>`;
-  if (u) h += `<button class="btn ghost" data-act="gSignOut">Odjava</button>`;
+  if (!u) h += `<button class="btn" data-act="gSignIn" ${!ok || gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 17) + ' Prijava z Google'}</button>`;
+  else {
+    if (!gcalOn()) h += `<button class="btn ghost" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem koledar …' : ic('calendar', 17) + ' Poveži Google koledar'}</button>`;
+    else h += `<button class="btn ghost" data-act="gRefresh">Osveži koledar</button>`;
+    h += `<button class="btn ghost" data-act="gSignOut">Odjava</button>`;
+  }
   h += `</div>`;
   if (!ok && (S.settings.fbConfig || '').trim()) h += `<p class="help" style="color:#8E2C10">Konfiguracije ni mogoče prebrati. Potrebni so vsaj apiKey, authDomain in projectId.</p>`;
   return h;
@@ -2228,7 +2441,8 @@ function openSettings() {
     <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('download', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
     <div class="set-actions"><button class="btn ghost" data-act="export">Izvozi varnostno kopijo</button><button class="btn ghost" data-act="import">Uvozi</button><button class="btn ghost danger" data-act="wipe">Izbriši vse podatke</button></div>
-    <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz (slike računov niso v izvozu).</p>`, 'settings');
+    <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz (slike računov niso v izvozu).</p>
+    <p class="help muted">Različica aplikacije: ${esc(APP_VERSION)}</p>`, 'settings');
 }
 const onSettingInput = e => {
   const id = e.target.id;
@@ -2927,6 +3141,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ch
 
 initTheme();
 render();
+if (fbCfg()) fbInit().catch(() => {});
+
 startReminderMonitoring();
 const qa = new URLSearchParams(location.search).get('a');
 if (qa) { try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ } setTimeout(() => openCapture(qa === 'voice' ? 'voice' : 'open'), 80); }
