@@ -412,6 +412,31 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .meal-highlight{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}.meal-highlight span{font-size:11px;color:var(--petrol);font-weight:800;text-transform:uppercase}.meal-highlight strong{font-size:14px}.meal-highlight small{color:var(--ink2);font-size:11px}.dash-shop-line{display:flex;flex-wrap:wrap;gap:6px}.dash-shop-line span,.dash-shop-line em{display:inline-flex;padding:7px 9px;border-radius:999px;background:var(--blue-soft);font-size:11.5px;font-style:normal}.dash-more{margin-top:6px}
 .compact-welcome{padding:14px}.compact-welcome p{margin:0 0 10px}.compact-invites{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.compact-invites .invite{min-height:66px;padding:9px;justify-content:center}.compact-invites .invite span{font-size:11px}
 @media (max-width:700px){.dash-overview{grid-template-columns:repeat(2,1fr)}.today-hero{padding:14px}.today-hero h2{font-size:22px}.meal-highlight{grid-template-columns:1fr auto}.meal-highlight span{grid-column:1/-1}.next-now{display:none}}
+
+/* ---------- fixes: layout, meals, repeat ---------- */
+.today-hero>div:first-child{min-width:0}
+.today-actions{flex:0 0 auto}
+.dash-section-head>div{min-width:0;flex:1}.dash-section-head>.btn{flex:0 0 auto}
+.sec-h{flex-wrap:wrap}.sec-h>.btn{flex:0 0 auto}
+.meal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.meal-actions .btn{width:100%;min-width:0;padding:0 10px;white-space:nowrap}
+.recipe{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.recipe h4{margin:0 0 4px;font:800 17px var(--font-h)}
+.recipe h5{margin:12px 0 4px;font:800 13px var(--font-b);text-transform:uppercase;letter-spacing:.04em;color:var(--petrol)}
+.recipe p{margin:4px 0}.recipe-meta{color:var(--ink2);font-size:13px}
+.recipe-ing{list-style:none;margin:0;padding:0}
+.recipe-ing li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.recipe-ing li:last-child{border-bottom:0}.recipe-ing em{font-style:normal;color:var(--ink2);text-align:right}
+.recipe-steps{margin:4px 0;padding-left:22px}.recipe-steps li{margin:8px 0}
+.mini svg{display:block}
+@media(max-width:560px){
+  .today-hero{flex-direction:column;align-items:stretch;gap:12px}
+  .today-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+  .today-actions .btn{width:100%;min-width:0;padding:0 12px}
+  .cal-lbl{display:none}
+  .row .cal-action{flex:0 0 auto;width:44px;min-height:44px;padding:0}
+  .meal-actions{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -541,7 +566,7 @@ const ICON = {
   pin: '<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1116 0z"/><circle cx="12" cy="10" r="2.5"/>',
   doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
   share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.5-4M8.2 13.2l7.5 4"/>',
-  repeat: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 9A7 7 0 0118.5 7M17.8 15A7 7 0 015.5 17"/>',
+  repeat: '<path d="M20.5 4.5v5h-5"/><path d="M3.5 19.5v-5h5"/><path d="M5.6 9.2A7.5 7.5 0 0118.9 7.6l1.6 1.9M18.4 14.8A7.5 7.5 0 015.1 16.4l-1.6-1.9"/>',
   inbox: '<path d="M4 5.5h16v13H4z"/><path d="M4 14h4l1.7 2h4.6l1.7-2H20"/><path d="M12 8v3M10.5 9.5H13.5"/>'
 };
 const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
@@ -1091,7 +1116,7 @@ ${mp ? '- Malico oblikuj kot praktično malico za v službo: naj bo primerna za 
     }));
     if (!obroki.length) throw new UserErr('Tokrat nisem našel predlogov. Poskusi znova ali preveri API ključ.');
     S.ui.mealMode = mode;
-    S.meals = { date: today(), mode, nasvet: str(r.nasvet) || '', obroki };
+    S.meals = { date: today(), mode, nasvet: str(r.nasvet) || '', obroki }; mealOpen.clear();
     save();
   } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
   busy.meals = false; render();
@@ -1159,6 +1184,88 @@ function addToShop(names) {
   names.forEach(nm => { if (!S.shop.items.some(i => !i.done && i.name.toLowerCase() === nm.toLowerCase())) { S.shop.items.push({ id: uid(), name: nm, qty: null, category: 'Drugo', done: false }); n++; } });
   return n;
 }
+
+/* ---------- meal customize + AI recipe ---------- */
+const mealOpen = new Set();
+const mealBusy = {};
+document.addEventListener('toggle', e => {
+  const d = e.target;
+  if (d && d.matches && d.matches('details.meal')) { const i = +d.dataset.i; if (d.open) mealOpen.add(i); else mealOpen.delete(i); }
+}, true);
+function recipeHtml(x) {
+  const r = x.recept; if (!r) return '';
+  const meta = [r.priprava ? 'Priprava ' + r.priprava + ' min' : null, r.kuhanje ? 'Kuhanje ' + r.kuhanje + ' min' : null, r.porcije ? oseb(r.porcije).replace(/^/, '') : null].filter(Boolean).join(' · ');
+  return `<div class="recipe"><h4>Recept</h4>${r.opis ? `<p>${esc(r.opis)}</p>` : ''}${meta ? `<p class="recipe-meta">${esc(meta)}</p>` : ''}
+    ${r.sestavine.length ? `<h5>Sestavine</h5><ul class="recipe-ing">${r.sestavine.map(s => `<li><span>${esc(s.ime)}</span>${s.kolicina ? `<em>${esc(s.kolicina)}</em>` : ''}</li>`).join('')}</ul>` : ''}
+    ${r.koraki.length ? `<h5>Postopek</h5><ol class="recipe-steps">${r.koraki.map(k => `<li>${k.naslov ? `<strong>${esc(k.naslov)}</strong> ` : ''}${esc(k.opis)}</li>`).join('')}</ol>` : ''}
+    ${r.nasveti.length ? `<p class="tipbox">${r.nasveti.map(esc).join('<br>')}</p>` : ''}</div>`;
+}
+const mealToAI = x => ({ tip: x.tip, naziv: x.naziv, cas_min: x.cas, porcije: x.porcije, sestavine: (x.sestavine || []).map(s => ({ ime: s.ime, kolicina: s.kolicina })), koraki: x.koraki || [] });
+function normMeal(x, old) {
+  return {
+    tip: old.tip, naziv: str(x.naziv) || old.naziv, cas: num(x.cas_min) ?? old.cas, porcije: num(x.porcije) ?? old.porcije,
+    iz: arr(x.iz_hladilnika).map(str).filter(Boolean), manjka: arr(x.manjka).map(str).filter(Boolean),
+    sestavine: arr(x.sestavine).filter(y => y && y.ime).map(y => ({ ime: str(y.ime), kolicina: str(y.kolicina), kategorija: SHOP_ORDER.includes(y.kategorija) ? y.kategorija : 'Drugo' })),
+    koraki: arr(x.koraki).map(str).filter(Boolean), nasvet: str(x.nasvet)
+  };
+}
+function openMealEdit(i) {
+  const x = S.meals && S.meals.obroki[i]; if (!x) return;
+  const chips = ['Brez mesa', 'Brez mleka in laktoze', 'Hitreje (do 15 min)', 'Bolj sitno', 'Manj ogljikovih hidratov', 'Bolj pikantno', 'Zamenjaj jed z drugo'];
+  openSheet(`<div class="sheet-h"><h2>Prilagodi obrok</h2>${closeBtn}</div>
+    <p class="hint"><strong>${esc(MEAL_TAG[x.tip])}:</strong> ${esc(x.naziv)}</p>
+    <div class="field"><label for="mealWish">Kaj želiš spremeniti?</label>
+      <textarea id="mealWish" rows="4" placeholder="Npr. brez gob, uporabi piščanec namesto govedine, naj bo za 4 osebe …"></textarea>
+      <div class="chips wrap">${chips.map(c => `<button type="button" class="chip" data-act="mealChip" data-t="${esc(c)}">${esc(c)}</button>`).join('')}</div></div>
+    <div class="sheet-f"><button class="btn wide" id="mealEditGo" data-act="mealEditGo" data-i="${i}">${ic('spark', 18)} Prilagodi z AI</button></div>`, 'mealEdit');
+}
+async function customizeMeal(i) {
+  const m = S.meals && S.meals.obroki[i]; if (!m || mealBusy['c' + i]) return;
+  const wish = (($('#mealWish') || {}).value || '').trim();
+  if (!wish) { toast('Napiši, kaj naj spremenim.'); return; }
+  if (!needKey()) return;
+  mealBusy['c' + i] = true;
+  const go = $('#mealEditGo'); if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span> Prilagajam …'; }
+  const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
+${householdTxt()}
+Hladilnik: ${JSON.stringify(fridgeForAI())}
+Uporabnik želi prilagoditi en obrok današnjega jedilnika.
+Trenutni obrok: ${JSON.stringify(mealToAI(m))}
+Želja uporabnika: "${wish}"
+Vrni prilagojen obrok kot JSON v enaki obliki (tip ostane "${m.tip}"):
+{"naziv":"","cas_min":0,"porcije":0,"iz_hladilnika":[],"manjka":[],"sestavine":[{"ime":"","kolicina":"","kategorija":"Zelenjava|Sadje|Meso in ribe|Mlečno|Jajca|Kruh in pekovski|Žita in testenine|Konzerve in suho|Zamrznjeno|Pijače|Omake in začimbe|Drugo"}],"koraki":["3-6 kratkih korakov"],"nasvet":"kratek nasvet ali null"}
+Pravila: upoštevaj željo uporabnika, ohrani preprost postopek, navedi vse bistvene sestavine z realnimi količinami, "manjka" naj vsebuje samo to, česar ni v hladilniku.`;
+  try {
+    const r = await callGemini([{ text: prompt }]);
+    const nm = normMeal(r, m);
+    S.meals.obroki[i] = nm; save();
+    sheet.close(); render(); toast('Obrok je prilagojen.');
+  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); const g = $('#mealEditGo'); if (g) { g.disabled = false; g.innerHTML = ic('spark', 18) + ' Prilagodi z AI'; } }
+  mealBusy['c' + i] = false;
+}
+async function genRecipe(i) {
+  const m = S.meals && S.meals.obroki[i]; if (!m || mealBusy['r' + i]) return;
+  if (!needKey()) return;
+  mealOpen.add(i);
+  mealBusy['r' + i] = true; render();
+  const prompt = `${householdTxt()}
+Napiši podroben, lepo razumljiv recept za naslednji obrok: ${JSON.stringify(mealToAI(m))}
+Količine prilagodi za ${Math.max(1, Math.min(8, parseInt(S.settings.people) || 2))} oseb. Osnovne stvari (olje, sol, poper) imajo vedno.
+Vrni JSON:
+{"opis":"1-2 stavka o jedi","priprava_min":0,"kuhanje_min":0,"porcije":0,"sestavine":[{"ime":"","kolicina":""}],"koraki":[{"naslov":"kratek naslov koraka","opis":"jasen opis s temperaturami in časi"}],"nasveti":["1-3 kratki nasveti, lahko prazno"]}`;
+  try {
+    const r = await callGemini([{ text: prompt }]);
+    const rec = {
+      opis: str(r.opis) || '', priprava: num(r.priprava_min), kuhanje: num(r.kuhanje_min), porcije: num(r.porcije),
+      sestavine: arr(r.sestavine).filter(y => y && y.ime).map(y => ({ ime: str(y.ime), kolicina: str(y.kolicina) })),
+      koraki: arr(r.koraki).map(k => typeof k === 'string' ? { naslov: null, opis: k } : { naslov: str(k && k.naslov), opis: str(k && k.opis) }).filter(k => k.opis),
+      nasveti: arr(r.nasveti).map(str).filter(Boolean)
+    };
+    if (!rec.koraki.length) throw new UserErr('Recepta ni bilo mogoče pripraviti. Poskusi znova.');
+    m.recept = rec; save();
+  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
+  mealBusy['r' + i] = false; render();
+}
 function mealsHtml() {
   const m = S.meals && S.meals.date === today() ? S.meals : null;
   if (!m) return '';
@@ -1166,13 +1273,18 @@ function mealsHtml() {
   let h = `<div class="sec-h"><h2 class="sec">Obroki za danes</h2><button class="btn sm ghost" data-act="shopFromMeals" ${busy.shop ? 'disabled' : ''}>${busy.shop ? '<span class="spin"></span> Nakupujem …' : ic('cart', 16) + ' Nakup iz jedilnika'}</button></div>`;
   h += `<p class="help" style="margin-top:-4px">Način: <strong>${modeLabel}</strong></p>`;
   if (m.nasvet) h += `<p class="advice">${esc(m.nasvet)}</p>`;
-  h += m.obroki.map((x, i) => `<details class="meal"><summary><span class="tag ${x.tip}">${MEAL_TAG[x.tip]}</span><span class="grow"><strong>${esc(x.naziv)}</strong></span><small class="sub">${x.cas ? x.cas + ' min' : ''}</small></summary>
+  h += m.obroki.map((x, i) => `<details class="meal" data-i="${i}"${mealOpen.has(i) ? ' open' : ''}><summary><span class="tag ${x.tip}">${MEAL_TAG[x.tip]}</span><span class="grow"><strong>${esc(x.naziv)}</strong></span><small class="sub">${x.cas ? x.cas + ' min' : ''}</small></summary>
     <div class="meal-b">
       ${x.iz.length ? `<p><strong>Iz hladilnika:</strong> ${esc(x.iz.join(', '))}</p>` : ''}
       ${x.manjka.length ? `<p><strong>Manjka:</strong> ${esc(x.manjka.join(', '))}</p><button class="btn sm ghost" data-act="addMissing" data-i="${i}">Dodaj na nakupovalni seznam</button>` : ''}
       ${x.sestavine && x.sestavine.length ? `<details class="fold"><summary>Vse sestavine</summary><ul class="list">${x.sestavine.map(s => `<li class="row"><div class="grow"><strong>${esc(s.ime)}</strong>${s.kolicina ? `<small>${esc(s.kolicina)}</small>` : ''}</div></li>`).join('')}</ul></details>` : ''}
       ${x.koraki.length ? `<ol>${x.koraki.map(k => `<li>${esc(k)}</li>`).join('')}</ol>` : ''}
       ${x.nasvet ? `<p class="tipbox">${esc(x.nasvet)}</p>` : ''}
+      ${recipeHtml(x)}
+      <div class="meal-actions">
+        <button class="btn sm ghost" data-act="mealEdit" data-i="${i}">${ic('pen', 16)} Prilagodi obrok</button>
+        <button class="btn sm" data-act="mealRecipe" data-i="${i}" ${mealBusy['r' + i] ? 'disabled' : ''}>${mealBusy['r' + i] ? '<span class="spin"></span> Pišem recept …' : ic('spark', 16) + (x.recept ? ' Nov recept' : ' Recept z AI')}</button>
+      </div>
     </div></details>`).join('');
   return h;
 }
@@ -1297,7 +1409,7 @@ function renderTasks() {
     const meta=[t.frame,t.time,t.min?t.min+' min':null,t.due?(sortMode==='due'?fmtDateY(t.due):rel(dayDiff(t.due))):'brez roka',normalizedRepeatTask(t)?repeatLabel(normalizedRepeatTask(t)):null].filter(Boolean).join(' · ');
     const reminder=taskReminderLabel(t);
     const calDate=t.due|| (t.time?today():null);
-    return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong><small>${esc(meta)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} Dodaj v koledar</button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
+    return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong><small>${esc(meta)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
   let h=`<div class="quick"><input type="text" id="quickTask" placeholder="Hitro dodaj opravilo …" aria-label="Novo opravilo" autocomplete="off"><select id="quickTaskRepeat" aria-label="Ponavljanje opravila">${REPEAT_OPTIONS.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select><button class="btn" data-act="quickTask">Dodaj</button></div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
   h+=`<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
@@ -2209,9 +2321,9 @@ const A = {
   async saveInboxDraft() {
     try { const ta = $('#capText'); if (ta) cap.text = ta.value; await saveCaptureToInbox(null, cap.inboxId || null); sheet.close(); render(); toast(cap.inboxId ? 'Vnos je shranjen v Inbox.' : 'Vnos je dodan v Inbox.'); } catch (e) { toast('Vnosa ni bilo mogoče shraniti.'); }
   },
-  openInbox() { renderInbox(); openSheet(null, 'inbox'); },
+  openInbox() { openSheet(renderInbox(), 'inbox'); },
   openInboxItem(b) { loadInboxCapture(b.dataset.id); },
-  deleteInbox(b) { const id=b.dataset.id; deleteInboxItem(id).then(()=>{renderInbox(); toast('Vnos izbrisan.');}); },
+  deleteInbox(b) { const id=b.dataset.id; deleteInboxItem(id).then(()=>{ render(); if (sheet.open && sheet.dataset.kind === 'inbox') $('#sheetBody').innerHTML = renderInbox(); toast('Vnos izbrisan.'); }); },
   backCompose() { cap.result = null; renderCompose(); },
   apply() { applyResult(); },
   pay(b) {
@@ -2324,6 +2436,10 @@ Object.assign(A, {
   shopGen() { S.ui.tab = 'fridge'; save(); genShop(); },
   shopFromMeals() { S.ui.tab = 'fridge'; save(); genShopFromMeals(); },
   openShop() { S.ui.tab = 'fridge'; save(); render(); setTimeout(() => { const el = $('#shopSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); window.scrollTo(0, 0); }, 30); },
+  mealEdit(b) { openMealEdit(+b.dataset.i); },
+  mealEditGo(b) { customizeMeal(+b.dataset.i); },
+  mealRecipe(b) { genRecipe(+b.dataset.i); },
+  mealChip(b) { const t = $('#mealWish'); if (!t) return; t.value = (t.value.trim() ? t.value.trim().replace(/[.,]$/, '') + ', ' : '') + b.dataset.t.toLowerCase(); t.focus(); },
   addMissing(b) {
     const m = S.meals && S.meals.obroki[+b.dataset.i]; if (!m) return;
     const n = addToShop(m.manjka); save(); render();
