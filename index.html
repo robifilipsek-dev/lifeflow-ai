@@ -320,6 +320,9 @@ dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
 .time-range{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
 .time-range label.time{display:grid;grid-template-columns:1fr;gap:4px;font-size:13px;font-weight:700}
 .time-range label.time input{width:100%;min-width:0}
+.field.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field.two>div{min-width:0}
+.row .grow[data-act]{cursor:pointer}.edit-ico{display:inline-block;margin-left:6px;vertical-align:-2px;color:var(--ink2);opacity:.65}
+.dash-overview{grid-template-columns:repeat(3,1fr)!important}
 .rv-edit{margin:2px 0 4px 34px}.rv-edit>summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;font-weight:700;color:var(--petrol-d,#1d6b6e);padding:6px 0;list-style:none}.rv-edit>summary::-webkit-details-marker{display:none}.rv-edit .rv-in{padding-left:0}
 .rv-edit .rv-in label:first-child{grid-column:1/-1}
 .cap-ta{position:relative}.cap-ta textarea{padding-right:58px}.cap-mic{position:absolute;right:8px;bottom:10px}
@@ -615,7 +618,6 @@ Deluješ po načelu "Zero-Friction": od uporabnika nikoli ne zahtevaš zapletene
 ### TVOJE GLAVNE FUNKCIONALNOSTI IN LOGIKA DELOVANJA:
 
 1. ANALIZA MULTIMEDIJSKIH VNOSOV (Zero-Input Engine)
-- Slike računov/položnic: Izlušči znesek, prejemnika, datum zapadlosti in kategorijo. Samodejno ustvari opomnik za plačilo.
 - Slike hladilnika/trgovinskih računov: Prepoznaj sestavine, oceni njihovo uporabnost ter jih dodaj v "Virtualni hladilnik". Opozori na iztek rokov.
 - Glasovna sporočila/Surovi zapisi: Pretvori kaotične misli uporabnika v jasna, strukturirana opravila z opredeljeno prioriteto in časovnim okvirom.
 
@@ -732,8 +734,8 @@ const DEFAULT = {
   settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '',
     showDeadlines: true, showDocs: true, showShopping: true, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
   modelCache: null,
-  bills: [], expenses: [], fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
-  ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true, moneyFilter: 'all',
+  fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
+  ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true,
     taskSort: 'due', sortDirection: 'asc', theme: null, mealMode: 'fridge', shopTab: 'list' }
 };
 function load() {
@@ -753,6 +755,13 @@ S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
 if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
 S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
+function purgeFinance() {
+  delete S.bills; delete S.expenses;
+  if (S.ui) delete S.ui.moneyFilter;
+  if (S.ui && S.ui.tab === 'money') S.ui.tab = 'today';
+  if (Array.isArray(S.reminders)) S.reminders = S.reminders.filter(r => r && !r.billId);
+}
+purgeFinance();
 function fixInbox() {
   S.inbox = (Array.isArray(S.inbox) ? S.inbox : []).filter(x => x && typeof x === 'object');
   const seen = new Set();
@@ -906,15 +915,6 @@ sheet.addEventListener('close', () => {
 /* ---------- alerts (proactive) ---------- */
 function computeAlerts() {
   const out = [];
-  S.bills.filter(b => !b.paid && b.due).forEach(b => {
-    const d = dayDiff(b.due);
-    if (d <= 3) out.push({
-      lvl: d <= 1 ? 'bad' : 'warn', sort: d,
-      title: `${b.recipient || 'Položnica'}${b.amount != null ? ' · ' + money(b.amount, b.currency) : ''}`,
-      text: d < 0 ? `Zapadlo ${rel(d)}` : `Zapade ${rel(d)}`,
-      btn: 'Plačano', act: 'pay', id: b.id
-    });
-  });
   const exp = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).sort((a, b) => a.expires.localeCompare(b.expires));
   if (exp.length) {
     const worst = dayDiff(exp[0].expires);
@@ -925,7 +925,7 @@ function computeAlerts() {
       btn: 'Obroki za danes', act: 'meals'
     });
   }
-  S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && !r.billId && r.at.slice(0, 10) <= today()).forEach(r => {
+  S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) <= today()).forEach(r => {
     out.push({ lvl: 'info', sort: -0.5, title: r.text, text: `Opomnik · ${r.at.slice(0, 10) === today() ? 'danes ob ' + r.at.slice(11, 16) : 'zamujeno'}`, btn: 'Opravljeno', act: 'doneRem', id: r.id });
   });
   S.deadlines.filter(d => !d.done).forEach(d => {
@@ -933,12 +933,6 @@ function computeAlerts() {
     if (n <= (d.lead || 14)) out.push({ lvl: n <= 7 ? 'bad' : 'warn', sort: n - 0.3, title: d.title, text: n < 0 ? `Zamujeno ${rel(n)} (${fmtDateY(d.due)})` : `Poteče ${rel(n)} (${fmtDateY(d.due)})`, btn: d.category === 'Garancija' ? 'Skrij' : 'Opravljeno', act: 'doneDl', id: d.id });
   });
   if (deferredPrompt && !isStandalone() && !S.dismissed.install) out.push({ lvl: 'info', sort: 9, title: 'Namesti LifeFlow na telefon', text: 'Odpre se kot prava aplikacija, s svojo ikono.', btn: 'Namesti', act: 'install', dismiss: 'install' });
-  const now = new Date();
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const mk = today().slice(0, 7);
-  if (last - now.getDate() <= 2 && !S.dismissed['subs' + mk]) {
-    out.push({ lvl: 'info', sort: 5, title: 'Konec meseca: pregled naročnin', text: 'Preveri, kaj se ti samodejno obnavlja, in ukini, česar ne uporabljaš.', btn: 'Odpri nakup', act: 'subs', dismiss: 'subs' + mk });
-  }
   return out.sort((a, b) => a.sort - b.sort);
 }
 function alertsHtml() {
@@ -980,51 +974,17 @@ function headerFor(tab) {
     const un = S.shop ? S.shop.items.filter(i => !i.done).length : 0;
     return { t: 'Nakupovalni seznam', s: un ? `${un} ${un === 1 ? 'artikel' : 'artiklov'} za kupiti` : 'Seznam je prazen' };
   }
-  if (tab === 'money') {
-    const un = S.bills.filter(b => !b.paid).length;
-    return { t: 'Finance', s: un ? `${un} neplačanih položnic` : 'Vse plačano' };
-  }
   const open = S.tasks.filter(t => !t.done).length;
   return { t: 'Opravila', s: open ? `${open} odprtih` : 'Nič odprtega' };
 }
 
 function countSoonFridge() { return S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).length; }
 function backupReminderHtml() {
-  const hasData = S.bills.length || S.fridge.length || S.tasks.length || S.expenses.length || S.docs.length || S.deadlines.length;
+  const hasData = S.fridge.length || S.tasks.length || S.docs.length || S.deadlines.length;
   if (!hasData) return '';
   const last = S.settings.lastBackupAt || S.settings.backupReminderDismissedAt;
   if (last && dayDiff(last) < 30) return '';
-  return `<div class="alert warn"><div class="a-body"><strong>Čas za varnostno kopijo</strong><span>Slike računov ostanejo samo na tej napravi. Priporočam izvoz kopije.</span></div><div class="a-act"><button class="btn sm" data-act="export">Izvozi</button><button class="btn sm plain" data-act="dismissBackup">Kasneje</button></div></div>`;
-}
-function quickSummaryHtml() {
-  const tasks = S.tasks.filter(t => !t.done).length;
-  const bills = S.bills.filter(b => !b.paid).length;
-  const soon = countSoonFridge();
-  return `<div class="quick-summary" aria-label="Na hitro">
-    <div class="qs"><b>${tasks}</b><span>${tasks === 1 ? 'opravilo' : 'opravil'}</span></div>
-    <div class="qs"><b>${bills}</b><span>${bills === 1 ? 'položnica' : 'položnic'}</span></div>
-    <div class="qs"><b>${soon}</b><span>${soon === 1 ? 'živilo se izteka' : 'živil se izteka'}</span></div>
-  </div>`;
-}
-function monthsBack(n) {
-  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0,7);
-}
-function trendHtml() {
-  const data = [];
-  for (let i = 5; i >= 0; i--) {
-    const key = monthsBack(i);
-    let total = 0;
-    S.expenses.forEach(e => { if ((e.date || '').startsWith(key)) total += Number(e.total || 0); });
-    S.bills.forEach(b => { if ((b.due || '').startsWith(key) && (b.currency || 'EUR') === 'EUR') total += Number(b.amount || 0); });
-    data.push({ key, total });
-  }
-  const max = Math.max(1, ...data.map(x => x.total));
-  return `<h2 class="sec">Poraba – zadnjih 6 mesecev</h2><div class="trend">${data.map(x => {
-    const pct = Math.max(4, Math.round(x.total / max * 100));
-    const [y,m] = x.key.split('-');
-    return `<div class="trend-col"><strong>${money(x.total)}</strong><i class="trend-bar" style="height:${pct}%"></i><small>${m}/${y.slice(2)}</small></div>`;
-  }).join('')}</div>`;
+  return `<div class="alert warn"><div class="a-body"><strong>Čas za varnostno kopijo</strong><span>Slike ostanejo samo na tej napravi. Priporočam izvoz kopije.</span></div><div class="a-act"><button class="btn sm" data-act="export">Izvozi</button><button class="btn sm plain" data-act="dismissBackup">Kasneje</button></div></div>`;
 }
 function icsEscape(v) { return String(v || '').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
 function icsStamp(dateObj = new Date()) { return dateObj.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z'); }
@@ -1075,9 +1035,6 @@ function todayTaskList() {
 function todayReminderList() {
   return S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0,10) === today()).sort((a,b) => String(a.at).localeCompare(String(b.at)));
 }
-function todayBillList() {
-  return S.bills.filter(b => !b.paid && b.due && dayDiff(b.due) <= 0).sort((a,b) => (a.due || '9999').localeCompare(b.due || ''));
-}
 function todayDeadlineList() {
   return S.deadlines.filter(d => !d.done && d.due && dayDiff(d.due) <= 0).sort((a,b) => (a.due || '9999').localeCompare(b.due || ''));
 }
@@ -1086,14 +1043,12 @@ function dashLabelForPriority(p) {
 }
 function dashActionButton(item) {
   if (item.kind === 'task') return chk(false, 'toggleTask', item.id, 'Opravljeno');
-  if (item.kind === 'bill') return chk(false, 'pay', item.id, 'Označi kot plačano');
   if (item.kind === 'rem') return chk(false, 'doneRem', item.id, 'Opravljeno');
   if (item.kind === 'deadline') return chk(false, 'doneDl', item.id, 'Opravljeno');
   return '';
 }
 function dashUrgentHtml() {
   const raw = [];
-  todayBillList().forEach(b => raw.push({ kind:'bill', id:b.id, title:b.recipient || 'Položnica', meta:`${b.due === today() ? 'Danes' : 'Zamujeno'}${b.amount != null ? ' · ' + money(b.amount, b.currency) : ''}`, sort: b.due < today() ? -20 : -10 }));
   todayDeadlineList().forEach(d => raw.push({ kind:'deadline', id:d.id, title:d.title, meta:d.due < today() ? `Zamujeno · ${fmtDate(d.due)}` : 'Rok danes', sort:-9 }));
   todayReminderList().forEach(r => raw.push({ kind:'rem', id:r.id, title:r.text, meta:`Danes ob ${r.at.slice(11,16)}`, sort: -8 + Number(r.at.slice(11,16).replace(':','.'))/100 }));
   todayTaskList().forEach(t => raw.push({ kind:'task', id:t.id, title:t.title, meta:[t.time || 'Danes', dashLabelForPriority(t.prio)].filter(Boolean).join(' · '), sort: t.time ? Number(t.time.replace(':','.')) : 40 }));
@@ -1103,7 +1058,6 @@ function dashUrgentHtml() {
   const rows = items.map(x => `<li class="dash-row">
       <div class="dash-check">${dashActionButton(x)}</div>
       <div class="dash-row-main"><strong>${esc(x.title)}</strong><small>${esc(x.meta)}</small></div>
-      ${x.kind === 'bill' ? `<button class="mini" data-act="addBillCal" data-id="${esc(x.id)}" aria-label="Dodaj položnico v koledar">${ic('download',18)}</button>` : ''}
       ${x.kind === 'deadline' ? `<button class="mini" data-act="dlCal" data-id="${esc(x.id)}" aria-label="Dodaj rok v koledar">${ic('download',18)}</button>` : ''}
       ${x.kind === 'task' && S.tasks.find(t=>t.id===x.id)?.due ? `<button class="mini" data-act="taskCal" data-id="${esc(x.id)}" aria-label="Dodaj opravilo v koledar">${ic('download',18)}</button>` : ''}
     </li>`).join('');
@@ -1129,12 +1083,10 @@ function dashNextHtml() {
 }
 function dashOverviewHtml() {
   const tasks = S.tasks.filter(t => !t.done).length;
-  const bills = S.bills.filter(b => !b.paid).length;
   const fridge = countSoonFridge();
   const shop = S.shop ? S.shop.items.filter(i=>!i.done).length : 0;
   return `<div class="dash-overview" aria-label="Današnji pregled">
     <button class="dash-stat" data-act="tab" data-tab="tasks"><b>${tasks}</b><span>odprtih opravil</span></button>
-    <button class="dash-stat" data-act="tab" data-tab="money"><b>${bills}</b><span>neplačanih</span></button>
     <button class="dash-stat" data-act="tab" data-tab="fridge"><b>${fridge}</b><span>živil kmalu poteče</span></button>
     <button class="dash-stat" data-act="openShop"><b>${shop}</b><span>za kupiti</span></button>
   </div>`;
@@ -1155,8 +1107,6 @@ function inboxCount() { return Array.isArray(S.inbox) ? S.inbox.length : 0; }
 function inboxResultSummary(r) {
   if (!r) return '';
   const bits = [];
-  if (r.polozice?.length) bits.push(`${r.polozice.length} ${r.polozice.length===1?'položnica':'položnic'}`);
-  if (r.racun) bits.push('račun');
   if (r.hladilnik?.length) bits.push(`${r.hladilnik.length} ${r.hladilnik.length===1?'živilo':'živil'}`);
   if (r.opravila?.length) bits.push(`${r.opravila.length} ${r.opravila.length===1?'opravilo':'opravil'}`);
   if (r.opomniki?.length) bits.push(`${r.opomniki.length} ${r.opomniki.length===1?'opomnik':'opomnikov'}`);
@@ -1171,7 +1121,7 @@ function dashInboxHtml() {
   return `<section class="dash-section inbox-dash"><div class="dash-section-head"><div><h2 class="sec">Inbox</h2><p class="dash-sub">${n} ${n===1?'vnos čaka':'vnosi čakajo'}${waiting ? ` · ${waiting} še ni razvrščen${waiting===1?'':'i'} z AI` : ' na tvojo potrditev'}</p></div><button class="btn sm" data-act="openInbox">Odpri Inbox</button></div><div class="inbox-mini-list">${S.inbox.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,3).map(x=>`<div class="inbox-mini"><span class="inbox-mini-ico">${ic(x.result?'spark':'inbox',18)}</span><div><strong>${esc(x.title || x.text || 'Nov vnos')}</strong><small>${esc(x.result ? (inboxResultSummary(x.result) || 'AI predlog pripravljen') : 'Čaka na AI razvrščanje')}</small></div></div>`).join('')}</div></section>`;
 }
 function renderToday() {
-  const empty = !S.bills.length && !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.expenses.length && !S.docs.length && !S.deadlines.length && !S.shop;
+  const empty = !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.docs.length && !S.deadlines.length && !S.shop;
   const ib = inboxCount();
   let h = `<div class="day-actions"><div><span class="day-kicker">Tvoj fokus za danes</span><strong>Plan, ki ga lahko sproti prilagajaš.</strong></div><div class="day-actions-btns"><button class="btn sm ghost" data-act="openInbox">${ic('bookmark',16)} Inbox${ib ? ` <span class="hero-count">${ib}</span>` : ''}</button><button class="btn sm" data-act="capture">${ic('plus',16)} Dodaj</button></div></div>`;
   if (empty) {
@@ -1466,8 +1416,9 @@ function shopHtml() {
   if (s.obroki_teden && s.obroki_teden.length) h += `<details class="fold"><summary>Predlagan meni za teden</summary><ul class="list">${s.obroki_teden.map(x => `<li class="row"><div class="grow">${esc(x)}</div></li>`).join('')}</ul></details>`;
   return h;
 }
+const FRIDGE_CATS = ['Zelenjava','Sadje','Meso in ribe','Mlečno','Jajca','Pijače','Kruh in pekovski','Žita in testenine','Konzerve in suho','Zamrznjeno','Omake in začimbe','Drugo'];
 function renderFridge() {
-  const cats = ['Zelenjava','Sadje','Meso in ribe','Mlečno','Jajca','Pijače','Kruh in pekovski','Žita in testenine','Konzerve in suho','Zamrznjeno','Omake in začimbe','Drugo'];
+  const cats = FRIDGE_CATS;
   const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
   let h = quickBar({id:'quickFridge',placeholder:'Dodaj sestavino …',label:'Nova sestavina',voice:'fridgeVoice',add:'quickFridge',extra:`<button type="button" class="btn sm ghost" data-act="capture" data-mode="camera">${ic('camera',16)} Slikaj hladilnik</button><button type="button" class="btn sm ghost" data-act="fridgeNew">${ic('pen',16)} Podrobno</button>`})
     + `<section class="meal-builder"><div class="meal-builder-top"><div><span class="day-kicker">NAČRTOVANJE HRANE</span><h2>Obroki</h2><p>Najprej sestavi obroke, nato iz njih pripravi nakupovalni seznam.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>
@@ -1487,7 +1438,7 @@ function renderFridge() {
     h += `<div class="fridge-empty-inline"><div class="welcome-ico">${ic('fridge',22)}</div><div><strong>Hladilnik je prazen</strong><p>Dodaj sestavine zgoraj: z besedilom, glasom ali fotografijo, ali pa uporabi samostojni način za pripravo obrokov.</p></div></div>`;
   } else {
     const list = [...S.fridge].sort((a,b)=>(a.expires||'9999').localeCompare(b.expires||'9999'));
-    h += `<div class="swipe-hint"><span class="s-good">→ Porabljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div><ul class="list fridge-list">${list.map(f => `<li class="row swiping" data-swipe-kind="fridge" data-id="${f.id}"><div class="grow"><strong>${esc(f.name)}</strong><small>${esc([f.qty, f.category, f.note].filter(Boolean).join(' · '))}</small></div>${fridgeBadge(f)}<button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check',20)}</button><button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
+    h += `<ul class="list fridge-list">${list.map(f => `<li class="row" data-id="${f.id}"><div class="grow" data-act="fridgeEdit" data-id="${f.id}" role="button" tabindex="0" aria-label="Uredi: ${esc(f.name)}"><strong>${esc(f.name)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc([f.qty || 'dodaj količino', f.category, f.note].filter(Boolean).join(' · '))}</small></div>${fridgeBadge(f)}<button class="mini copy" data-act="useFridge" data-id="${f.id}" aria-label="Porabljeno: ${esc(f.name)}">${ic('check',20)}</button><button class="mini" data-act="delFridge" data-id="${f.id}" aria-label="Izbriši: ${esc(f.name)}">${ic('trash',19)}</button></li>`).join('')}</ul>`;
   }
   h += `</section>`;
   return h;
@@ -1506,47 +1457,6 @@ function renderShop() {
 }
 
 
-function billBadge(b) {
-  if (b.paid) return `<span class="badge">plačano</span>`;
-  if (!b.due) return `<span class="badge plain">brez roka</span>`;
-  const d = dayDiff(b.due);
-  return `<span class="badge ${d <= 1 ? 'bad' : d <= 5 ? 'warn' : 'plain'}">${d < 0 ? 'zapadlo' : fmtDate(b.due)}</span>`;
-}
-function billRow(b) {
-  const kv = (k, v) => v ? `<div class="kv"><span>${k}</span><code>${esc(v)}</code><button class="mini copy" data-act="copy" data-v="${esc(v)}" aria-label="Kopiraj ${k}">${ic('copy', 17)}</button></div>` : '';
-  return `<details class="bill swiping" data-swipe-kind="bill" data-id="${b.id}"><summary>
-      ${chk(b.paid, 'pay', b.id, b.paid ? 'Označi kot neplačano' : 'Označi kot plačano')}
-      <span class="grow" style="flex:1;min-width:0"><strong>${esc(b.recipient)}</strong><br><small class="sub">${esc(b.category || 'Drugo')}${b.purpose ? ' · ' + esc(b.purpose) : ''}</small></span>
-      <span class="b-amt">${money(b.amount, b.currency)}</span>${billBadge(b)}</summary>
-    <div class="b-det">${kv('IBAN', b.iban)}${kv('Referenca', b.reference)}${kv('Namen', b.purpose)}${b.due ? `<div class="kv"><span>Rok</span><code>${fmtDate(b.due)} (${rel(dayDiff(b.due))})</code></div>` : ''}
-      <div class="set-actions">${b.due ? `<button class="btn sm ghost" data-act="addBillCal" data-id="${b.id}">${ic('download', 16)} Dodaj v koledar</button>` : ''}<button class="btn sm ghost" data-act="billRepeat" data-id="${b.id}">${b.repeatMonths ? '🔁 Ponavljanje · vsakih ' + b.repeatMonths + ' mes.' : '↻ Nastavi ponavljanje'}</button><button class="btn sm ghost danger" data-act="delBill" data-id="${b.id}">${ic('trash', 16)} Izbriši</button></div></div></details>`;
-}
-function renderMoney() {
-  const mk = today().slice(0, 7), f = S.ui.moneyFilter;
-  const sub = b => f !== 'subs' || b.category === 'Naročnine';
-  const unpaid = S.bills.filter(b => !b.paid && sub(b) ).sort((a, b) => (a.due || '9999').localeCompare(b.due || ''));
-  const paid = S.bills.filter(b => b.paid && sub(b) ).sort((a, b) => (b.due || '').localeCompare(a.due || ''));
-  const unpaidSum = S.bills.filter(b => !b.paid && (b.currency || 'EUR') === 'EUR').reduce((s, b) => s + (b.amount || 0), 0);
-  const shopSum = S.expenses.filter(e => (e.date || '').startsWith(mk)).reduce((s, e) => s + (e.total || 0), 0);
-  const cat = {};
-  S.expenses.filter(e => (e.date || '').startsWith(mk)).forEach(e => { cat[e.category] = (cat[e.category] || 0) + (e.total || 0); });
-  S.bills.filter(b => (b.due || '').startsWith(mk) && (b.currency || 'EUR') === 'EUR').forEach(b => { const k = b.category || 'Drugo'; cat[k] = (cat[k] || 0) + (b.amount || 0); });
-  const cats = Object.entries(cat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const max = cats.length ? cats[0][1] : 1;
-  let h = `<div class="sums"><div><b>${money(unpaidSum)}</b><span>še za plačat</span></div><div><b>${money(shopSum)}</b><span>trgovine ta mesec</span></div></div>
-    <div class="chips" role="group" aria-label="Filter"><button class="chip" data-act="mfilter" data-v="all" aria-pressed="${f === 'all'}">Vse</button><button class="chip" data-act="mfilter" data-v="subs" aria-pressed="${f === 'subs'}">Naročnine</button></div>`;
-  h += `<h2 class="sec">Za plačilo</h2>`;
-  h += unpaid.length ? unpaid.map(billRow).join('') : `<div class="empty"><p>${f === 'subs' ? 'Ni naročnin.' : 'Nič ni neplačanega. Slikaj položnico in jo dodam z opomnikom.'}</p>${f === 'subs' ? '' : `<button class="btn" data-act="capture" data-mode="camera">${ic('camera', 18)} Slikaj položnico</button>`}</div>`;
-  if (paid.length) h += `<details class="fold"><summary>Plačano (${paid.length})</summary>${paid.map(billRow).join('')}</details>`;
-  if (f === 'all') { if (S.settings.showDeadlines) h += deadlinesHtml(); if (S.settings.showDocs) h += docsHtml(); }
-  if (cats.length) h += `<h2 class="sec">Ta mesec po kategorijah</h2><div class="bars">${cats.map(([k, v]) => `<div class="bar"><span>${esc(k)}</span><i style="width:${Math.max(4, Math.round(v / max * 100))}%"></i><b>${money(v)}</b></div>`).join('')}</div>`;
-  if (S.expenses.length) {
-    const ex = [...S.expenses].sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 15);
-    h += `<details class="fold"><summary>Trgovinski računi (${S.expenses.length})</summary><ul class="list">${ex.map(e => `<li class="row"><div class="grow"><strong>${esc(e.store)}</strong><small>${e.date ? fmtDate(e.date) : ''} · ${esc(e.category)}</small></div><span class="b-amt">${money(e.total)}</span><button class="mini" data-act="delExp" data-id="${e.id}" aria-label="Izbriši račun">${ic('trash', 19)}</button></li>`).join('')}</ul></details>`;
-  }
-  h += trendHtml();
-  return h;
-}
 const PRIO = { visoka: 0, srednja: 1, nizka: 2 };
 const REPEAT_OPTIONS = [
   ['', 'Ne ponavljaj'], ['1d', 'Vsak dan'], ['7d', 'Vsak teden'], ['14d', 'Vsaka 2 tedna'],
@@ -1592,7 +1502,7 @@ function renderTasks() {
     const source=t.googleTask ? `Google Tasks${t.googleTaskListName ? ' · '+t.googleTaskListName : ''}` : 'LifeFlow';
     const reminder=taskReminderLabel(t);
     const calDate=t.due|| (t.time?today():null);
-    return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow"><strong>${esc(t.title)}</strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
+    return `<li class="row ${t.done?'done':''} swiping" data-swipe-kind="task" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
   let h=quickBar({id:'quickTask',placeholder:'Dodaj opravilo …',label:'Novo opravilo',voice:'taskVoice',add:'quickTask',multiline:true})+`<div class="set-actions" style="margin:0 0 10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
   h+=`<div class="swipe-hint"><span class="s-good">→ Opravljeno</span><span>·</span><span class="s-bad">← Izbriši</span></div>`;
@@ -1690,7 +1600,7 @@ function render(options = {}) {
 
   $('#title').textContent = H.t;
   $('#sub').textContent = H.s;
-  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, shop: renderShop, money: renderMoney, tasks: renderTasks })[tab]();
+  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, shop: renderShop, tasks: renderTasks })[tab]();
   $('#nav').innerHTML = NAV.map(([id, l, i]) =>
     `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
   ).join('');
@@ -1819,31 +1729,25 @@ Analiziraj vse priložene vnose (slike, zvok, besedilo) in izlušči vse uporabn
 {
  "opazil": "1-2 kratka stavka: kaj si prepoznal",
  "predlog": "Proaktiven predlog v obliki: Opazil sem X, predlagam Y. Naj to uredim?",
- "polozice": [{"prejemnik":"", "znesek":0.0, "valuta":"EUR", "rok_placila":"YYYY-MM-DD", "kategorija":"Stanovanje|Energija|Komunikacije|Zavarovanje|Naročnine|Davki|Zdravje|Prevoz|Drugo", "iban":"", "referenca":"", "namen":""}],
- "trgovinski_racun": {"trgovina":"", "datum":"YYYY-MM-DD", "skupaj":0.0, "kategorija":"Hrana|Gospodinjstvo|Drugo"} ali null,
- "hladilnik": [{"ime":"", "kolicina":"npr. 1 l, 500 g, 6 kos", "kategorija":"Zelenjava|Sadje|Mlečno|Meso in ribe|Jajca|Pijače|Suho|Zamrznjeno|Omake in začimbe|Drugo", "rok_uporabe":"YYYY-MM-DD", "rok_je_ocena":true, "opomba":""}],
+  "hladilnik": [{"ime":"", "kolicina":"npr. 1 l, 500 g, 6 kos", "kategorija":"Zelenjava|Sadje|Mlečno|Meso in ribe|Jajca|Pijače|Suho|Zamrznjeno|Omake in začimbe|Drugo", "rok_uporabe":"YYYY-MM-DD", "rok_je_ocena":true, "opomba":""}],
   "opravila": [{"naslov":"", "prioriteta":"visoka|srednja|nizka", "casovni_okvir":"npr. danes popoldne", "rok":"YYYY-MM-DD", "ura":"HH:MM", "trajanje_min":0, "ponavljanje":"|1d|7d|14d|1m|3m|6m|12m"}],
  "opomniki": [{"besedilo":"", "sprozilec":"cas|pred_odhodom|v_trgovini|konec_meseca|drugo", "cas":"YYYY-MM-DDTHH:MM"}],
  "dokumenti": [{"naziv":"", "trgovina":"", "datum":"YYYY-MM-DD", "znesek":0.0, "garancija_mesecev":24, "kategorija":"Garancija|Račun|Vozilo|Dom|Zdravje|Drugo"}],
  "roki": [{"naziv":"", "kategorija":"Vinjeta|Servis avtomobila|Tehnični pregled|Zavarovanje|Garancija|Drugo", "datum":"YYYY-MM-DD", "ponavljanje_mesecev":12, "opomni_dni_prej":14}]
 }
 Pravila:
-- Položnica ali račun za plačilo: en element v "polozice". Opomnika za plačilo NE ustvarjaj, aplikacija ga ustvari sama.
-- Trgovinski račun: izpolni "trgovinski_racun" in živila z računa dodaj v "hladilnik" (brez nehrane, čistil, vrečk). Rok uporabe oceni glede na vrsto živila in nastavi rok_je_ocena=true.
+- Trgovinski račun za živila: živila z računa dodaj v "hladilnik" (brez nehrane, čistil, vrečk). Rok uporabe oceni glede na vrsto živila in nastavi rok_je_ocena=true.
 - Slika hladilnika ali seznam sestavin: vse prepoznane sestavine v "hladilnik". Če roka ni videti, ga oceni (rok_je_ocena=true). Če je kaj videti pokvarjeno ali na robu, to zapiši v "opomba".
 - Glasovni ali pisni zapiski: razčleni v jasna "opravila" (naslov v velelniku, npr. "Pokliči zobozdravnika"), prioriteto določi glede na nujnost, casovni_okvir napiši kratko (npr. "do petka"). Polji rok in ura izpolni samo, če ju uporabnik omeni ali sta nedvoumni; relativne izraze ("jutri", "v petek") pretvori glede na današnji datum. Če uporabnik izrecno pove, da se opravilo ponavlja, uporabi ponavljanje: 1d vsak dan, 7d vsak teden, 14d vsaka 2 tedna, 1m mesečno, 3m vsake 3 mesece, 6m polletno, 12m letno.
 - Kar je treba sprožiti ob določenem trenutku (npr. "ko grem v trgovino kupi …", "preden odidem vzemi …"), daj v "opomniki" s sprozilec v_trgovini ali pred_odhodom; za konkreten čas sprozilec "cas" in polje cas.
-- Račun za trajno blago (aparat, elektronika, orodje, pohištvo, vozilo, večja storitev), ki ga je smiselno hraniti, daj v "dokumenti" (ne v "trgovinski_racun"). Garancijo vzemi z dokumenta; če je ni, za trajno blago vnesi 24 (zakonska garancija), za storitve in potrošno blago null. Trgovinski račun za hrano in vsakdanje nakupe ostane v "trgovinski_racun".
+- Račun za trajno blago (aparat, elektronika, orodje, pohištvo, vozilo, večja storitev), ki ga je smiselno hraniti, daj v "dokumenti" . Garancijo vzemi z dokumenta; če je ni, za trajno blago vnesi 24 (zakonska garancija), za storitve in potrošno blago null. Trgovinski račun za hrano in vsakdanje nakupe ostane v "trgovinski_racun".
 - Roki: kadar uporabnik ali dokument omeni servis avtomobila, vinjeto, tehnični pregled, registracijo, zavarovanje ali podoben rok z datumom (ali okvirnim datumom, npr. "servis decembra" pomeni 1. december), ga dodaj v "roki". ponavljanje_mesecev nastavi na 12 za letne obnove, sicer 0; opomni_dni_prej 14 (za zavarovanje in tehnični pregled 30). Roka za garancijo iz "dokumenti" ne podvajaj, aplikacija ga ustvari sama.
 - Če ni nič uporabnega, vrni prazne sezname, v "opazil" povej, kaj vidiš, v "predlog" pa, kaj naj uporabnik pošlje.`;
 }
 function normalize(r) {
   r = r || {};
-  const rc = r.trgovinski_racun && typeof r.trgovinski_racun === 'object' ? r.trgovinski_racun : null;
   return {
     opazil: str(r.opazil) || '', predlog: str(r.predlog) || '',
-    polozice: arr(r.polozice).filter(p => p && typeof p === 'object').map(p => ({ on: true, prejemnik: str(p.prejemnik) || 'Neznan prejemnik', znesek: num(p.znesek), valuta: str(p.valuta) || 'EUR', rok: dt(p.rok_placila), kategorija: str(p.kategorija) || 'Drugo', iban: str(p.iban), referenca: str(p.referenca), namen: str(p.namen) })),
-    racun: rc && (rc.skupaj != null || rc.trgovina) ? { on: true, trgovina: str(rc.trgovina) || 'Trgovina', datum: dt(rc.datum) || today(), skupaj: num(rc.skupaj), kategorija: str(rc.kategorija) || 'Hrana' } : null,
     hladilnik: arr(r.hladilnik).filter(x => x && x.ime).map(x => ({ on: true, ime: str(x.ime), kolicina: str(x.kolicina), kategorija: str(x.kategorija) || 'Drugo', rok: dt(x.rok_uporabe), ocena: !!x.rok_je_ocena, opomba: str(x.opomba) })),
     opravila: arr(r.opravila).filter(x => x && x.naslov).map(x => ({ on: true, naslov: str(x.naslov), prio: PRIO[x.prioriteta] != null ? x.prioriteta : 'srednja', okvir: str(x.casovni_okvir), rok: dt(x.rok), ura: tm(x.ura), min: num(x.trajanje_min), repeat: REPEAT_OPTIONS.some(v => v[0] === String(x.ponavljanje)) ? String(x.ponavljanje) : '' })),
     opomniki: arr(r.opomniki).filter(x => x && x.besedilo).map(x => ({ on: true, besedilo: str(x.besedilo), sprozilec: ['cas', 'pred_odhodom', 'v_trgovini', 'konec_meseca', 'drugo'].includes(x.sprozilec) ? x.sprozilec : 'drugo', cas: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(x.cas || '') ? x.cas.slice(0, 16) : null })),
@@ -1954,7 +1858,7 @@ async function analyze() {
   }
 }
 function countOn(r) {
-  return r.polozice.filter(x => x.on).length + (r.racun && r.racun.on ? 1 : 0) + r.hladilnik.filter(x => x.on).length + r.opravila.filter(x => x.on).length + r.opomniki.filter(x => x.on).length + r.dokumenti.filter(x => x.on).length + r.roki.filter(x => x.on).length;
+  return r.hladilnik.filter(x => x.on).length + r.opravila.filter(x => x.on).length + r.opomniki.filter(x => x.on).length + r.dokumenti.filter(x => x.on).length + r.roki.filter(x => x.on).length;
 }
 function renderResult() {
   const r = cap.result, total = countOn(r);
@@ -1963,9 +1867,6 @@ function renderResult() {
   const ed = inner => `<details class="rv-edit"><summary>${ic('pen', 14)} Uredi</summary><div class="rv-in">${inner}</div></details>`;
   const prioSel = (k, i, v) => `<label>Prioriteta<select data-f="prio" data-k="${k}" data-i="${i}">${['visoka', 'srednja', 'nizka'].map(o => `<option value="${o}" ${o === v ? 'selected' : ''}>${o[0].toUpperCase() + o.slice(1)}</option>`).join('')}</select></label>`;
   let h = `<div class="sheet-h"><h2>Opazil sem</h2>${closeBtn}</div><p class="lead">${esc(r.opazil || 'Vnos sem pregledal.')}</p><p class="hint">Pred potrditvijo lahko vsak predlog popraviš: tapni <strong>Uredi</strong>.</p>`;
-  if (r.polozice.length) h += `<h3 class="rvh">Položnice</h3><ul class="rvl">${r.polozice.map((p, i) => ck('polozice', i, p.on, esc(p.prejemnik), esc(p.kategorija + (p.namen ? ' · ' + p.namen : '')))
-    + `<div class="rv-in"><label>Znesek (${esc(p.valuta)})<input type="number" step="0.01" inputmode="decimal" data-f="znesek" data-k="polozice" data-i="${i}" value="${p.znesek ?? ''}"></label><label>Rok plačila<input type="date" data-f="rok" data-k="polozice" data-i="${i}" value="${p.rok || ''}"></label></div>` + ed(fl('Prejemnik', 'polozice', i, 'prejemnik', p.prejemnik) + fl('Namen', 'polozice', i, 'namen', p.namen)) + `</li>`).join('')}</ul>`;
-  if (r.racun) h += `<h3 class="rvh">Trgovinski račun</h3><ul class="rvl">${ck('racun', null, r.racun.on, esc(r.racun.trgovina), `${money(r.racun.skupaj)} · ${fmtDate(r.racun.datum)} · ${esc(r.racun.kategorija)}`)}${ed(fl('Trgovina', 'racun', null, 'trgovina', r.racun.trgovina) + fl('Skupaj (EUR)', 'racun', null, 'skupaj', r.racun.skupaj, 'number', 'step="0.01" inputmode="decimal"') + fl('Datum', 'racun', null, 'datum', r.racun.datum, 'date'))}</li></ul>`;
   if (r.hladilnik.length) h += `<h3 class="rvh">V hladilnik (${r.hladilnik.length})</h3><ul class="rvl">${r.hladilnik.map((x, i) => ck('hladilnik', i, x.on, esc(x.ime), esc([x.kolicina, x.rok ? (x.ocena ? '~ ' : '') + 'do ' + fmtDate(x.rok) : null, x.opomba].filter(Boolean).join(' · '))) + ed(fl('Sestavina', 'hladilnik', i, 'ime', x.ime) + fl('Količina', 'hladilnik', i, 'kolicina', x.kolicina) + fl('Rok uporabe', 'hladilnik', i, 'rok', x.rok, 'date') + fl('Opomba', 'hladilnik', i, 'opomba', x.opomba)) + '</li>').join('')}</ul>`;
   if (r.opravila.length) h += `<h3 class="rvh">Opravila</h3><ul class="rvl">${r.opravila.map((x, i) => ck('opravila', i, x.on, esc(x.naslov), esc([x.prio, x.okvir, x.ura, x.rok ? fmtDate(x.rok) : null, x.min ? x.min + ' min' : null, x.repeat ? repeatLabel(x.repeat) : null].filter(Boolean).join(' · '))) + ed(fl('Opravilo', 'opravila', i, 'naslov', x.naslov) + prioSel('opravila', i, x.prio) + fl('Rok', 'opravila', i, 'rok', x.rok, 'date') + fl('Ura', 'opravila', i, 'ura', x.ura, 'time') + fl('Trajanje (min)', 'opravila', i, 'min', x.min, 'number', 'inputmode="numeric"') + fl('Časovni okvir', 'opravila', i, 'okvir', x.okvir)) + '</li>').join('')}</ul>`;
   if (r.opomniki.length) h += `<h3 class="rvh">Opomniki</h3><ul class="rvl">${r.opomniki.map((x, i) => ck('opomniki', i, x.on, esc(x.besedilo), esc(({ cas: x.cas ? fmtDate(x.cas.slice(0, 10)) + ' ' + x.cas.slice(11, 16) : 'ob času', pred_odhodom: 'pred odhodom', v_trgovini: 'v trgovini', konec_meseca: 'konec meseca', drugo: 'kadarkoli' })[x.sprozilec]) + ed(fl('Besedilo', 'opomniki', i, 'besedilo', x.besedilo) + (x.sprozilec === 'cas' ? fl('Čas', 'opomniki', i, 'cas', x.cas, 'datetime-local') : ''))) + '</li>').join('')}</ul>`;
@@ -1983,17 +1884,7 @@ let applying = false;
 async function applyResult() {
   const r = cap.result; if (!r || applying) return;
   applying = true;
-  const c = { bills: 0, fridge: 0, tasks: 0, rem: 0, exp: 0, docs: 0, dl: 0 };
-  r.polozice.filter(p => p.on).forEach(p => {
-    const id = uid();
-    S.bills.push({ id, recipient: p.prejemnik, amount: p.znesek, currency: p.valuta, due: p.rok, category: p.kategorija, iban: p.iban, reference: p.referenca, purpose: p.namen, paid: false });
-    c.bills++;
-    if (p.rok && dayDiff(p.rok) >= 0) {
-      const d = dayDiff(p.rok) > 2 ? addDays(p.rok, -2) : today();
-      S.reminders.push({ id: uid(), text: `Plačaj ${p.prejemnik}${p.znesek != null ? ' – ' + money(p.znesek, p.valuta) : ''}`, trigger: 'cas', at: `${d}T09:00`, billId: id, done: false });
-    }
-  });
-  if (r.racun && r.racun.on) { S.expenses.push({ id: uid(), store: r.racun.trgovina, date: r.racun.datum, total: r.racun.skupaj, category: r.racun.kategorija }); c.exp++; }
+  const c = { fridge: 0, tasks: 0, rem: 0, docs: 0, dl: 0 };
   r.hladilnik.filter(x => x.on && (x.ime || '').trim()).forEach(x => {
     const ex = S.fridge.find(f => f.name.toLowerCase() === x.ime.toLowerCase());
     const item = { id: ex ? ex.id : uid(), name: x.ime, qty: x.kolicina, category: x.kategorija, expires: x.rok, est: x.ocena, note: x.opomba, added: today() };
@@ -2022,8 +1913,6 @@ async function applyResult() {
   if (inboxDoneId) await deleteInboxItem(inboxDoneId);
   save(); resetCap(); applying = false; sheet.close(); render();
   const bits = [];
-  if (c.bills) bits.push(`${c.bills} ${c.bills === 1 ? 'položnica' : 'položnic'}`);
-  if (c.exp) bits.push('račun');
   if (c.docs) bits.push(`${c.docs} ${c.docs === 1 ? 'shranjen račun' : 'shranjenih računov'}`);
   if (c.dl) bits.push(`${c.dl} ${c.dl === 1 ? 'rok' : 'rokov'}`);
   if (c.fridge) bits.push(`${c.fridge} v hladilniku`);
@@ -2035,12 +1924,12 @@ sheet.addEventListener('change', e => {
   const t = e.target;
   if (!cap.result || !t.dataset || !t.dataset.k) return;
   if (t.type === 'checkbox') {
-    const o = t.dataset.k === 'racun' ? cap.result.racun : cap.result[t.dataset.k][+t.dataset.i];
+    const o = cap.result[t.dataset.k][+t.dataset.i];
     if (o) o.on = t.checked; updateApply();
   }
 });
 const RES_NUM = new Set(['znesek', 'min']), RES_DATE = new Set(['rok', 'datum']), RES_TIME = new Set(['ura']);
-function resObj(k, i) { return k === 'racun' ? cap.result.racun : (cap.result[k] || [])[+i]; }
+function resObj(k, i) { return (cap.result[k] || [])[+i]; }
 function onResEdit(e) {
   const t = e.target;
   if (!cap.result || !t.dataset || !t.dataset.f) return;
@@ -2067,9 +1956,8 @@ async function genPlan() {
   const u = S.ui, t = today();
   const ctx = {
     tasks: S.tasks.filter(x => !x.done).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, ura: x.time || null, trajanje_min: x.min || null })),
-    bills: S.bills.filter(b => !b.paid && b.due && dayDiff(b.due) <= 7).map(b => ({ prejemnik: b.recipient, znesek: b.amount, rok: b.due })),
     fridge: S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).map(f => f.name),
-    rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t && !r.billId).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
+    rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
     obroki: S.meals && S.meals.date === t ? S.meals.obroki.map(m => ({ tip: m.tip, naziv: m.naziv, cas_min: m.cas })) : [],
     roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due })),
     kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : []
@@ -2078,7 +1966,6 @@ async function genPlan() {
 Sestavi realen dnevni načrt za danes.
 Energija uporabnika: ${u.energy}. Prost čas: od ${u.from} do ${u.to}.
 Odprta opravila: ${JSON.stringify(ctx.tasks)}
-Položnice, ki zapadejo v 7 dneh: ${JSON.stringify(ctx.bills)}
 Živila, ki se kmalu iztečejo: ${JSON.stringify(ctx.fridge)}
 Opomniki za danes: ${JSON.stringify(ctx.rem)}
 Predlagani obroki za danes: ${JSON.stringify(ctx.obroki)}
@@ -2090,7 +1977,7 @@ Pravila:
 - Ne načrtuj pred trenutno uro in ne izven prostega časa. Opravila z uro postavi točno na to uro kot "fiksno".
 - Pri visoki energiji daj zahtevnejša opravila zgodaj; pri nizki energiji največ 2-3 zahtevna opravila in več odmorov.
 - Če je urnik natrpan, predlagaj hitre rešitve (15-minutno kosilo, kratek odmor). Obroke vključi ob običajnih urah, če jih prosti čas zajema.
-- V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek (npr. plačilo položnice, ki kmalu zapade). Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
+- V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek. Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
 - Če so podani predlagani obroki, jih vstavi kot bloke tipa "obrok" ob smiselnih urah (naziv jedi v naslovu).
 - Če se kak rok izteče v 3 dneh, ga nevsiljivo vstavi kot kratek blok tipa "opomnik" v prosto okno.
 - Dogodke iz Google koledarja vstavi kot bloke tipa "fiksno" točno ob njihovi uri in čez njih ne načrtuj ničesar drugega.
@@ -2290,7 +2177,7 @@ async function startCloudSync(user) {
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
 if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
         S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
-        fixInbox();
+        fixInbox(); purgeFinance();
         store.set(JSON.stringify(S));
         cloudSync.lastJson = cloudJson();
         cloudSync.applyingRemote = false;
@@ -2334,7 +2221,7 @@ if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
 if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
       S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
-      fixInbox();
+      fixInbox(); purgeFinance();
       store.set(JSON.stringify(S));
       cloudSync.lastJson = cloudJson();
       cloudSync.applyingRemote = false;
@@ -3188,6 +3075,54 @@ function stopReminderMonitoring() {
   geoWatch = null;
 }
 let taskRepeatForm = { id: null };
+function taskEdit(id) {
+  const t = byId(S.tasks, id); if (!t) return;
+  const prios = [['visoka','Visoka'],['srednja','Srednja'],['nizka','Nizka']];
+  const cur = normalizedRepeatTask(t) || '';
+  openSheet(`<div class="sheet-h"><h2>Uredi opravilo</h2>${closeBtn}</div>
+    <div class="field"><label for="teTitle">Opravilo</label><textarea id="teTitle" rows="2" style="min-height:70px">${esc(t.title)}</textarea></div>
+    <div class="field two"><div><label for="teDue">Rok</label><input id="teDue" type="date" value="${esc(t.due || '')}"></div><div><label for="teTime">Ura</label><input id="teTime" type="time" value="${esc(t.time || '')}"></div></div>
+    <div class="field two"><div><label for="tePrio">Prioriteta</label><select id="tePrio">${prios.map(([v,l]) => `<option value="${v}" ${v === t.prio ? 'selected' : ''}>${l}</option>`).join('')}</select></div><div><label for="teMin">Trajanje (min)</label><input id="teMin" type="number" inputmode="numeric" min="0" value="${t.min ?? ''}"></div></div>
+    <div class="field two"><div><label for="teRepeat">Ponavljanje</label><select id="teRepeat">${REPEAT_OPTIONS.map(([v,l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('')}</select></div><div><label for="teFrame">Časovni okvir</label><input id="teFrame" type="text" value="${esc(t.frame || '')}" placeholder="npr. dopoldne"></div></div>
+    <div class="set-actions"><button class="btn" data-act="saveTaskEdit" data-id="${t.id}">${ic('save',16)} Shrani</button><button class="btn ghost" data-act="closeSheet">Prekliči</button></div>`, 'taskEdit');
+}
+function saveTaskEdit(id) {
+  const t = byId(S.tasks, id); if (!t) return;
+  const title = ($('#teTitle')?.value || '').trim().replace(/\s*\n+\s*/g, ' ');
+  if (!title) { toast('Vpiši besedilo opravila.'); return; }
+  t.title = title;
+  t.due = dt($('#teDue')?.value);
+  t.time = tm($('#teTime')?.value);
+  t.prio = ['visoka','srednja','nizka'].includes($('#tePrio')?.value) ? $('#tePrio').value : 'srednja';
+  t.min = num($('#teMin')?.value);
+  t.repeat = $('#teRepeat')?.value || '';
+  t.frame = ($('#teFrame')?.value || '').trim() || null;
+  save(); sheet.close(); render(); startReminderMonitoring();
+  if (t.googleTaskId) pushTaskToGoogle(t, false); else autoSyncNewTask(t);
+  toast('Opravilo shranjeno.');
+}
+function fridgeEdit(id) {
+  const f = byId(S.fridge, id); if (!f) return;
+  const cats = FRIDGE_CATS.includes(f.category) || !f.category ? FRIDGE_CATS : [...FRIDGE_CATS, f.category];
+  openSheet(`<div class="sheet-h"><h2>Uredi sestavino</h2>${closeBtn}</div>
+    <div class="field"><label for="feName">Sestavina</label><input id="feName" type="text" value="${esc(f.name)}" autocomplete="off"></div>
+    <div class="field two"><div><label for="feQty">Količina / teža</label><input id="feQty" type="text" value="${esc(f.qty || '')}" placeholder="npr. 500 g, 1 l, 6 kos"></div><div><label for="feCat">Kategorija</label><select id="feCat">${cats.map(c => `<option ${c === (f.category || 'Drugo') ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div></div>
+    <div class="field two"><div><label for="feExp">Rok uporabe</label><input id="feExp" type="date" value="${esc(f.expires || '')}"></div><div><label for="feNote">Opomba</label><input id="feNote" type="text" value="${esc(f.note || '')}" placeholder="npr. odprto"></div></div>
+    <div class="set-actions"><button class="btn" data-act="saveFridgeEdit" data-id="${f.id}">${ic('save',16)} Shrani</button><button class="btn ghost" data-act="closeSheet">Prekliči</button></div>`, 'fridgeEdit');
+  setTimeout(() => $('#feQty')?.focus(), 80);
+}
+function saveFridgeEdit(id) {
+  const f = byId(S.fridge, id); if (!f) return;
+  const name = ($('#feName')?.value || '').trim();
+  if (!name) { toast('Vpiši ime sestavine.'); return; }
+  const exp = dt($('#feExp')?.value);
+  if (exp !== (f.expires || null)) f.est = false;
+  f.name = name; f.qty = ($('#feQty')?.value || '').trim() || null;
+  f.category = $('#feCat')?.value || f.category || 'Drugo';
+  f.expires = exp; f.note = ($('#feNote')?.value || '').trim() || null;
+  save(); sheet.close(); render(); toast('Sestavina shranjena.');
+}
+
 function taskRepeat(id) {
   const t = byId(S.tasks, id); if (!t) return;
   taskRepeatForm.id = id;
@@ -3306,37 +3241,6 @@ function savePlanBlock() {
 
 /* ---------- actions ---------- */
 const byId = (list, id) => list.find(x => x.id === id);
-let billRepeatForm = { id: null };
-function billRepeat(id) {
-  const b = byId(S.bills, id); if (!b) return;
-  billRepeatForm.id = id;
-  const current = Number(b.repeatMonths) || 0;
-  const opts = [[0,'Ne ponavljaj'],[1,'Vsak mesec'],[2,'Vsaka 2 meseca'],[3,'Vsake 3 mesece'],[6,'Vsakih 6 mesecev'],[12,'Vsako leto']]
-    .map(([v,l]) => `<option value="${v}" ${v === current ? 'selected' : ''}>${l}</option>`).join('');
-  openSheet(`<div class="sheet-h"><h2>Ponavljanje položnice</h2>${closeBtn}</div>
-    <p class="hint"><strong>${esc(b.recipient || 'Položnica')}</strong>${b.due ? ` · naslednji rok ${fmtDateY(b.due)}` : ''}</p>
-    <div class="field"><label for="billRepeatSelect">Ponovi</label><select id="billRepeatSelect">${opts}</select></div>
-    <p class="help">Ko položnico označiš kot plačano, LifeFlow pripravi naslednjo položnico. Pri njej ustvari tudi opomnik 2 dni pred rokom.</p>
-    <div class="set-actions"><button class="btn" data-act="saveBillRepeat">${ic('repeat',17)} Shrani</button>${current ? `<button class="btn ghost danger" data-act="removeBillRepeat">Odstrani ponavljanje</button>` : ''}</div>`, 'billRepeat');
-}
-function saveBillRepeat() {
-  const b = byId(S.bills, billRepeatForm.id); if (!b) return;
-  b.repeatMonths = Math.max(0, parseInt($('#billRepeatSelect')?.value || '0', 10) || 0);
-  save(); sheet.close(); render(); toast(b.repeatMonths ? `Ponavljanje: vsakih ${b.repeatMonths} mes.` : 'Ponavljanje odstranjeno.');
-}
-function removeBillRepeat() {
-  const b = byId(S.bills, billRepeatForm.id); if (!b) return;
-  b.repeatMonths = 0;
-  save(); sheet.close(); render(); toast('Ponavljanje odstranjeno.');
-}
-function addBillNextReminder(b) {
-  if (!b.due) return;
-  const d = dayDiff(b.due) > 2 ? addDays(b.due, -2) : today();
-  const at = `${d}T09:00`;
-  if (!S.reminders.some(r => r.billId === b.id && r.at === at && !r.done)) {
-    S.reminders.push({ id: uid(), text: `Plačaj ${b.recipient}${b.amount != null ? ' – ' + money(b.amount, b.currency) : ''}`, trigger: 'cas', at, billId: b.id, done: false });
-  }
-}
 
 let fridgeManualOpen = false;
 let shopRecognition = null;
@@ -3465,12 +3369,8 @@ const A = {
   taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
   syncGoogleTasks() { syncGoogleTasks(); },
   dismissBackup() { S.settings.backupReminderDismissedAt = today(); save(); render(); },
-  addBillCal(b) { const x = byId(S.bills,b.dataset.id); if (x && x.due) addToCalendar(`${x.recipient || 'Položnica'} – plačilo`, x.due, null, [x.purpose,x.reference,x.iban].filter(Boolean).join(' · '), x); },
   dlCal(b) { const x = byId(S.deadlines,b.dataset.id); if (x) addToCalendar(x.title,x.due,null,x.note || x.category,x); },
   dlCalForm() { syncDl(); const f=dlForm; addToCalendar(f.title,f.due,null,f.note || f.category, f.id ? byId(S.deadlines,f.id) : null); },
-  billRepeat(b) { billRepeat(b.dataset.id); },
-  saveBillRepeat() { saveBillRepeat(); },
-  removeBillRepeat() { removeBillRepeat(); },
   closeSheet() { sheet.close(); },
   capture(b) { openCapture(b.dataset.mode || 'open'); },
   pickCam() { cap.text = ($('#capText') || {}).value ?? cap.text; imgTarget = 'cap'; $('#fileCam').click(); },
@@ -3487,33 +3387,10 @@ const A = {
   deleteInbox(b) { deleteInboxItem(b.dataset.id).then(ok => { render(); if (sheet.open && sheet.dataset.kind === 'inbox') $('#sheetBody').innerHTML = renderInbox(); toast(ok ? 'Vnos izbrisan.' : 'Vnosa ni bilo mogoče najti.'); }); },
   backCompose() { cap.result = null; renderCompose(); },
   apply() { applyResult(); },
-  pay(b) {
-    const x = byId(S.bills, b.dataset.id); if (!x) return;
-    x.paid = !x.paid;
-    S.reminders.filter(r => r.billId === x.id).forEach(r => { r.done = x.paid; });
-    if (x.paid && x.repeatMonths) {
-      const nextDue = addMonths(x.due || today(), Number(x.repeatMonths));
-      const exists = S.bills.some(v => v.recipient === x.recipient && v.due === nextDue && Number(v.repeatMonths) === Number(x.repeatMonths) && !v.paid);
-      if (!exists) {
-        const next = {...JSON.parse(JSON.stringify(x)), id:uid(), due:nextDue, paid:false};
-        S.bills.push(next);
-        addBillNextReminder(next);
-      }
-    }
-    save(); render(); toast(x.paid ? (x.repeatMonths ? 'Plačano. Naslednja položnica in opomnik sta pripravljena.' : 'Označeno kot plačano.') : 'Vrnjeno med neplačane.');
-  },
-  delBill(b) {
-    const id=b.dataset.id, x=byId(S.bills,id), rem=S.reminders.filter(r=>r.billId===id);
-    if(!x) return; S.bills=S.bills.filter(v=>v.id!==id); S.reminders=S.reminders.filter(r=>r.billId!==id); save(); render();
-    toast('Položnica izbrisana.',()=>{S.bills.push(x); S.reminders.push(...rem); save(); render();});
-  },
-  delExp(b) { const id=b.dataset.id,x=byId(S.expenses,id); if(!x)return; S.expenses=S.expenses.filter(v=>v.id!==id); save(); render(); toast('Račun izbrisan.',()=>{S.expenses.push(x);save();render();}); },
   useFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Porabljeno.',()=>{S.fridge.push(x);save();render();}); },
   delFridge(b) { const id=b.dataset.id,x=byId(S.fridge,id); if(!x)return; S.fridge=S.fridge.filter(v=>v.id!==id); save(); render(); toast('Živilo izbrisano.',()=>{S.fridge.push(x);save();render();}); },
   mealprep() { S.ui.mealprep = !S.ui.mealprep; save(); render(); },
   mealMode(b) { S.ui.mealMode = b.dataset.v === 'standalone' ? 'standalone' : 'fridge'; save(); render(); },
-  mfilter(b) { S.ui.moneyFilter = b.dataset.v; save(); render(); },
-  subs(b) { S.ui.tab = 'money'; S.ui.moneyFilter = 'subs'; save(); render(); window.scrollTo(0, 0); },
   dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
   energy(b) { S.ui.energy = b.dataset.v; save(); render(); },
   plan() { genPlan(); },
@@ -3547,6 +3424,10 @@ const A = {
   },
   taskReminder(b) { taskReminder(b.dataset.id); },
   taskRepeat(b) { taskRepeat(b.dataset.id); },
+  taskEdit(b) { taskEdit(b.dataset.id); },
+  saveTaskEdit(b) { saveTaskEdit(b.dataset.id); },
+  fridgeEdit(b) { fridgeEdit(b.dataset.id); },
+  saveFridgeEdit(b) { saveFridgeEdit(b.dataset.id); },
   saveTaskRepeat() { saveTaskRepeat(); },
   removeTaskRepeat() { removeTaskRepeat(); },
   taskCal(b) {
@@ -3591,7 +3472,7 @@ const A = {
   export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1), 'application/json;charset=utf-8'); S.settings.lastBackupAt=today(); save(); render(); },
   import() { $('#fileImport').click(); },
   wipe() {
-    if (!confirm('Res izbrišem vse podatke (položnice, hladilnik, opravila)? Ključ API ostane.')) return;
+    if (!confirm('Res izbrišem vse podatke (hladilnik, opravila, obroke)? Ključ API ostane.')) return;
     const st = S.settings;
     S = JSON.parse(JSON.stringify(DEFAULT)); S.settings = { ...st }; idb.clear().catch(() => {}); imgUrls.clear();
     save(); resetCap(); sheet.close(); render(); toast('Podatki izbrisani.');
@@ -3707,12 +3588,10 @@ function finishSwipe(row,dx){
   const id=row.dataset.id,kind=row.dataset.swipeKind,proxy=act=>makeSwipeProxy(act,id);resetSwipeRow(row);
   if(Math.abs(dx)<65)return;suppressClickUntil=Date.now()+350;
   if(kind==='task')dx>0?A.toggleTask(proxy('toggleTask')):A.delTask(proxy('delTask'));
-  else if(kind==='fridge')dx>0?A.useFridge(proxy('useFridge')):A.delFridge(proxy('delFridge'));
   else if(kind==='shop')dx>0?A.toggleShop(proxy('toggleShop')):A.delShop(proxy('delShop'));
   else if(kind==='deadline')dx>0?A.doneDl(proxy('doneDl')):A.dlDel(proxy('dlDel'));
   else if(kind==='reminder')dx>0?A.doneRem(proxy('doneRem')):A.delRem(proxy('delRem'));
-  else if(kind==='bill')dx>0?A.pay(proxy('pay')):A.delBill(proxy('delBill'));
-}
+  }
 document.addEventListener('touchstart',e=>{const row=e.target.closest('.swiping');if(!row||e.target.closest('button,input,select,textarea,a'))return;const t=e.changedTouches[0];swipeState={row,x:t.clientX,y:t.clientY,active:false};},{passive:true});
 document.addEventListener('touchmove',e=>{if(!swipeState)return;const t=e.changedTouches[0],dx=t.clientX-swipeState.x,dy=t.clientY-swipeState.y;if(!swipeState.active){if(Math.abs(dx)<10||Math.abs(dx)<=Math.abs(dy)*1.15)return;swipeState.active=true;}e.preventDefault();const off=Math.max(-105,Math.min(105,dx));swipeState.row.style.transform=`translateX(${off}px)`;swipeState.row.classList.toggle('is-swipe-right',off>0);swipeState.row.classList.toggle('is-swipe-left',off<0);},{passive:false});
 document.addEventListener('touchend',e=>{if(!swipeState)return;const row=swipeState.row,t=e.changedTouches[0],dx=t.clientX-swipeState.x,dy=t.clientY-swipeState.y,active=swipeState.active;swipeState=null;if(!active||Math.abs(dx)<65||Math.abs(dx)<=Math.abs(dy)*1.2){resetSwipeRow(row);return;}finishSwipe(row,dx);},{passive:true});
@@ -3729,6 +3608,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'quickShop') { e.preventDefault(); A.quickShop(); }
   if (e.key === 'Enter' && e.target.id === 'quickFridge') { e.preventDefault(); A.quickFridge(); }
 });
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.grow[role="button"]')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkTaskTimeReminders(); if (!sheet.open) render(); } });
 
 initTheme();
