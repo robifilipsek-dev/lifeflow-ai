@@ -465,7 +465,7 @@ nav button[aria-current=page]::before{display:none}
 .day-plan-card>.sec{display:none}.day-plan-card .ctl-row{margin-top:18px}.day-plan-card .flow{margin-top:14px}.day-plan-card .advice{background:#F6F2E5;color:#6E5826;border:1px solid #EBDCB1}.day-plan-card .warns{margin-bottom:0}
 .flow li::before{left:68px;width:2px;background:#D9E9E6}.flow time{color:var(--petrol-d)}.node{box-shadow:0 0 0 4px var(--paper);border:3px solid var(--paper)}.blk{padding:7px 10px 9px;margin:2px 0;border:1px solid transparent;border-radius:13px;background:#FCFEFD}.blk:hover{background:var(--petrol-t);border-color:#C9E3DE}.blk .t{font-size:15px}.blk .k{font-size:12px;color:var(--ink2)}.edit-hint{display:inline-block;margin-top:4px;color:var(--petrol);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.is-done .blk{opacity:.68}.is-done .t{text-decoration:line-through}
 .seg{background:var(--blue-soft);border:1px solid #BFD7D2;border-radius:13px;padding:3px}.seg button{min-height:39px;border-radius:10px;color:var(--petrol-d)}.seg button[aria-pressed=true]{background:var(--paper);color:var(--petrol-d);box-shadow:0 2px 7px rgba(20,84,81,.09)}.dash-section{padding:14px}.dash-section+.dash-section{margin-top:12px}.dash-list{border-color:var(--line);border-radius:14px}.
-.welcome.compact-welcome{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin:10px 0 18px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}.welcome-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--petrol-t);color:var(--petrol-d);flex:0 0 auto}.compact-welcome strong{font-size:15px}.compact-welcome p{margin:3px 0 0;color:var(--ink2);font-size:13px}.compact-invites{grid-column:1/-1;margin:2px 0 0;grid-template-columns:repeat(3,1fr)}.compact-invites .invite{min-height:58px;padding:8px 10px;border:1px solid #C6DCD8;border-radius:13px;background:#FBFDFC;color:var(--petrol-d);justify-content:center;box-shadow:none}.compact-invites .invite .ico{background:transparent;color:var(--petrol);width:auto;height:auto}.meal details.fold{background:#FAFCFB;border-radius:12px;padding:0 10px;margin-top:8px}
+.welcome.compact-welcome{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin:10px 0 18px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}.welcome-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--petrol-t);color:var(--petrol-d);flex:0 0 auto}.compact-welcome strong{font-size:15px}.compact-welcome p{margin:3px 0 0;color:var(--ink2);font-size:13px}.compact-invites{grid-column:1/-1;margin:2px 0 0;grid-template-columns:repeat(3,1fr)}.compact-invites .invite{min-height:58px;padding:8px 10px;border:1px solid #C6DCD8;border-radius:13px;background:#FBFDFC;color:var(--petrol-d);justify-content:center;box-shadow:none}.compact-invites .invite .ico{background:transparent;color:var(--petrol);width:auto;height:auto}
 .tag{border-radius:9px;padding:3px 9px;background:var(--petrol-t);color:var(--petrol-d)}
 .row{min-height:56px;border-color:var(--line)}.row:hover{background:#FBFDFC}
 .chk{width:42px;height:42px}.circle{border-color:var(--petrol)}.chk[aria-pressed=true] .circle{background:var(--petrol)}.mini{width:40px;height:40px;border-radius:11px}.mini:hover{background:var(--petrol-t);color:var(--petrol-d)}
@@ -1718,6 +1718,7 @@ async function startCloudSync(user) {
 
   const ref = cloudPath();
   const localApiKey = S.settings.apiKey || '';
+  let needsCloudCleanup = false;
   try {
     const snap = await cloudSync.FM.getDoc(ref);
     if (snap.exists()) {
@@ -1734,8 +1735,10 @@ async function startCloudSync(user) {
         S.settings.apiKey = localApiKey;
         S.settings.fbConfig = FIREBASE_CONFIG.apiKey ? '' : (S.settings.fbConfig || '');
         normalizeState(S);
+        cleanupLegacyImages();
+        needsCloudCleanup = stableJson(remote) !== stableJson(cloudState());
         store.set(JSON.stringify(S));
-        cloudSync.lastJson = cloudJson();
+        cloudSync.lastJson = needsCloudCleanup ? JSON.stringify(remote) : cloudJson();
         cloudSync.applyingRemote = false;
         render();
         toast('Podatki so bili naloženi iz oblaka.');
@@ -1748,6 +1751,10 @@ async function startCloudSync(user) {
     }
 
     cloudSync.ready = true;
+    if (needsCloudCleanup) {
+      cloudSync.pending = true;
+      await pushCloudState();
+    }
     cloudSync.unsub = cloudSync.FM.onSnapshot(ref, snap2 => {
       if (!snap2.exists()) return;
       const remote = snap2.data()?.state;
@@ -1771,9 +1778,12 @@ async function startCloudSync(user) {
         ui: localUi
       };
       normalizeState(S);
+      cleanupLegacyImages();
+      const needsCloudCleanup = stableJson(remote) !== stableJson(cloudState());
       store.set(JSON.stringify(S));
-      cloudSync.lastJson = cloudJson();
+      cloudSync.lastJson = needsCloudCleanup ? JSON.stringify(remote) : cloudJson();
       cloudSync.applyingRemote = false;
+      if (needsCloudCleanup) scheduleCloudSave();
       render();
       cloudStatus('Posodobljeno', 'ok');
     }, err => {
@@ -2424,7 +2434,7 @@ $('#fileImport').addEventListener('change', async e => {
     const o = JSON.parse(await f.text());
     const key = S.settings.apiKey, fbc = S.settings.fbConfig || '';
     S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
-    normalizeState(S); save(); render(); toast('Podatki uvoženi.');
+    normalizeState(S); cleanupLegacyImages(); save(); render(); toast('Podatki uvoženi.');
   } catch (err) { toast('Datoteke ni bilo mogoče uvoziti.'); }
 });
 
@@ -2433,7 +2443,7 @@ const DL_CATS = ['Vinjeta', 'Servis avtomobila', 'Tehnični pregled', 'Zavarovan
 const DL_PRESETS = { 'Vinjeta': { repeat: 12, lead: 14 }, 'Servis avtomobila': { repeat: 12, lead: 14 }, 'Tehnični pregled': { repeat: 12, lead: 30 }, 'Zavarovanje': { repeat: 12, lead: 30 }, 'Garancija': { repeat: 0, lead: 30 }, 'Drugo': { repeat: 0, lead: 7 } };
 let imgTarget = 'cap';
 
-/* slike računov živijo v IndexedDB (localStorage je premajhen) */
+/* Datoteke in slike zapiskov živijo v IndexedDB (localStorage je premajhen). */
 const idb = {
   _db: null,
   open() {
@@ -2459,6 +2469,10 @@ const idb = {
   del(k) { return this.tx('readwrite', s => s.delete(k)); },
   clear() { return this.tx('readwrite', s => s.clear()); }
 };
+function cleanupLegacyImages() {
+  const ids = legacyImgIds.splice(0);
+  ids.forEach(id => idb.del(id).catch(() => {}));
+}
 const imgUrls = new Map();
 async function imgUrl(id) {
   if (imgUrls.has(id)) return imgUrls.get(id);
@@ -3038,7 +3052,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { ch
 
 initTheme();
 store.set(JSON.stringify(S));
-legacyImgIds.forEach(id => idb.del(id).catch(() => {}));
+cleanupLegacyImages();
 render();
 if (fbCfg()) fbInit().catch(() => {});
 
