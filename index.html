@@ -22,7 +22,7 @@
     var base = location.origin + location.pathname;
     var m = {
       name: 'LifeFlow AI', short_name: 'LifeFlow', lang: 'sl',
-      description: 'Osebni AI kopilot za račune, hladilnik, obroke, opravila in dnevni načrt.',
+      description: 'Osebni AI pomočnik za dnevno načrtovanje, opravila, dogodke in zapiske.',
       id: base, start_url: base, scope: new URL('./', location.href).href,
       display: 'standalone', orientation: 'portrait', background_color: '#E8EEF0', theme_color: '#0A5C6B',
       icons: [
@@ -576,6 +576,18 @@ dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0
 }
 @media(max-width:460px){.day-actions-btns .btn{padding:0 10px}.day-plan-card .seg{width:100%}.day-plan-card .seg button{flex:1;padding:0 8px}.compact-invites .invite{font-size:12px}.row .badge{max-width:30vw}.fab{right:14px}
 }
+
+/* LifeFlow: poenostavljen vmesnik za dnevno planiranje */
+#nav button { min-width: 0; }
+#nav button span { white-space: nowrap; }
+.calendar-intro { margin-bottom: 14px; }
+.calendar-intro .toolbar { justify-content: flex-start; margin: 16px 0 0; }
+/* Zapuščeni pogledi ostanejo neaktivni zaradi združljivosti s shranjenimi podatki. */
+
+
+/* Zapiski: preproste, berljive kartice */
+.note-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin-top:14px}.note-card{position:relative;min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:14px;box-shadow:0 5px 18px rgba(24,57,55,.04)}.note-open{display:block;width:100%;padding:0 28px 0 0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.note-open strong{display:block;font-size:16px;overflow-wrap:anywhere}.note-open p{margin:7px 0 12px;color:var(--ink2);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.note-open small{color:var(--ink2);font-size:11px}.note-delete{position:absolute;right:8px;top:8px}.note-images{display:flex;gap:6px;margin:8px 0 10px;overflow:hidden}.note-images img{width:58px;height:58px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}.note-images span{display:grid;place-items:center;min-width:40px;background:var(--petrol-t);border-radius:9px;font-size:12px;font-weight:700}
+
 </style>
 </head>
 <body>
@@ -613,14 +625,14 @@ dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0
    Vse podatke hrani samo v tej napravi (localStorage).
    ===================================================================== */
 
-const SYSTEM_PROMPT = `Si "LifeFlow AI" – napreden, proaktiven in intuitiven osebni digitalni kopilot. Tvoja glavna naloga je, da uporabniku drastično zmanjšaš mentalno obremenitev (mental load) in prihraniš čas z avtomatizacijo organizacije vsakodnevnega življenja (opravila, finance, prehrana, časovni razpored).
+const SYSTEM_PROMPT = `Si "LifeFlow AI" – napreden, proaktiven in intuitiven osebni digitalni kopilot. Tvoja glavna naloga je zmanjšati mentalno obremenitev in pomagati pri organizaciji dneva: opravila, dogodki, roki, opomniki in osebni zapiski.
 
-Deluješ po načelu "Zero-Friction": od uporabnika nikoli ne zahtevaš zapletenega ročnega vnosa ali izpolnjevanja dolgih obrazcev. Namesto tega obdeluješ multimedijske vnose (slike računov/hladilnika, kratka glasovna sporočila, hitre zapiske) in samodejno strukturiraš informacije.
+Deluješ po načelu "Zero-Friction": iz kratkih besedil, glasovnih sporočil in e-pošte pripraviš jasne predloge opravil, dogodkov, rokov in opomnikov. Pred shranjevanjem vedno omogoči uporabniku pregled in potrditev.
 
 ### TVOJE GLAVNE FUNKCIONALNOSTI IN LOGIKA DELOVANJA:
 
 1. ANALIZA MULTIMEDIJSKIH VNOSOV (Zero-Input Engine)
-- Slike hladilnika/trgovinskih računov: Prepoznaj sestavine, oceni njihovo uporabnost ter jih dodaj v "Virtualni hladilnik". Opozori na iztek rokov.
+- E-pošta: izlušči le jasno podprta opravila, datume, ure, roke in dogodke; pri dvoumnih podatkih vprašaj oziroma označi negotovost. Nikoli ne shranjuj predlogov brez uporabnikove potrditve.
 - Glasovna sporočila/Surovi zapisi: Pretvori kaotične misli uporabnika v jasna, strukturirana opravila z opredeljeno prioriteto in časovnim okvirom.
 
 2. DINAMIČNO NAČRTOVANJE (Smart Auto-Scheduler)
@@ -723,7 +735,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-13 · v9 · Gmail → Inbox';
+const APP_VERSION = '2026-10-13 · v11 · osebno načrtovanje';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -734,9 +746,9 @@ const store = {
 };
 const DEFAULT = {
   settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', people: 2, diet: '',
-    showDeadlines: true, showDocs: true, showShopping: true, work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
+    showDeadlines: true, showDocs: true, showShopping: false, work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null },
   modelCache: null,
-  fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], dismissed: {},
+  fridge: [], tasks: [], reminders: [], inbox: [], plan: null, meals: null, shop: null, docs: [], deadlines: [], notes: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', mealprep: true,
     taskSort: 'due', sortDirection: 'asc', theme: null, mealMode: 'fridge', shopTab: 'list' }
 };
@@ -755,7 +767,8 @@ let S = load();
 S.settings.showDeadlines = S.settings.showDeadlines !== false; S.settings.showDocs = S.settings.showDocs !== false; S.settings.showShopping = S.settings.showShopping !== false;
 S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
-if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
+if (!Array.isArray(S.notes)) S.notes = [];
+if (!['today','calendar','tasks','notes'].includes(S.ui.tab)) S.ui.tab = 'today';
 /* ---------- delovni čas ---------- */
 function workCfg() {
   const w = (S.settings && S.settings.work) || {};
@@ -812,30 +825,13 @@ function decodeSharedShop() {
     return data && Array.isArray(data.items) ? data : null;
   } catch (e) { return null; }
 }
-(function importSharedShop(){
-  const data = decodeSharedShop();
-  if (!data) return;
-  const incoming = data.items.map(x => ({...x,id:x.id||uid()}));
-  const existing = (S.shop && Array.isArray(S.shop.items)) ? S.shop.items : [];
-  const map = new Map(existing.map(x => [`${String(x.name||'').trim().toLowerCase()}|${String(x.category||'Drugo')}`,x]));
-  incoming.forEach(x => {
-    const key = `${String(x.name||'').trim().toLowerCase()}|${String(x.category||'Drugo')}`;
-    const old = map.get(key);
-    if (old) old.done = !!old.done || !!x.done;
-    else { const copy={...x,id:uid()}; existing.push(copy); map.set(key,copy); }
-  });
-  S.shop={...(S.shop||{}),created:today(),nasvet:'Skupni seznam, prejet prek povezave.',obroki_teden:S.shop?.obroki_teden||[],items:existing,shared:true};
-  S.ui.tab='shop';
-  save();
-  try{history.replaceState(null,'',location.href.split('#')[0]);}catch(e){}
-  setTimeout(()=>toast('Skupni nakupovalni seznam je odprt.'),0);
-})();
+/* Uvoz starih povezav do nakupovalnih seznamov je izklopljen v različici za planiranje. */;
 
 const save = () => {
   store.set(JSON.stringify(S));
   scheduleCloudSave();
 };
-const busy = { plan: false, meals: false, shop: false };
+const busy = { plan: false };
 let deferredPrompt = null;
 
 /* ---------- toast ---------- */
@@ -972,44 +968,26 @@ function alertsHtml() {
       </div>
     </div>`).join('');
 }
-function ctxHtml() {
-  const g = t => S.reminders.filter(r => !r.done && r.trigger === t);
-  const dep = g('pred_odhodom'), shop = g('v_trgovini');
-  const nShop = S.shop ? S.shop.items.filter(i => !i.done).length : 0;
-  if (!dep.length && !shop.length && !nShop) return '';
-  const shopRow = nShop ? `<li class="row"><div class="grow"><strong>Nakupovalni seznam</strong><small>še ${nShop} za kupiti</small></div><button class="btn sm ghost" data-act="openShop">Odpri</button></li>` : '';
-  const col = (title, list, extra = '') => (list.length || extra) ? `<div><h3>${title}</h3><ul class="list">${list.map(r => `
-    <li class="row">${chk(false, 'doneRem', r.id, 'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div></li>`).join('')}${extra}</ul></div>` : '';
-  const two = (dep.length ? 1 : 0) + ((shop.length || nShop) ? 1 : 0) === 2;
-  return `<h2 class="sec">Ob pravem trenutku</h2><div class="ctx ${two ? 'two' : ''}">${col('Pred odhodom od doma', dep)}${col('V trgovini', shop, shopRow)}</div>`;
-}
 const chk = (done, act, id, label, extra = '') => `<button class="chk" data-act="${act}" data-id="${esc(id)}" ${extra} aria-pressed="${done}" aria-label="${esc(label)}"><span class="circle">${done ? ic('check', 16) : ''}</span></button>`;
 
 /* ---------- views ---------- */
 function headerFor(tab) {
   const h = new Date().getHours();
   const greet = h < 10 ? 'Dobro jutro' : h < 18 ? 'Dober dan' : 'Dober večer';
-  if (tab === 'today') return { t: new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }), s: greet };
-  if (tab === 'fridge') {
-    const count = S.meals && S.meals.date === today() ? S.meals.obroki.length : 0;
-    const soon = S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 2).length;
-    return { t: 'Obroki', s: count ? `${count} današnjih obrokov${soon ? ' · ' + soon + ' živil se izteka' : ''}` : 'Načrtuj obroke in nakup' };
-  }
-  if (tab === 'shop') {
-    const un = S.shop ? S.shop.items.filter(i => !i.done).length : 0;
-    return { t: 'Nakupovalni seznam', s: un ? `${un} ${un === 1 ? 'artikel' : 'artiklov'} za kupiti` : 'Seznam je prazen' };
-  }
+  if (tab === 'today') return { t: 'Danes', s: greet + ' · tvoj osebni načrt' };
+  if (tab === 'calendar') return { t: 'Koledar', s: 'Dogodki, termini in načrtovani dnevi' };
+  if (tab === 'notes') return { t: 'Zapiski', s: 'Ideje, pomembne informacije in slike' };
   const open = S.tasks.filter(t => !t.done).length;
   return { t: 'Opravila', s: open ? `${open} odprtih` : 'Nič odprtega' };
 }
 
 function countSoonFridge() { return S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).length; }
 function backupReminderHtml() {
-  const hasData = S.fridge.length || S.tasks.length || S.docs.length || S.deadlines.length;
+  const hasData = S.tasks.length || S.reminders.length || S.docs.length || S.deadlines.length || S.plan;
   if (!hasData) return '';
   const last = S.settings.lastBackupAt || S.settings.backupReminderDismissedAt;
   if (last && dayDiff(last) < 30) return '';
-  return `<div class="alert warn"><div class="a-body"><strong>Čas za varnostno kopijo</strong><span>Slike ostanejo samo na tej napravi. Priporočam izvoz kopije.</span></div><div class="a-act"><button class="btn sm" data-act="export">Izvozi</button><button class="btn sm plain" data-act="dismissBackup">Kasneje</button></div></div>`;
+  return `<div class="alert warn"><div class="a-body"><strong>Čas za varnostno kopijo</strong><span>Slike zapiskov ostanejo v tem brskalniku. Redno izvozi kopijo besedilnih podatkov.</span></div><div class="a-act"><button class="btn sm" data-act="export">Izvozi</button><button class="btn sm plain" data-act="dismissBackup">Kasneje</button></div></div>`;
 }
 function icsEscape(v) { return String(v || '').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/;/g,'\\;').replace(/,/g,'\\,'); }
 function icsStamp(dateObj = new Date()) { return dateObj.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z'); }
@@ -1078,7 +1056,7 @@ function dashUrgentHtml() {
   todayTaskList().forEach(t => raw.push({ kind:'task', id:t.id, title:t.title, meta:[t.time || 'Danes', dashLabelForPriority(t.prio)].filter(Boolean).join(' · '), sort: t.time ? Number(t.time.replace(':','.')) : 40 }));
   raw.sort((a,b)=>a.sort-b.sort);
   const items = raw.slice(0,6);
-  if (!items.length) return `<section class="dash-clear"><div class="dash-clear-icon">${ic('check', 24)}</div><div><strong>Za zdaj nimaš nič nujnega.</strong><span>Dan je pod nadzorom. Spodaj lahko preveriš še načrt, obroke in ostale stvari.</span></div></section>`;
+  if (!items.length) return `<section class="dash-clear"><div class="dash-clear-icon">${ic('check', 24)}</div><div><strong>Za zdaj nimaš nič nujnega.</strong><span>Dan je pod nadzorom. Spodaj lahko preveriš še načrt in odprta opravila.</span></div></section>`;
   const rows = items.map(x => `<li class="dash-row">
       <div class="dash-check">${dashActionButton(x)}</div>
       <div class="dash-row-main"><strong>${esc(x.title)}</strong><small>${esc(x.meta)}</small></div>
@@ -1107,34 +1085,17 @@ function dashNextHtml() {
 }
 function dashOverviewHtml() {
   const tasks = S.tasks.filter(t => !t.done).length;
-  const fridge = countSoonFridge();
-  const shop = S.shop ? S.shop.items.filter(i=>!i.done).length : 0;
   return `<div class="dash-overview" aria-label="Današnji pregled">
     <button class="dash-stat" data-act="tab" data-tab="tasks"><b>${tasks}</b><span>odprtih opravil</span></button>
-    <button class="dash-stat" data-act="tab" data-tab="fridge"><b>${fridge}</b><span>živil kmalu poteče</span></button>
-    <button class="dash-stat" data-act="openShop"><b>${shop}</b><span>za kupiti</span></button>
+    <button class="dash-stat" data-act="tab" data-tab="calendar"><b>${S.plan && S.plan.date === today() ? (S.plan.bloki || []).length : 0}</b><span>blokov v načrtu</span></button>
   </div>`;
-}
-function dashMealsHtml() {
-  if (!S.meals || S.meals.date !== today() || !Array.isArray(S.meals.obroki) || !S.meals.obroki.length) return '';
-  const nowM = new Date().getHours()*60 + new Date().getMinutes();
-  const meals = S.meals.obroki.filter(m=>m && m.tip && m.naziv).map(m=>({...m, _sort: Number(m.cas)||9999})).sort((a,b)=>a._sort-b._sort);
-  const current = meals.find(m => m._sort >= nowM) || meals[meals.length-1];
-  return `<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Danes jemo</h2><p class="dash-sub">Najbližji obrok iz tvojega jedilnika</p></div><button class="btn sm ghost" data-act="tab" data-tab="fridge">Odpri obroke</button></div><div class="meal-highlight"><span>${esc(MEAL_TAG[current.tip] || 'Obrok')}</span><strong>${esc(current.naziv)}</strong><small>${current.cas ? esc(String(current.cas)) + ' min' : 'Danes'}</small></div></section>`;
-}
-function dashShopHtml() {
-  const n = S.shop ? S.shop.items.filter(i=>!i.done).length : 0;
-  if (!n) return '';
-  return `<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Nakup</h2><p class="dash-sub">Še ${n} ${n===1?'artikel':'artiklov'} na seznamu</p></div><button class="btn sm" data-act="openShop">Odpri seznam</button></div><div class="dash-shop-line">${(S.shop.items.filter(i=>!i.done).slice(0,6)).map(i=>`<span>${esc(i.name)}</span>`).join('')} ${n>6?`<em>+${n-6}</em>`:''}</div></section>`;
 }
 function inboxCount() { return Array.isArray(S.inbox) ? S.inbox.length : 0; }
 function inboxResultSummary(r) {
   if (!r) return '';
   const bits = [];
-  if (r.hladilnik?.length) bits.push(`${r.hladilnik.length} ${r.hladilnik.length===1?'živilo':'živil'}`);
   if (r.opravila?.length) bits.push(`${r.opravila.length} ${r.opravila.length===1?'opravilo':'opravil'}`);
   if (r.opomniki?.length) bits.push(`${r.opomniki.length} ${r.opomniki.length===1?'opomnik':'opomnikov'}`);
-  if (r.dokumenti?.length) bits.push(`${r.dokumenti.length} ${r.dokumenti.length===1?'dokument':'dokumentov'}`);
   if (r.roki?.length) bits.push(`${r.roki.length} ${r.roki.length===1?'rok':'rokov'}`);
   if (r.dogodki?.length) bits.push(`${r.dogodki.length} ${r.dogodki.length===1?'dogodek':'dogodkov'}`);
   return bits.join(' · ');
@@ -1146,27 +1107,25 @@ function dashInboxHtml() {
   return `<section class="dash-section inbox-dash"><div class="dash-section-head"><div><h2 class="sec">Inbox</h2><p class="dash-sub">${n} ${n===1?'vnos čaka':'vnosi čakajo'}${waiting ? ` · ${waiting} še ni razvrščen${waiting===1?'':'i'} z AI` : ' na tvojo potrditev'}</p></div><button class="btn sm" data-act="openInbox">Odpri Inbox</button></div><div class="inbox-mini-list">${S.inbox.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,3).map(x=>`<div class="inbox-mini"><span class="inbox-mini-ico">${ic(x.result?'spark':'inbox',18)}</span><div><strong>${esc(x.title || x.text || 'Nov vnos')}</strong><small>${esc(x.result ? (inboxResultSummary(x.result) || 'AI predlog pripravljen') : 'Čaka na AI razvrščanje')}</small></div></div>`).join('')}</div></section>`;
 }
 function renderToday() {
-  const empty = !S.fridge.length && !S.tasks.length && !S.reminders.length && !S.docs.length && !S.deadlines.length && !S.shop;
+  const empty = !S.tasks.length && !S.reminders.length && !S.deadlines.length && !S.notes.length;
   const ib = inboxCount();
-  let h = `<div class="day-actions"><div><span class="day-kicker">Tvoj fokus za danes</span><strong>Plan, ki ga lahko sproti prilagajaš.</strong></div><div class="day-actions-btns"><button class="btn sm ghost" data-act="openInbox">${ic('bookmark',16)} Inbox${ib ? ` <span class="hero-count">${ib}</span>` : ''}</button><button class="btn sm" data-act="capture">${ic('plus',16)} Dodaj</button></div></div>`;
+  let h = `<div class="day-actions"><div><span class="day-kicker">Tvoj dan na enem mestu</span><strong>Pregleden načrt, ki ga lahko kadarkoli prilagodiš.</strong></div><div class="day-actions-btns"><button class="btn sm ghost" data-act="openInbox">${ic('bookmark',16)} Inbox${ib ? ` <span class="hero-count">${ib}</span>` : ''}</button><button class="btn sm" data-act="capture">${ic('plus',16)} Dodaj</button></div></div>`;
   if (empty) {
-    h += `<section class="welcome compact-welcome"><div class="welcome-ico">${ic('spark',22)}</div><div><strong>Začni brez kompliciranja.</strong><p>Fotografiraj račun, povej opravilo ali zapiši idejo in jo razvrstimo v tvoj dan.</p></div><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',20)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',20)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',20)}<span>Tekst</span></button></div></section>`;
+    h += `<section class="welcome compact-welcome"><div class="welcome-ico">${ic('spark',22)}</div><div><strong>Začni brez kompliciranja.</strong><p>Zapiši opravilo ali dogodek, narekuj idejo ali uvozi obveznosti iz e-pošte.</p></div><div class="invites compact-invites"><button class="invite" data-act="capture" data-mode="camera">${ic('camera',20)}<span>Foto</span></button><button class="invite" data-act="capture" data-mode="voice">${ic('mic',20)}<span>Glas</span></button><button class="invite" data-act="capture" data-mode="text">${ic('pen',20)}<span>Tekst</span></button></div></section>`;
   }
   h += quickBar({id:'quickTask',placeholder:'Dodaj opravilo za danes …',label:'Novo opravilo za danes',voice:'taskVoice',add:'quickTask',multiline:true});
-  h += `<section class="day-plan-card"><div class="day-plan-header"><div><span class="day-kicker">DANES</span><h2>Moj dnevni načrt</h2><p>Glavni pogled dneva — dogodke odpri za urejanje.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>${alertsHtml()}${planHtml()}</section>`;
+  h += `<section class="day-plan-card"><div class="day-plan-header"><div><span class="day-kicker">DANES</span><h2>Moj dnevni načrt</h2><p>Razporedi obveznosti, preveri naslednje korake in po potrebi prilagodi čas.</p></div><span class="plan-mark">${ic('bookmark',20)}</span></div>${alertsHtml()}${planHtml()}</section>`;
   h += dashOverviewHtml();
   h += gcalHtml();
   h += dashInboxHtml();
   h += backupReminderHtml();
   h += dashUrgentHtml();
   h += dashNextHtml();
-  h += dashMealsHtml();
-  h += dashShopHtml();
-  h += ctxHtml();
+
   return h;
 }
 
-const TIP = { opravilo: 'Opravilo', fiksno: 'Fiksna obveznost', obrok: 'Obrok', odmor: 'Odmor', rekreacija: 'Rekreacija', opomnik: 'Opomnik' };
+const TIP = { opravilo: 'Opravilo', fiksno: 'Dogodek', odmor: 'Odmor', rekreacija: 'Rekreacija', opomnik: 'Opomnik' };
 function planHtml() {
   const u = S.ui, p = S.plan && S.plan.date === today() ? S.plan : null;
   let h = `<h2 class="sec plan-title">Moj dnevni načrt</h2>
@@ -1518,6 +1477,10 @@ function quickBar(o) {
     : `<input type="text" id="${o.id}" placeholder="${esc(o.placeholder)}" aria-label="${esc(o.label)}" autocomplete="off">`;
   return `<div class="qa">${field}<button type="button" class="icon-btn quick-mic" data-act="${o.voice}" aria-label="Povej na glas">${ic('mic',20)}</button><button type="button" class="btn" data-act="${o.add}">${ic('plus',16)} Dodaj</button>${o.extra ? `<div class="qa-extra">${o.extra}</div>` : ''}</div>`;
 }
+function renderCalendar() {
+  return `<section class="dash-section calendar-intro"><div class="day-kicker">TVOJI DOGODKI</div><h2 class="sec">Koledar na enem mestu</h2><p class="dash-sub">Preglej dogodke po dnevih, dodaj termin ali uredi obstoječi dogodek. Dogodke iz e-pošte najprej preveriš v Inboxu, preden jih dodaš.</p><div class="toolbar"><button class="btn" data-act="calOpen">${ic('calendar',18)} Odpri koledar</button><button class="btn ghost" data-act="capture">${ic('plus',18)} Dodaj dogodek ali opravilo</button></div></section>${gcalHtml()}<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Iz e-pošte v načrt</h2><p class="dash-sub">AI pripravi predloge opravil in dogodkov. Pred shranjevanjem jih lahko pregledaš in popraviš.</p></div></div><button class="btn ghost" data-act="openInbox">${ic('inbox',18)} Odpri Inbox</button></section>`;
+}
+
 function renderTasks() {
   const sortMode=S.ui.taskSort==='priority'?'priority':'due';
   const open=taskSortList(S.tasks.filter(t=>!t.done),sortMode);
@@ -1530,16 +1493,61 @@ function renderTasks() {
     return `<li class="row ${t.done?'done':''}" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
   };
   let h=quickBar({id:'quickTask',placeholder:'Dodaj opravilo …',label:'Novo opravilo',voice:'taskVoice',add:'quickTask',multiline:true})+`<div class="set-actions" style="margin:0 0 10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
-  if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Povej ali napiši, kaj moraš urediti, in jih razvrstim.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
+  if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Zapiši opravilo ali ga narekuj, pa ga dodaj v seznam.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
   else if(sortMode==='priority'){
     [['visoka','Visoka prioriteta'],['srednja','Srednja prioriteta'],['nizka','Nizka prioriteta']].forEach(([k,label])=>{const g=open.filter(t=>t.prio===k);if(g.length)h+=`<h2 class="sec">${label}</h2><ul class="list">${g.map(row).join('')}</ul>`;});
   } else h+=`<h2 class="sec">Odprta opravila</h2><ul class="list">${open.map(row).join('')}</ul>`;
   const rem=S.reminders.filter(r=>!r.done).sort((a,b)=>(a.at||'9').localeCompare(b.at||'9'));
-  if(rem.length){const lab=r=>r.trigger==='cas'&&r.at?`${fmtDate(r.at.slice(0,10))} ${r.at.slice(11,16)}`:({pred_odhodom:'Pred odhodom',v_trgovini:'V trgovini',konec_meseca:'Konec meseca'}[r.trigger]||'Kadarkoli');h+=`<h2 class="sec">Opomniki</h2><ul class="list">${rem.map(r=>`<li class="row" data-id="${r.id}">${chk(false,'doneRem',r.id,'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div><span class="badge plain">${esc(lab(r))}</span><button class="mini" data-act="delRem" data-id="${r.id}" aria-label="Izbriši opomnik">${ic('trash',19)}</button></li>`).join('')}</ul>`;}
+  if(rem.length){const lab=r=>r.trigger==='cas'&&r.at?`${fmtDate(r.at.slice(0,10))} ${r.at.slice(11,16)}`:({pred_odhodom:'Pred odhodom',konec_meseca:'Konec meseca'}[r.trigger]||'Kadarkoli');h+=`<h2 class="sec">Opomniki</h2><ul class="list">${rem.map(r=>`<li class="row" data-id="${r.id}">${chk(false,'doneRem',r.id,'Opravljeno')}<div class="grow"><strong>${esc(r.text)}</strong></div><span class="badge plain">${esc(lab(r))}</span><button class="mini" data-act="delRem" data-id="${r.id}" aria-label="Izbriši opomnik">${ic('trash',19)}</button></li>`).join('')}</ul>`;}
   if(done.length)h+=`<details class="fold"><summary>Opravljeno (${done.length})</summary><ul class="list">${done.map(row).join('')}</ul></details>`;
   return h;
 }
-const NAV = [['today', 'Danes', 'sun'], ['fridge', 'Obroki', 'utensils'], ['shop', 'Nakup', 'cart'], ['tasks', 'Opravila', 'list']];
+/* ---------- osebni zapiski ---------- */
+let noteForm = null;
+function renderNotes() {
+  const notes = (S.notes || []).slice().sort((a,b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  let h = `<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Tvoje ideje in zapiski</h2><p class="dash-sub">Shrani misli, pomembne informacije ali fotografije, da jih hitro najdeš.</p></div><button class="btn" data-act="noteNew">${ic('plus',17)} Nov zapis</button></div>`;
+  if (!notes.length) h += `<div class="empty"><p>Še nimaš zapiskov. Ustvari prvi zapis za idejo, seznam, navodilo ali pomembno informacijo.</p><button class="btn" data-act="noteNew">${ic('plus',17)} Ustvari prvi zapis</button></div>`;
+  else h += `<div class="note-grid">${notes.map(n => `<article class="note-card"><button class="note-open" data-act="noteEdit" data-id="${esc(n.id)}"><strong>${esc(n.title || 'Brez naslova')}</strong><p>${esc(n.text || 'Brez dodatnega besedila').slice(0,260)}</p>${n.images && n.images.length ? `<div class="note-images">${n.images.slice(0,3).map(id => `<img data-img="${esc(id)}" alt="Slika v zapisku">`).join('')}${n.images.length>3?`<span>+${n.images.length-3}</span>`:''}</div>` : ''}<small>Posodobljeno ${esc(n.updatedAt ? new Date(n.updatedAt).toLocaleDateString('sl-SI') : 'danes')}</small></button><button class="mini note-delete" data-act="noteDel" data-id="${esc(n.id)}" aria-label="Izbriši zapisek">${ic('trash',17)}</button></article>`).join('')}</div>`;
+  h += `<p class="help">Besedilo se sinhronizira z računom, če je vklopljena sinhronizacija. Slike se shranijo v tem brskalniku in niso vključene v izvoz varnostne kopije.</p></section>`;
+  return h;
+}
+function openNote(id = null) {
+  const old = id ? S.notes.find(n => n.id === id) : null;
+  noteForm = old ? { id: old.id, title: old.title || '', text: old.text || '', images: [], existingImages: (old.images || []).slice(), removeImages: [] } : { id: null, title: '', text: '', images: [], existingImages: [], removeImages: [] };
+  renderNoteForm(); openSheet(null, 'note');
+}
+function renderNoteForm() {
+  if (!noteForm) return;
+  const thumbs = [...noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id)).map(id => `<div class="th"><img data-img="${esc(id)}" alt="Shranjena slika"><button data-act="noteRmExisting" data-id="${esc(id)}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`), ...noteForm.images.map((im,i) => `<div class="th"><img src="${im.url}" alt="Nova slika"><button data-act="noteRmImage" data-i="${i}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`) ].join('');
+  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>${noteForm.id ? 'Uredi zapisek' : 'Nov zapisek'}</h2>${closeBtn}</div><div class="field"><label for="noteTitle">Naslov</label><input id="noteTitle" maxlength="120" placeholder="Npr. Ideje za projekt" value="${esc(noteForm.title)}"></div><div class="field"><label for="noteText">Zapisek</label><textarea id="noteText" rows="8" maxlength="12000" placeholder="Zapiši misli, pomembne podatke, seznam ali načrt …">${esc(noteForm.text)}</textarea></div><div class="field"><label>Slike (do 6)</label><div class="set-actions"><button class="btn ghost" data-act="noteAddImage" ${noteForm.images.length + noteForm.existingImages.length - noteForm.removeImages.length >= 6 ? 'disabled' : ''}>${ic('image',17)} Dodaj slike</button><span class="help">Slike se shranijo lokalno v tej napravi.</span></div>${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}</div><div class="sheet-f"><button class="btn wide" data-act="noteSave">${ic('save',17)} Shrani zapisek</button>${noteForm.id ? `<button class="btn wide ghost danger" data-act="noteDelForm">Izbriši zapisek</button>` : ''}<button class="btn wide ghost" data-act="closeSheet">Prekliči</button></div>`;
+  hydrateImgs($('#sheetBody'));
+}
+async function deleteNote(id) {
+  const note = S.notes.find(n => n.id === id); if (!note) return;
+  if (!confirm('Izbrišem ta zapisek? Tega dejanja ni mogoče razveljaviti.')) return;
+  for (const img of (note.images || [])) { await idb.del(img).catch(() => {}); imgUrls.delete(img); }
+  S.notes = S.notes.filter(n => n.id !== id); noteForm = null; save(); if (sheet.open && sheet.dataset.kind === 'note') sheet.close(); render(); toast('Zapisek je izbrisan.');
+}
+async function saveNote() {
+  if (!noteForm) return;
+  noteForm.title = ($('#noteTitle')?.value || '').trim(); noteForm.text = ($('#noteText')?.value || '').trim();
+  if (!noteForm.title && !noteForm.text && !noteForm.images.length && !noteForm.existingImages.some(id => !noteForm.removeImages.includes(id))) { toast('Najprej vpiši naslov, besedilo ali dodaj sliko.'); return; }
+  const old = noteForm.id ? S.notes.find(n => n.id === noteForm.id) : null;
+  const imageIds = noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id));
+  try {
+    for (const im of noteForm.images) {
+      const id = 'note-' + uid();
+      const blob = await (await fetch(im.url)).blob();
+      await idb.put(id, blob); imageIds.push(id);
+    }
+    for (const id of noteForm.removeImages) { await idb.del(id).catch(() => {}); imgUrls.delete(id); }
+  } catch (e) { toast('Slike ni bilo mogoče shraniti. Preveri prostor v brskalniku.'); return; }
+  const note = { id: old ? old.id : uid(), title: noteForm.title || 'Brez naslova', text: noteForm.text, images: imageIds, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+  if (old) S.notes = S.notes.map(n => n.id === old.id ? note : n); else S.notes.push(note);
+  noteForm = null; save(); sheet.close(); render(); toast('Zapisek je shranjen.');
+}
+const NAV = [['today', 'Danes', 'sun'], ['calendar', 'Koledar', 'calendar'], ['tasks', 'Opravila', 'list'], ['notes', 'Zapiski', 'pen']];
 /* ---------- stable UI rendering ---------- */
 /*
  * render() lahko ponovno izriše vsebino, vendar ne sme izgubiti uporabnikovega
@@ -1624,7 +1632,7 @@ function render(options = {}) {
 
   $('#title').textContent = H.t;
   $('#sub').textContent = H.s;
-  $('#view').innerHTML = ({ today: renderToday, fridge: renderFridge, shop: renderShop, tasks: renderTasks })[tab]();
+  $('#view').innerHTML = ({ today: renderToday, calendar: renderCalendar, tasks: renderTasks, notes: renderNotes })[tab]();
   $('#nav').innerHTML = NAV.map(([id, l, i]) =>
     `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
   ).join('');
@@ -1655,9 +1663,9 @@ function openCapture(mode) {
 }
 function renderCompose() {
   $('#sheetBody').innerHTML = `
-    <div class="sheet-h"><h2>Dodaj karkoli</h2>${closeBtn}</div>
-    <p class="hint">Slika računa ali hladilnika, glasovno sporočilo ali hiter zapisek. Lahko tudi vse naenkrat.</p>
-    <div class="cap-ta"><textarea id="capText" rows="4" placeholder="Npr. jutri ob 10h klic z dobaviteljem, do petka plačaj zavarovanje, ko grem v trgovino kupi mleko …">${esc(cap.text)}</textarea><button type="button" class="icon-btn quick-mic cap-mic" data-act="capDictate" aria-label="Narekuj besedilo">${ic('mic', 20)}</button></div>
+    <div class="sheet-h"><h2>Dodaj opravilo ali dogodek</h2>${closeBtn}</div>
+    <p class="hint">Zapiši ali narekuj opravila, dogodke, roke in opomnike. Lahko prilepiš tudi besedilo iz e-pošte, ki ga bo AI razvrstil v predloge.</p>
+    <div class="cap-ta"><textarea id="capText" rows="4" placeholder="Npr. jutri ob 10.00 sestanek z Ano, do petka pošlji ponudbo, naslednji ponedeljek servis ob 9.00 …">${esc(cap.text)}</textarea><button type="button" class="icon-btn quick-mic cap-mic" data-act="capDictate" aria-label="Narekuj besedilo">${ic('mic', 20)}</button></div>
     <p class="help" style="margin:6px 0 0">Mikrofon ob polju sam napiše, kar poveš. Gumb »Govori« pa AI-ju pošlje zvočni posnetek.</p>
     <div class="src-row">
       <button class="src" data-act="pickCam">${ic('camera', 26)}<span>Kamera</span></button>
@@ -1679,7 +1687,7 @@ function updateAttach() {
   el.innerHTML = h;
 }
 function renderBusy() {
-  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>Berem …</h2>${closeBtn}</div><p class="busy"><span class="spin"></span> Razvrščam račune, sestavine in opravila.</p>`;
+  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>Berem …</h2>${closeBtn}</div><p class="busy"><span class="spin"></span> Razvrščam opravila, dogodke, roke in opomnike.</p>`;
 }
 async function loadBitmap(file) {
   if ('createImageBitmap' in window) { try { return await createImageBitmap(file); } catch (e) { /* fallback */ } }
@@ -1694,15 +1702,16 @@ async function compress(file, max = 1600, q = .85) {
   return { url, b64: url.split(',')[1] };
 }
 async function addImages(files) {
-  const target = imgTarget, list = target === 'doc' ? docForm.images : cap.images;
+  const target = imgTarget, list = target === 'doc' ? docForm.images : target === 'note' ? noteForm.images : cap.images;
   for (const f of Array.from(files || [])) {
-    if (list.length >= 6) { toast('Največ 6 slik naenkrat.'); break; }
+    if ((target === 'note' ? noteForm.images.length + noteForm.existingImages.length - noteForm.removeImages.length : list.length) >= 6) { toast('Največ 6 slik na zapisek.'); break; }
     try { list.push(await compress(f)); } catch (e) { toast('Slike ni bilo mogoče prebrati.'); }
   }
   if (target === 'doc') {
     if (sheet.open && sheet.dataset.kind === 'doc') { renderDocForm(); if (!docForm.aiDone && list.length && (S.settings.apiKey || '').trim()) docAI(); }
     return;
   }
+  if (target === 'note') { if (sheet.open && sheet.dataset.kind === 'note') renderNoteForm(); return; }
   if (!sheet.open || sheet.dataset.kind !== 'cap' || cap.result || cap.busy) { openCapture('open'); } else { cap.text = ($('#capText') || {}).value ?? cap.text; renderCompose(); }
 }
 $('#fileCam').addEventListener('change', e => { addImages(e.target.files); e.target.value = ''; });
@@ -1749,35 +1758,35 @@ async function toggleRec() {
 
 function analyzePrompt() {
   return `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
-Analiziraj vse priložene vnose (slike, zvok, besedilo) in izlušči vse uporabno. Vrni JSON s to strukturo (prazne sezname pusti prazne, neznana polja so null):
+Preglej besedilo, slike ali zvok in izlušči samo informacije, ki so uporabne za osebno načrtovanje: opravila, opomnike, roke in dogodke. Posebej dobro preglej besedilo e-pošte. Ne ugibaj; če datum ali ura nista jasna, ju pusti prazna in negotovost pojasni v opazil.
+Vrni samo JSON s strukturo:
 {
- "opazil": "1-2 kratka stavka: kaj si prepoznal",
- "predlog": "Proaktiven predlog v obliki: Opazil sem X, predlagam Y. Naj to uredim?",
-  "hladilnik": [{"ime":"", "kolicina":"npr. 1 l, 500 g, 6 kos", "kategorija":"Zelenjava|Sadje|Mlečno|Meso in ribe|Jajca|Pijače|Suho|Zamrznjeno|Omake in začimbe|Drugo", "rok_uporabe":"YYYY-MM-DD", "rok_je_ocena":true, "opomba":""}],
-  "opravila": [{"naslov":"", "prioriteta":"visoka|srednja|nizka", "casovni_okvir":"npr. danes popoldne", "rok":"YYYY-MM-DD", "ura":"HH:MM", "trajanje_min":0, "ponavljanje":"|1d|7d|14d|1m|3m|6m|12m"}],
- "opomniki": [{"besedilo":"", "sprozilec":"cas|pred_odhodom|v_trgovini|konec_meseca|drugo", "cas":"YYYY-MM-DDTHH:MM"}],
- "dokumenti": [{"naziv":"", "trgovina":"", "datum":"YYYY-MM-DD", "znesek":0.0, "garancija_mesecev":24, "kategorija":"Garancija|Račun|Vozilo|Dom|Zdravje|Drugo"}],
+ "opazil": "1-2 kratka stavka o tem, kaj si prepoznal",
+ "predlog": "Kratek predlog, kaj bi bilo smiselno dodati",
+ "opravila": [{"naslov":"", "prioriteta":"visoka|srednja|nizka", "casovni_okvir":"", "rok":"YYYY-MM-DD", "ura":"HH:MM", "trajanje_min":0, "ponavljanje":"|1d|7d|14d|1m|3m|6m|12m"}],
+ "opomniki": [{"besedilo":"", "sprozilec":"cas|drugo", "cas":"YYYY-MM-DDTHH:MM"}],
  "roki": [{"naziv":"", "kategorija":"Vinjeta|Servis avtomobila|Tehnični pregled|Zavarovanje|Garancija|Drugo", "datum":"YYYY-MM-DD", "ponavljanje_mesecev":12, "opomni_dni_prej":14}],
  "dogodki": [{"naslov":"", "datum":"YYYY-MM-DD", "ura":"HH:MM", "trajanje_min":60, "lokacija":"", "opomba":""}]
 }
 Pravila:
-- Trgovinski račun za živila: živila z računa dodaj v "hladilnik" (brez nehrane, čistil, vrečk). Rok uporabe oceni glede na vrsto živila in nastavi rok_je_ocena=true.
-- Slika hladilnika ali seznam sestavin: vse prepoznane sestavine v "hladilnik". Če roka ni videti, ga oceni (rok_je_ocena=true). Če je kaj videti pokvarjeno ali na robu, to zapiši v "opomba".
-- Glasovni ali pisni zapiski: razčleni v jasna "opravila" (naslov v velelniku, npr. "Pokliči zobozdravnika"), prioriteto določi glede na nujnost, casovni_okvir napiši kratko (npr. "do petka"). Polji rok in ura izpolni samo, če ju uporabnik omeni ali sta nedvoumni; relativne izraze ("jutri", "v petek") pretvori glede na današnji datum. Če uporabnik izrecno pove, da se opravilo ponavlja, uporabi ponavljanje: 1d vsak dan, 7d vsak teden, 14d vsaka 2 tedna, 1m mesečno, 3m vsake 3 mesece, 6m polletno, 12m letno.
-- Kar je treba sprožiti ob določenem trenutku (npr. "ko grem v trgovino kupi …", "preden odidem vzemi …"), daj v "opomniki" s sprozilec v_trgovini ali pred_odhodom; za konkreten čas sprozilec "cas" in polje cas.
-- Račun za trajno blago (aparat, elektronika, orodje, pohištvo, vozilo, večja storitev), ki ga je smiselno hraniti, daj v "dokumenti" . Garancijo vzemi z dokumenta; če je ni, za trajno blago vnesi 24 (zakonska garancija), za storitve in potrošno blago null. Trgovinski račun za hrano in vsakdanje nakupe ostane v "trgovinski_racun".
-- Roki: kadar uporabnik ali dokument omeni servis avtomobila, vinjeto, tehnični pregled, registracijo, zavarovanje ali podoben rok z datumom (ali okvirnim datumom, npr. "servis decembra" pomeni 1. december), ga dodaj v "roki". ponavljanje_mesecev nastavi na 12 za letne obnove, sicer 0; opomni_dni_prej 14 (za zavarovanje in tehnični pregled 30). Roka za garancijo iz "dokumenti" ne podvajaj, aplikacija ga ustvari sama.
-- Dogodki: sestanek, termin, rezervacija, let, prireditev ali srečanje z jasnim datumom (in po možnosti uro) daj v "dogodki" (pojdejo v koledar). Opravilo je nekaj, kar mora uporabnik narediti; dogodek je nekaj, kar se zgodi ob določenem času. Istega ne dajaj v oba seznama.
-- Če ni nič uporabnega, vrni prazne sezname, v "opazil" povej, kaj vidiš, v "predlog" pa, kaj naj uporabnik pošlje.`;
+- Iz e-pošte prepoznaj konkretne naloge, obljube, roke, sestanke in termine. Upoštevaj pošiljatelja in kontekst, vendar ne ustvarjaj obveznosti zgolj iz oglasov, podpisov ali splošnih predlogov.
+- Opravilo pomeni nekaj, kar mora uporabnik narediti; dogodek pomeni sestanek ali drugo stvar, ki se zgodi ob določenem času. Iste stvari ne podvajaj.
+- Naslov opravila naj bo kratek in jasen, po možnosti v velelniku. Prioriteto določi samo iz dejanske nujnosti.
+- Relativne datume pretvori glede na zgornji datum le, če je pomen nedvoumen. Če datum manjka ali je dvoumen, pusti datum prazen.
+- Opomnik uporabi le za kratko opozorilo; opravila z jasnim dejanjem raje uvrsti med opravila.
+- Roke za obnove dodaj samo, kadar je rok izrecno naveden ali jasno razviden.
+- Predlogi so samo osnutki: uporabnik jih bo pregledal in potrdil, zato ne trdi, da je karkoli že shranjeno.
+- Ne obdeluj živil, jedilnikov, hladilnika, nakupovalnih seznamov ali računov za vsakodnevne nakupe.
+- Če ni uporabnih podatkov, vrni prazne sezname in to povej v opazil.`;
 }
 function normalize(r) {
   r = r || {};
   return {
     opazil: str(r.opazil) || '', predlog: str(r.predlog) || '',
-    hladilnik: arr(r.hladilnik).filter(x => x && x.ime).map(x => ({ on: true, ime: str(x.ime), kolicina: str(x.kolicina), kategorija: str(x.kategorija) || 'Drugo', rok: dt(x.rok_uporabe), ocena: !!x.rok_je_ocena, opomba: str(x.opomba) })),
+    hladilnik: [],
     opravila: arr(r.opravila).filter(x => x && x.naslov).map(x => ({ on: true, naslov: str(x.naslov), prio: PRIO[x.prioriteta] != null ? x.prioriteta : 'srednja', okvir: str(x.casovni_okvir), rok: dt(x.rok), ura: tm(x.ura), min: num(x.trajanje_min), repeat: REPEAT_OPTIONS.some(v => v[0] === String(x.ponavljanje)) ? String(x.ponavljanje) : '' })),
-    opomniki: arr(r.opomniki).filter(x => x && x.besedilo).map(x => ({ on: true, besedilo: str(x.besedilo), sprozilec: ['cas', 'pred_odhodom', 'v_trgovini', 'konec_meseca', 'drugo'].includes(x.sprozilec) ? x.sprozilec : 'drugo', cas: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(x.cas || '') ? x.cas.slice(0, 16) : null })),
-    dokumenti: arr(r.dokumenti).filter(x => x && x.naziv).map(x => ({ on: true, naziv: str(x.naziv), trgovina: str(x.trgovina), datum: dt(x.datum), znesek: num(x.znesek), kategorija: DOC_CATS.includes(x.kategorija) ? x.kategorija : 'Račun', mesecev: Math.max(0, Math.round(num(x.garancija_mesecev) || 0)) })),
+    opomniki: arr(r.opomniki).filter(x => x && x.besedilo).map(x => ({ on: true, besedilo: str(x.besedilo), sprozilec: ['cas', 'drugo'].includes(x.sprozilec) ? x.sprozilec : 'drugo', cas: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(x.cas || '') ? x.cas.slice(0, 16) : null })),
+    dokumenti: [],
     dogodki: arr(r.dogodki).filter(x => x && x.naslov && dt(x.datum)).map(x => ({ on: true, naslov: str(x.naslov), datum: dt(x.datum), ura: tm(x.ura), min: num(x.trajanje_min), lokacija: str(x.lokacija), opomba: str(x.opomba) })),
     roki: arr(r.roki).filter(x => x && x.naziv && dt(x.datum)).map(x => {
       const cat = DL_CATS.includes(x.kategorija) ? x.kategorija : 'Drugo', lead = num(x.opomni_dni_prej);
@@ -1854,7 +1863,7 @@ function renderInbox() {
   const list = S.inbox.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   let h = `<div class="sheet-h"><h2>Inbox ${list.length ? `<span class="inbox-count">${list.length}</span>` : ''}</h2>${closeBtn}</div><p class="hint">Vse, kar še ni dokončno razvrščeno. AI predlaga, kam sodi, ti pa samo potrdiš.</p>`;
   h += gmailBtn();
-  if (!list.length) return h + `<div class="empty inbox-empty"><div class="inbox-empty-ico">${ic('inbox',40)}</div><h3>Inbox je prazen</h3><p>Dodaj račun, glasovno sporočilo, fotografijo ali hiter zapisek.</p><button class="btn" data-act="capture" data-mode="text">${ic('plus',18)} Dodaj vnos</button></div>`;
+  if (!list.length) return h + `<div class="empty inbox-empty"><div class="inbox-empty-ico">${ic('inbox',40)}</div><h3>Inbox je prazen</h3><p>Dodaj besedilo, fotografijo ali glasovno sporočilo, iz katerega naj AI pripravi predloge opravil in dogodkov.</p><button class="btn" data-act="capture" data-mode="text">${ic('plus',18)} Dodaj vnos</button></div>`;
   h += `<div class="inbox-list">${list.map((x,i)=>{
     const status = x.result ? 'AI predlog pripravljen' : 'Čaka na AI';
     const preview = x.result ? (inboxResultSummary(x.result) || x.result.opazil || 'Predlog pripravljen') : (x.text || (x.imageIds?.length ? 'Fotografija' : x.audioId ? 'Glasovno sporočilo' : 'Nov vnos'));
@@ -1886,7 +1895,7 @@ async function analyze() {
   }
 }
 function countOn(r) {
-  return r.hladilnik.filter(x => x.on).length + r.opravila.filter(x => x.on).length + r.opomniki.filter(x => x.on).length + r.dokumenti.filter(x => x.on).length + r.roki.filter(x => x.on).length + arr(r.dogodki).filter(x => x.on).length;
+  return r.opravila.filter(x => x.on).length + r.opomniki.filter(x => x.on).length + r.roki.filter(x => x.on).length + arr(r.dogodki).filter(x => x.on).length;
 }
 function renderResult() {
   const r = cap.result, total = countOn(r);
@@ -1895,10 +1904,8 @@ function renderResult() {
   const ed = inner => `<details class="rv-edit"><summary>${ic('pen', 14)} Uredi</summary><div class="rv-in">${inner}</div></details>`;
   const prioSel = (k, i, v) => `<label>Prioriteta<select data-f="prio" data-k="${k}" data-i="${i}">${['visoka', 'srednja', 'nizka'].map(o => `<option value="${o}" ${o === v ? 'selected' : ''}>${o[0].toUpperCase() + o.slice(1)}</option>`).join('')}</select></label>`;
   let h = `<div class="sheet-h"><h2>Opazil sem</h2>${closeBtn}</div><p class="lead">${esc(r.opazil || 'Vnos sem pregledal.')}</p><p class="hint">Pred potrditvijo lahko vsak predlog popraviš: tapni <strong>Uredi</strong>.</p>`;
-  if (r.hladilnik.length) h += `<h3 class="rvh">V hladilnik (${r.hladilnik.length})</h3><ul class="rvl">${r.hladilnik.map((x, i) => ck('hladilnik', i, x.on, esc(x.ime), esc([x.kolicina, x.rok ? (x.ocena ? '~ ' : '') + 'do ' + fmtDate(x.rok) : null, x.opomba].filter(Boolean).join(' · '))) + ed(fl('Sestavina', 'hladilnik', i, 'ime', x.ime) + fl('Količina', 'hladilnik', i, 'kolicina', x.kolicina) + fl('Rok uporabe', 'hladilnik', i, 'rok', x.rok, 'date') + fl('Opomba', 'hladilnik', i, 'opomba', x.opomba)) + '</li>').join('')}</ul>`;
   if (r.opravila.length) h += `<h3 class="rvh">Opravila</h3><ul class="rvl">${r.opravila.map((x, i) => ck('opravila', i, x.on, esc(x.naslov), esc([x.prio, x.okvir, x.ura, x.rok ? fmtDate(x.rok) : null, x.min ? x.min + ' min' : null, x.repeat ? repeatLabel(x.repeat) : null].filter(Boolean).join(' · '))) + ed(fl('Opravilo', 'opravila', i, 'naslov', x.naslov) + prioSel('opravila', i, x.prio) + fl('Rok', 'opravila', i, 'rok', x.rok, 'date') + fl('Ura', 'opravila', i, 'ura', x.ura, 'time') + fl('Trajanje (min)', 'opravila', i, 'min', x.min, 'number', 'inputmode="numeric"') + fl('Časovni okvir', 'opravila', i, 'okvir', x.okvir)) + '</li>').join('')}</ul>`;
   if (r.opomniki.length) h += `<h3 class="rvh">Opomniki</h3><ul class="rvl">${r.opomniki.map((x, i) => ck('opomniki', i, x.on, esc(x.besedilo), esc(({ cas: x.cas ? fmtDate(x.cas.slice(0, 10)) + ' ' + x.cas.slice(11, 16) : 'ob času', pred_odhodom: 'pred odhodom', v_trgovini: 'v trgovini', konec_meseca: 'konec meseca', drugo: 'kadarkoli' })[x.sprozilec]) + ed(fl('Besedilo', 'opomniki', i, 'besedilo', x.besedilo) + (x.sprozilec === 'cas' ? fl('Čas', 'opomniki', i, 'cas', x.cas, 'datetime-local') : ''))) + '</li>').join('')}</ul>`;
-  if (r.dokumenti.length) h += `<h3 class="rvh">Računi za shranit${cap.images.length ? ' (s sliko)' : ''}</h3><ul class="rvl">${r.dokumenti.map((x, i) => ck('dokumenti', i, x.on, esc(x.naziv), esc([x.trgovina, x.datum ? fmtDate(x.datum) : null, x.znesek != null ? money(x.znesek) : null, x.mesecev ? 'garancija ' + x.mesecev + ' mes.' : null].filter(Boolean).join(' · '))) + ed(fl('Naziv', 'dokumenti', i, 'naziv', x.naziv) + fl('Trgovina', 'dokumenti', i, 'trgovina', x.trgovina) + fl('Datum', 'dokumenti', i, 'datum', x.datum, 'date') + fl('Znesek (EUR)', 'dokumenti', i, 'znesek', x.znesek, 'number', 'step="0.01" inputmode="decimal"') + fl('Garancija (mes.)', 'dokumenti', i, 'mesecev', x.mesecev, 'number', 'inputmode="numeric"')) + '</li>').join('')}</ul>`;
   if (r.roki.length) h += `<h3 class="rvh">Roki</h3><ul class="rvl">${r.roki.map((x, i) => ck('roki', i, x.on, esc(x.naziv), esc(x.kategorija + (x.ponovi ? ' · vsakih ' + x.ponovi + ' mes.' : ''))) + `<div class="rv-in"><label>Datum roka<input type="date" data-f="datum" data-k="roki" data-i="${i}" value="${x.datum || ''}"></label></div>` + ed(fl('Naziv', 'roki', i, 'naziv', x.naziv)) + `</li>`).join('')}</ul>`;
   if (arr(r.dogodki).length) h += `<h3 class="rvh">Dogodki v koledar</h3><ul class="rvl">${r.dogodki.map((x, i) => ck('dogodki', i, x.on, esc(x.naslov), esc([fmtDate(x.datum), x.ura, x.min ? x.min + ' min' : null, x.lokacija].filter(Boolean).join(' · '))) + ed(fl('Dogodek', 'dogodki', i, 'naslov', x.naslov) + fl('Datum', 'dogodki', i, 'datum', x.datum, 'date') + fl('Ura', 'dogodki', i, 'ura', x.ura, 'time') + fl('Trajanje (min)', 'dogodki', i, 'min', x.min, 'number', 'inputmode="numeric"') + fl('Lokacija', 'dogodki', i, 'lokacija', x.lokacija)) + '</li>').join('')}</ul>`;
   if (r.predlog) h += `<p class="suggest">${esc(r.predlog)}</p>`;
@@ -1913,31 +1920,13 @@ let applying = false;
 async function applyResult() {
   const r = cap.result; if (!r || applying) return;
   applying = true;
-  const c = { fridge: 0, tasks: 0, rem: 0, docs: 0, dl: 0, ev: 0 };
+  const c = { tasks: 0, rem: 0, dl: 0, ev: 0 };
   const newTasks = [];
-  r.hladilnik.filter(x => x.on && (x.ime || '').trim()).forEach(x => {
-    const ex = S.fridge.find(f => f.name.toLowerCase() === x.ime.toLowerCase());
-    const item = { id: ex ? ex.id : uid(), name: x.ime, qty: x.kolicina, category: x.kategorija, expires: x.rok, est: x.ocena, note: x.opomba, added: today() };
-    if (ex) Object.assign(ex, item); else S.fridge.push(item);
-    c.fridge++;
-  });
   r.opravila.filter(x => x.on && (x.naslov || '').trim()).forEach(x => { const nt = { id: uid(), title: x.naslov, prio: x.prio, frame: x.okvir, due: x.rok, time: x.ura, min: x.min, repeat: x.repeat || '', done: false }; S.tasks.push(nt); newTasks.push(nt); c.tasks++; });
   r.opomniki.filter(x => x.on && (x.besedilo || '').trim()).forEach(x => {
     const trig = x.sprozilec === 'cas' && !x.cas ? 'drugo' : x.sprozilec;
     S.reminders.push({ id: uid(), text: x.besedilo, trigger: trig, at: trig === 'cas' ? x.cas : null, done: false }); c.rem++;
   });
-  const docsOn = r.dokumenti.filter(x => x.on && (x.naziv || '').trim());
-  if (docsOn.length) {
-    const imgIds = [];
-    for (const im of cap.images) { const iid = uid(); try { await idb.put(iid, b64ToBlob(im.b64)); imgIds.push(iid); } catch (e) { break; } }
-    if (imgIds.length && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-    docsOn.forEach(x => {
-      const id = uid(), until = x.mesecev && x.datum ? addMonths(x.datum, x.mesecev) : null;
-      S.docs.push({ id, title: x.naziv, store: x.trgovina, date: x.datum, amount: x.znesek, category: x.kategorija, months: x.mesecev || 0, until, note: null, images: imgIds.slice() });
-      if (until) S.deadlines.push({ id: uid(), title: `Garancija poteče: ${x.naziv}`, category: 'Garancija', due: until, repeat: 0, lead: 30, note: null, done: false, docId: id });
-      c.docs++;
-    });
-  }
   r.roki.filter(x => x.on && x.datum).forEach(x => { S.deadlines.push({ id: uid(), title: x.naziv, category: x.kategorija, due: x.datum, repeat: x.ponovi, lead: x.lead, note: null, done: false }); c.dl++; });
   const evOn = arr(r.dogodki).filter(x => x.on && x.datum && (x.naslov || '').trim());
   const inboxDoneId = cap.inboxId;
@@ -1947,9 +1936,7 @@ async function applyResult() {
   if (newTasks.length && gcalOn()) { await loadGoogleTaskLists(false).catch(() => {}); for (const t of newTasks) await pushTaskToGoogle(t, true); }
   for (const x of evOn) { await addToCalendar(x.naslov, x.datum, x.ura, [x.lokacija ? 'Lokacija: ' + x.lokacija : '', x.opomba || ''].filter(Boolean).join('\n')); c.ev++; }
   const bits = [];
-  if (c.docs) bits.push(`${c.docs} ${c.docs === 1 ? 'shranjen račun' : 'shranjenih računov'}`);
   if (c.dl) bits.push(`${c.dl} ${c.dl === 1 ? 'rok' : 'rokov'}`);
-  if (c.fridge) bits.push(`${c.fridge} v hladilniku`);
   if (c.tasks) bits.push(`${c.tasks} ${c.tasks === 1 ? 'opravilo' : 'opravil'}`);
   if (c.rem) bits.push(`${c.rem} ${c.rem === 1 ? 'opomnik' : 'opomnikov'}`);
   if (c.ev) bits.push(`${c.ev} ${c.ev === 1 ? 'dogodek' : 'dogodkov'} v koledarju`);
@@ -1991,9 +1978,7 @@ async function genPlan() {
   const u = S.ui, t = today();
   const ctx = {
     tasks: S.tasks.filter(x => !x.done).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, ura: x.time || null, trajanje_min: x.min || null })),
-    fridge: S.fridge.filter(f => f.expires && dayDiff(f.expires) <= 3).map(f => f.name),
     rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
-    obroki: S.meals && S.meals.date === t ? S.meals.obroki.map(m => ({ tip: m.tip, naziv: m.naziv, cas_min: m.cas })) : [],
     roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due })),
     kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : [],
     koljutri: gcalOn() ? gcal.eventsTmr.map(e => ({ naslov: e.title, od: e.allDay || !e.start ? 'cel dan' : hm(e.start) })) : []
@@ -2001,26 +1986,23 @@ async function genPlan() {
   const wk = workOn(t), wkTmr = workOn(addDays(t, 1));
   let freeFrom = u.from;
   if (wk && wk.backMin < 1440 && toM(freeFrom) < wk.backMin) freeFrom = wk.back;
-  const workTxt = `${workLine(t, 'Danes')} ${workLine(addDays(t, 1), 'Jutri')}${wk ? ' Delovni čas in pot v službo sta fiksna: v načrt vstavi bloke tipa "fiksno" (npr. "Pot v službo", "Služba", "Pot domov"), ki še niso mimo trenutne ure, in v njih ne načrtuj ničesar drugega. Opravila, obroke in rekreacijo načrtuj samo v prostem času zunaj službe in poti.' : ' Danes je prost dan brez službe.'}`;
+  const workTxt = `${workLine(t, 'Danes')} ${workLine(addDays(t, 1), 'Jutri')}${wk ? ' Delovni čas in pot v službo sta fiksna: v načrt vstavi bloke tipa "fiksno" (npr. "Pot v službo", "Služba", "Pot domov"), ki še niso mimo trenutne ure, in v njih ne načrtuj ničesar drugega. Opravila in odmore načrtuj samo v prostem času zunaj službe in poti.' : ' Danes je prost dan brez službe.'}`;
   const prompt = `Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana).
 Sestavi realen dnevni načrt za danes.
 Energija uporabnika: ${u.energy}. Prost čas: od ${freeFrom} do ${u.to}.
 Delovni urnik: ${workTxt}
 Odprta opravila: ${JSON.stringify(ctx.tasks)}
-Živila, ki se kmalu iztečejo: ${JSON.stringify(ctx.fridge)}
 Opomniki za danes: ${JSON.stringify(ctx.rem)}
-Predlagani obroki za danes: ${JSON.stringify(ctx.obroki)}
 Roki v naslednjih 14 dneh (garancije, servis, vinjeta …): ${JSON.stringify(ctx.roki)}
 Dogodki v Google koledarju danes (fiksni, ne prekrivaj jih): ${JSON.stringify(ctx.kol)}
 Dogodki v Google koledarju jutri (samo za pripravo, ne vstavljaj jih v današnji načrt; če je kaj zgodaj ali pomembno, nevsiljivo predlagaj pripravo zvečer): ${JSON.stringify(ctx.koljutri)}
 Vrni JSON:
-{"nasvet":"en kratek stavek o tem, kako naj uporabnik pristopi k današnjemu dnevu","bloki":[{"od":"HH:MM","do":"HH:MM","naslov":"","tip":"opravilo|fiksno|obrok|odmor|rekreacija|opomnik","task_id":"id opravila ali null"}],"opozorila":["kratko opozorilo, če je dan prenatrpan ali se kaj ne izide"]}
+{"nasvet":"en kratek stavek o tem, kako naj uporabnik pristopi k današnjemu dnevu","bloki":[{"od":"HH:MM","do":"HH:MM","naslov":"","tip":"opravilo|fiksno|odmor|rekreacija|opomnik","task_id":"id opravila ali null"}],"opozorila":["kratko opozorilo, če je dan prenatrpan ali se kaj ne izide"]}
 Pravila:
 - Ne načrtuj pred trenutno uro in ne izven prostega časa (razen fiksnih blokov službe in poti). Opravila z uro postavi točno na to uro kot "fiksno".
 - Pri visoki energiji daj zahtevnejša opravila zgodaj; pri nizki energiji največ 2-3 zahtevna opravila in več odmorov.
-- Če je urnik natrpan, predlagaj hitre rešitve (15-minutno kosilo, kratek odmor). Obroke vključi ob običajnih urah, če jih prosti čas zajema.
-- V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek. Če se živila kmalu iztečejo, predlagaj obrok, ki jih porabi.
-- Če so podani predlagani obroki, jih vstavi kot bloke tipa "obrok" ob smiselnih urah (naziv jedi v naslovu).
+- Če je urnik natrpan, predlagaj realistične bloke in kratke odmore.
+- V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek.
 - Če se kak rok izteče v 3 dneh, ga nevsiljivo vstavi kot kratek blok tipa "opomnik" v prosto okno.
 - Dogodke iz Google koledarja vstavi kot bloke tipa "fiksno" točno ob njihovi uri in čez njih ne načrtuj ničesar drugega.
 - Bloki se ne prekrivajo, "do" je za "od", največ 12 blokov. Če blok izhaja iz opravila, nastavi task_id.`;
@@ -2218,7 +2200,8 @@ async function startCloudSync(user) {
         S.settings.showShopping = S.settings.showShopping !== false;
         S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
-if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
+if (!Array.isArray(S.notes)) S.notes = [];
+if (!['today','calendar','tasks','notes'].includes(S.ui.tab)) S.ui.tab = 'today';
         S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
         fixInbox(); purgeFinance();
         store.set(JSON.stringify(S));
@@ -2262,7 +2245,8 @@ if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
       S.settings.showShopping = S.settings.showShopping !== false;
       S.ui.mealMode = S.ui.mealMode === 'standalone' ? 'standalone' : 'fridge';
 S.ui.shopTab = S.ui.shopTab === 'docs' ? 'docs' : 'list';
-if (!['today','fridge','shop','tasks'].includes(S.ui.tab)) S.ui.tab = 'today';
+if (!Array.isArray(S.notes)) S.notes = [];
+if (!['today','calendar','tasks','notes'].includes(S.ui.tab)) S.ui.tab = 'today';
       S.inbox = Array.isArray(S.inbox) ? S.inbox : [];
       fixInbox(); purgeFinance();
       store.set(JSON.stringify(S));
@@ -2641,7 +2625,7 @@ async function gcalLoadToday(force) {
     gcal.err = null;
   } catch (e) { gcal.err = e.message === 'GCAL_AUTH' ? null : e.message; }
   gcal.loading = false;
-  if (S.ui.tab === 'today' && !sheet.open) render();
+  if (['today','calendar'].includes(S.ui.tab) && !sheet.open) render();
 }
 function gcalHtml() {
   if (!fbCfg()) return '';
@@ -2850,7 +2834,7 @@ function workSettingsHtml() {
   const w = workCfg(), names = [['1', 'Pon'], ['2', 'Tor'], ['3', 'Sre'], ['4', 'Čet'], ['5', 'Pet'], ['6', 'Sob'], ['0', 'Ned']];
   return `<h3 class="rvh">Delovni čas</h3>
     <div class="field"><label class="cal-check"><input type="checkbox" id="setWorkOn" ${w.on ? 'checked' : ''}> Imam redno službo</label>
-    <p class="help">Dnevni načrt in obroki upoštevajo službo in pot. Dni brez službe so za načrt prosti.</p></div>
+    <p class="help">Dnevni načrt upošteva službo in pot. Dni brez službe so za načrt prosti.</p></div>
     <div id="workFields" ${w.on ? '' : 'hidden'}>
       <div class="field"><label>Delovni dnevi</label><div class="work-days">${names.map(([d, n]) => `<label class="work-day"><input type="checkbox" id="setWorkDay${d}" ${w.days.includes(+d) ? 'checked' : ''}><span>${n}</span></label>`).join('')}</div></div>
       <div class="field"><div class="two"><div><label for="setWorkFrom">Začetek dela</label><input type="time" id="setWorkFrom" value="${esc(w.from)}"></div><div><label for="setWorkTo">Konec dela</label><input type="time" id="setWorkTo" value="${esc(w.to)}"></div></div></div>
@@ -2861,8 +2845,6 @@ function openSettings() {
   const s = S.settings, people = Math.max(1, Math.min(8, parseInt(s.people) || 2));
   openSheet(`<div class="sheet-h"><h2>Nastavitve</h2>${closeBtn}</div>
     <div class="field"><label for="setName">Ime</label><input type="text" id="setName" value="${esc(s.name)}" autocomplete="off"></div>
-    <div class="field"><label for="setPeople">Za koliko oseb kuhaš</label><select id="setPeople">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${n === people ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
-    <div class="field"><label for="setDiet">Prehranske želje ali omejitve</label><input type="text" id="setDiet" value="${esc(s.diet || '')}" autocomplete="off" placeholder="npr. brez laktoze, manj mesa …"><p class="help">Upošteva se pri obrokih in nakupovalnem seznamu.</p></div>
     ${workSettingsHtml()}
     <div class="field"><label for="setKey">Gemini API ključ</label>
       <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
@@ -2880,7 +2862,7 @@ function openSettings() {
     <div class="install-row"><img src="${(window.APP_ICONS || {}).i192 || ''}" alt="" width="52" height="52"><div><strong>LifeFlow AI</strong><p class="help" style="margin:2px 0 8px">Ikona na začetnem zaslonu in polni zaslon brez brskalnika.</p><button class="btn sm" data-act="install">${ic('save', 16)} Namesti na telefon</button></div></div>`}
     <h3 class="rvh">Podatki</h3>
     <div class="set-actions"><button class="btn ghost" data-act="export">${ic('save',16)} Izvozi varnostno kopijo</button><button class="btn ghost" data-act="import">Uvozi</button><button class="btn ghost danger" data-act="wipe">Izbriši vse podatke</button></div>
-    <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz (slike računov niso v izvozu).</p>
+    <p class="help muted" style="margin-top:12px">Podatki živijo v brskalniku te naprave. Če jih želiš imeti na drugi napravi, uporabi izvoz in uvoz (slike zapiskov in priponk niso vključene v izvoz).</p>
     <p class="help muted">Različica aplikacije: ${esc(APP_VERSION)}</p>`, 'settings');
 }
 const onSettingInput = e => {
@@ -3503,6 +3485,14 @@ const A = {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   },
   settings() { openSettings(); },
+  noteNew() { openNote(); },
+  noteEdit(b) { openNote(b.dataset.id); },
+  noteAddImage() { if (!noteForm) return; noteForm.title = $('#noteTitle')?.value || noteForm.title; noteForm.text = $('#noteText')?.value || noteForm.text; imgTarget = 'note'; $('#fileGal').click(); },
+  noteRmImage(b) { if (!noteForm) return; noteForm.images.splice(+b.dataset.i, 1); renderNoteForm(); },
+  noteRmExisting(b) { if (!noteForm) return; if (!noteForm.removeImages.includes(b.dataset.id)) noteForm.removeImages.push(b.dataset.id); renderNoteForm(); },
+  noteSave() { saveNote(); },
+  noteDel(b) { deleteNote(b.dataset.id); },
+  noteDelForm() { if (noteForm?.id) deleteNote(noteForm.id); },
   themeToggle() { applyTheme('light', true); },
   undo() { pruneUndo(); const u = undoStack.pop(); if (!u) { $('#toast').classList.remove('on'); return; } try { u.fn(); } catch (e) { console.warn(e); } showToast('Razveljavljeno.', undoStack.length > 0); },
   taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
@@ -3612,7 +3602,7 @@ const A = {
   export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1), 'application/json;charset=utf-8'); S.settings.lastBackupAt=today(); save(); render(); },
   import() { $('#fileImport').click(); },
   wipe() {
-    if (!confirm('Res izbrišem vse podatke (hladilnik, opravila, obroke)? Ključ API ostane.')) return;
+    if (!confirm('Res izbrišem vse podatke o opravilih, dogodkih in načrtovanju? Ključ API ostane.')) return;
     const st = S.settings;
     S = JSON.parse(JSON.stringify(DEFAULT)); S.settings = { ...st }; idb.clear().catch(() => {}); imgUrls.clear();
     save(); resetCap(); sheet.close(); render(); toast('Podatki izbrisani.');
@@ -3720,7 +3710,7 @@ document.addEventListener('click', e => {
   const f = A[b.dataset.act]; if (f) f(b, e);
 });
 
-/* Drsanje levo/desno preklaplja zaslone: Danes, Obroki, Nakup, Opravila */
+/* Drsanje levo/desno preklaplja glavne poglede. */
 let tabSwipe = null;
 function canTabSwipe(el) {
   if (sheet.open) return false;
@@ -3762,8 +3752,6 @@ document.addEventListener('change', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
-  if (e.key === 'Enter' && e.target.id === 'quickShop') { e.preventDefault(); A.quickShop(); }
-  if (e.key === 'Enter' && e.target.id === 'quickFridge') { e.preventDefault(); A.quickFridge(); }
 });
 document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.grow[role="button"]')) { e.preventDefault(); e.target.click(); } });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { checkTaskTimeReminders(); if (!sheet.open) render(); } });
