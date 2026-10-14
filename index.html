@@ -490,6 +490,30 @@ dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0
 /* Zapiski: preproste, berljive kartice */
 .note-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin-top:14px}.note-card{position:relative;min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:14px;box-shadow:0 5px 18px rgba(24,57,55,.04)}.note-open{display:block;width:100%;padding:0 28px 0 0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.note-open strong{display:block;font-size:16px;overflow-wrap:anywhere}.note-open p{margin:7px 0 12px;color:var(--ink2);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.note-open small{color:var(--ink2);font-size:11px}.note-delete{position:absolute;right:8px;top:8px}.note-images{display:flex;gap:6px;margin:8px 0 10px;overflow:hidden}.note-images img{width:58px;height:58px;object-fit:cover;border-radius:9px;border:1px solid var(--line)}.note-images span{display:grid;place-items:center;min-width:40px;background:var(--petrol-t);border-radius:9px;font-size:12px;font-weight:700}
 
+/* zapiski: zvok, AI, e-pošta */
+.note-head-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.note-aud{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:12.5px;font-weight:700;color:var(--petrol-d)}
+.rec-dot{width:11px;height:11px;border-radius:3px;background:var(--coral);display:inline-block}
+.btn.rec-on{background:var(--coral-t);color:var(--ink);box-shadow:inset 0 0 0 2px var(--coral);border-color:var(--coral)}
+.btn.rec-on .rec-dot{animation:recblink 1s ease-in-out infinite}
+@keyframes recblink{50%{opacity:.3}}
+#noteRecInfo{margin:6px 0 0}
+.aud-item{margin-top:10px;padding:10px 10px 6px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.aud-item audio{display:block;width:100%;height:42px}
+.aud-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
+.aud-row>span{display:inline-flex;align-items:center;gap:5px;margin-right:auto;font-size:13.5px;color:var(--ink2)}
+.ai-box{margin:6px 0 16px;padding:14px;border-radius:16px;background:var(--petrol-t);color:var(--petrol-d)}
+.ai-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ai-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ai-box .btn.ghost{background:var(--paper)}
+.ai-box .err{margin-top:10px}
+.ai-box .help{color:var(--petrol-d);margin:8px 0 0}
+.ai-box .busy{margin:10px 0 0}
+.ai-prev{margin-top:10px;padding:12px;border-radius:12px;background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.ai-prev b{display:block;margin-bottom:6px}
+.ai-prev div{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto}
+#mailStatus .suggest a{color:inherit;font-weight:700}
+@media (prefers-reduced-motion:reduce){.btn.rec-on .rec-dot{animation:none}}
 </style>
 </head>
 <body>
@@ -609,7 +633,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-13 · v12 · dnevno načrtovanje (očiščeno)';
+const APP_VERSION = '2026-10-14 · v13 · zapiski: zvok, AI, e-pošta';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -1042,49 +1066,447 @@ function renderTasks() {
   return h;
 }
 /* ---------- osebni zapiski ---------- */
+/* ---------- zapiski: zvok, AI izboljšave, opravila/koledar, e-pošta ---------- */
 let noteForm = null;
+let noteAi = { busy: '', err: '', info: '', improved: null, undo: null };
+let noteMail = null;
+const noteRec = { on: false, t0: 0, secs: 0, mr: null, stream: null, timer: null, discard: false };
+const NOTE_REC_MAX = 300, NOTE_AUD_MAX = 5;
+const MAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+
+const NOTE_PROMPTS = {
+  improve: `NALOGA: IZBOLJŠAJ ZAPISEK.
+Uporabnik ti da surov zapisek (pogosto narekovan ali hitro natipkan). Napiši boljšo različico:
+- popravi črkovanje, ločila in slovnico, odstrani ponavljanja in zatikanja,
+- razporedi vsebino v jasne kratke odstavke ali alineje (vsaka alineja se začne z "- "),
+- imena, datume, ure, zneske in dogovore ohrani natančno in jih naredi dobro vidne,
+- ne izmišljaj si dejstev in ne dodajaj ničesar, česar ni v zapisku; kar je nejasno, ostane nejasno,
+- jezik ohrani (če je zapisek slovenski ali mešan, piši slovensko).
+Če uporabnik poda navodilo (npr. krajše, bolj uradno), ga upoštevaj.
+Vrni JSON: {"naslov":"kratek naslov, največ 70 znakov","besedilo":"izboljšan zapisek kot navaden besedilni zapis brez markdown zvezdic","povzetek":"en stavek, kaj si spremenil"}`,
+  tasks: `NALOGA: IZ ZAPISKA USTVARI OPRAVILA IN DOGODKE.
+To je zapisek uporabnika (ni e-pošta). Predlagaj samo konkretne stvari, ki jih mora uporabnik narediti (opravila) ali ki se zgodijo ob določenem datumu in uri (dogodki za koledar). Idej, opažanj in splošnih misli ne spreminjaj v opravila. Datumov in ur ne ugibaj. Če uporabnik poda navodilo, ga upoštevaj.`,
+  transcribe: `NALOGA: PRETIPKAJ ZVOČNI POSNETEK.
+Prepiši govor iz posnetka v čitljivo besedilo: odstrani "ehm" in zatikanja, dodaj ločila in odstavke. Jezik govora ohrani in ničesar ne dodajaj. Če govora ni ali ni razumljiv, vrni prazen niz.
+Vrni JSON: {"besedilo":""}`,
+  mail: () => `NALOGA: NAPIŠI OSNUTEK E-POŠTE v imenu uporabnika (${S.settings.name || 'uporabnik'}).
+Na podlagi zapiska in navodila napiši jasno, vljudno in kratko e-pošto.
+- Jezik: jezik navodila ali zapiska (privzeto slovenščina).
+- "za": e-naslov prejemnika samo, če je izrecno naveden v zapisku ali navodilu; sicer prazen niz.
+- "zadeva": konkretna, do 80 znakov.
+- "besedilo": pozdrav, jedro sporočila v kratkih odstavkih, zaključni pozdrav in podpis z imenom uporabnika. Navaden besedilni zapis brez markdown oznak.
+- Ne izmišljaj si datumov, zneskov, imen ali obljub, ki jih ni v vnosu. Če manjka ključen podatek, ga zapiši v oglatih oklepajih, npr. [datum].
+- "opomba": en kratek stavek, kaj naj uporabnik pred pošiljanjem preveri (ali prazen niz).
+Vrni JSON: {"za":"","zadeva":"","besedilo":"","opomba":""}`
+};
+
+function noteHasKey() { return !!(S.settings.apiKey || '').trim(); }
+function noteSource() {
+  const t = (noteForm && noteForm.title || '').trim(), x = (noteForm && noteForm.text || '').trim();
+  return [t ? 'Naslov: ' + t : '', x ? 'Besedilo:\n' + x : ''].filter(Boolean).join('\n');
+}
+function syncNoteDom() {
+  if (!noteForm) return;
+  const t = $('#noteTitle'), x = $('#noteText'), i = $('#noteAiInstr');
+  if (t) noteForm.title = t.value;
+  if (x) noteForm.text = x.value;
+  if (i) noteForm.instr = i.value;
+}
+
+/* ----- seznam zapiskov ----- */
 function renderNotes() {
   const notes = (S.notes || []).slice().sort((a,b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  let h = `<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Tvoje ideje in zapiski</h2><p class="dash-sub">Shrani misli, pomembne informacije ali fotografije, da jih hitro najdeš.</p></div><button class="btn" data-act="noteNew">${ic('plus',17)} Nov zapis</button></div>`;
-  if (!notes.length) h += `<div class="empty"><p>Še nimaš zapiskov. Ustvari prvi zapis za idejo, seznam, navodilo ali pomembno informacijo.</p><button class="btn" data-act="noteNew">${ic('plus',17)} Ustvari prvi zapis</button></div>`;
-  else h += `<div class="note-grid">${notes.map(n => `<article class="note-card"><button class="note-open" data-act="noteEdit" data-id="${esc(n.id)}"><strong>${esc(n.title || 'Brez naslova')}</strong><p>${esc(n.text || 'Brez dodatnega besedila').slice(0,260)}</p>${n.images && n.images.length ? `<div class="note-images">${n.images.slice(0,3).map(id => `<img data-img="${esc(id)}" alt="Slika v zapisku">`).join('')}${n.images.length>3?`<span>+${n.images.length-3}</span>`:''}</div>` : ''}<small>Posodobljeno ${esc(n.updatedAt ? new Date(n.updatedAt).toLocaleDateString('sl-SI') : 'danes')}</small></button><button class="mini note-delete" data-act="noteDel" data-id="${esc(n.id)}" aria-label="Izbriši zapisek">${ic('trash',17)}</button></article>`).join('')}</div>`;
-  h += `<p class="help">Besedilo se sinhronizira z računom, če je vklopljena sinhronizacija. Slike se shranijo v tem brskalniku in niso vključene v izvoz varnostne kopije.</p></section>`;
+  let h = `<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Tvoje ideje in zapiski</h2><p class="dash-sub">Shrani misli, fotografije ali glasovne posnetke. AI jih izboljša, pretvori v opravila ali e-pošto.</p></div><div class="note-head-btns"><button class="btn" data-act="noteNew">${ic('plus',17)} Nov zapis</button><button class="btn ghost" data-act="noteMailNew">${ic('inbox',17)} E-pošta z AI</button></div></div>`;
+  if (!notes.length) h += `<div class="empty"><p>Še nimaš zapiskov. Ustvari prvi zapis za idejo, seznam, navodilo ali pomembno informacijo. Lahko ga tudi narekuješ ali posnameš.</p><button class="btn" data-act="noteNew">${ic('plus',17)} Ustvari prvi zapis</button></div>`;
+  else h += `<div class="note-grid">${notes.map(n => `<article class="note-card"><button class="note-open" data-act="noteEdit" data-id="${esc(n.id)}"><strong>${esc(n.title || 'Brez naslova')}</strong><p>${esc(n.text || 'Brez dodatnega besedila').slice(0,260)}</p>${n.images && n.images.length ? `<div class="note-images">${n.images.slice(0,3).map(id => `<img data-img="${esc(id)}" alt="Slika v zapisku">`).join('')}${n.images.length>3?`<span>+${n.images.length-3}</span>`:''}</div>` : ''}${n.audio && n.audio.length ? `<span class="note-aud">${ic('mic',14)} ${n.audio.length} ${n.audio.length === 1 ? 'posnetek' : 'posnetki'}</span>` : ''}<small>Posodobljeno ${esc(n.updatedAt ? new Date(n.updatedAt).toLocaleDateString('sl-SI') : 'danes')}</small></button><button class="mini note-delete" data-act="noteDel" data-id="${esc(n.id)}" aria-label="Izbriši zapisek">${ic('trash',17)}</button></article>`).join('')}</div>`;
+  h += `<p class="help">Besedilo se sinhronizira z računom, če je vklopljena sinhronizacija. Slike in zvočni posnetki se shranijo v tem brskalniku in niso vključeni v izvoz varnostne kopije.</p></section>`;
   return h;
 }
+
+/* ----- urejanje zapiska ----- */
 function openNote(id = null) {
+  if (noteRec.on) { noteRec.discard = true; if (noteRec.mr && noteRec.mr.state !== 'inactive') noteRec.mr.stop(); }
   const old = id ? S.notes.find(n => n.id === id) : null;
-  noteForm = old ? { id: old.id, title: old.title || '', text: old.text || '', images: [], existingImages: (old.images || []).slice(), removeImages: [] } : { id: null, title: '', text: '', images: [], existingImages: [], removeImages: [] };
+  noteForm = {
+    id: old ? old.id : null, title: old ? (old.title || '') : '', text: old ? (old.text || '') : '', instr: '',
+    images: [], existingImages: old ? (old.images || []).slice() : [], removeImages: [],
+    audio: [], existingAudio: old ? (old.audio || []).filter(a => a && a.id).map(a => ({ id: a.id, dur: a.dur || 0 })) : [], removeAudio: []
+  };
+  noteAi = { busy: '', err: '', info: '', improved: null, undo: null };
+  noteMail = null;
+  $('#sheetBody').innerHTML = '';
   renderNoteForm(); openSheet(null, 'note');
+}
+function noteAudioItems() {
+  if (!noteForm) return [];
+  return [
+    ...noteForm.existingAudio.filter(a => !noteForm.removeAudio.includes(a.id)).map(a => ({ src: 'old', key: 'o:' + a.id, id: a.id, dur: a.dur })),
+    ...noteForm.audio.map((a, i) => ({ src: 'new', key: 'n:' + i, i, blob: a.blob, url: a.url, dur: a.dur }))
+  ];
 }
 function renderNoteForm() {
   if (!noteForm) return;
-  const thumbs = [...noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id)).map(id => `<div class="th"><img data-img="${esc(id)}" alt="Shranjena slika"><button data-act="noteRmExisting" data-id="${esc(id)}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`), ...noteForm.images.map((im,i) => `<div class="th"><img src="${im.url}" alt="Nova slika"><button data-act="noteRmImage" data-i="${i}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`) ].join('');
-  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>${noteForm.id ? 'Uredi zapisek' : 'Nov zapisek'}</h2>${closeBtn}</div><div class="field"><label for="noteTitle">Naslov</label><input id="noteTitle" maxlength="120" placeholder="Npr. Ideje za projekt" value="${esc(noteForm.title)}"></div><div class="field"><label for="noteText">Zapisek</label><textarea id="noteText" rows="8" maxlength="12000" placeholder="Zapiši misli, pomembne podatke, seznam ali načrt …">${esc(noteForm.text)}</textarea></div><div class="field"><label>Slike (do 6)</label><div class="set-actions"><button class="btn ghost" data-act="noteAddImage" ${noteForm.images.length + noteForm.existingImages.length - noteForm.removeImages.length >= 6 ? 'disabled' : ''}>${ic('image',17)} Dodaj slike</button><span class="help">Slike se shranijo lokalno v tej napravi.</span></div>${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}</div><div class="sheet-f"><button class="btn wide" data-act="noteSave">${ic('save',17)} Shrani zapisek</button>${noteForm.id ? `<button class="btn wide ghost danger" data-act="noteDelForm">Izbriši zapisek</button>` : ''}<button class="btn wide ghost" data-act="closeSheet">Prekliči</button></div>`;
-  hydrateImgs($('#sheetBody'));
+  if ($('#noteText')) syncNoteDom();
+  const thumbs = [...noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id)).map(id => `<div class="th"><img data-img="${esc(id)}" alt="Shranjena slika"><button data-act="noteRmExisting" data-id="${esc(id)}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`), ...noteForm.images.map((im,i) => `<div class="th"><img src="${im.url}" alt="Nova slika"><button data-act="noteRmImage" data-i="${i}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`)].join('');
+  const imgCount = noteForm.images.length + noteForm.existingImages.length - noteForm.removeImages.length;
+  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>${noteForm.id ? 'Uredi zapisek' : 'Nov zapisek'}</h2>${closeBtn}</div>
+    <div class="field"><label for="noteTitle">Naslov</label><input id="noteTitle" maxlength="120" placeholder="Npr. Ideje za projekt" value="${esc(noteForm.title)}"></div>
+    <div class="field"><label for="noteText">Zapisek</label><div class="cap-ta"><textarea id="noteText" rows="8" maxlength="12000" placeholder="Zapiši misli, pomembne podatke, seznam ali načrt …">${esc(noteForm.text)}</textarea><button type="button" class="icon-btn quick-mic cap-mic" data-act="noteDictate" aria-label="Narekuj besedilo">${ic('mic',20)}</button></div><p class="help">Mikrofon ob polju sam napiše, kar poveš.</p></div>
+    <div class="field"><label>Slike (do 6)</label><div class="set-actions"><button class="btn ghost" data-act="noteAddImage" ${imgCount >= 6 ? 'disabled' : ''}>${ic('image',17)} Dodaj slike</button><span class="help">Slike se shranijo lokalno v tej napravi.</span></div>${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}</div>
+    <div class="field"><label>Zvočni posnetki (do ${NOTE_AUD_MAX})</label><div class="set-actions"><button type="button" class="btn ghost" id="btnNoteRec" data-act="noteRec"></button></div><p class="help" id="noteRecInfo"></p><div id="noteAudList"></div></div>
+    <div class="ai-box"><div class="ai-h">${ic('spark',18)}<strong>AI pomočnik</strong></div>
+      <div class="field" style="margin:0"><input id="noteAiInstr" type="text" maxlength="300" autocomplete="off" aria-label="Navodilo za AI" placeholder="Navodilo (neobvezno): npr. krajše, bolj uradno …" value="${esc(noteForm.instr || '')}"></div>
+      <div class="ai-btns">
+        <button type="button" class="btn sm ghost" data-ai data-act="noteAiImprove">${ic('spark',15)} Izboljšaj zapis</button>
+        <button type="button" class="btn sm ghost" data-ai data-act="noteAiTasks">${ic('calendar',15)} Opravilo / koledar</button>
+        <button type="button" class="btn sm ghost" data-ai data-act="noteAiMail">${ic('inbox',15)} E-pošta</button>
+      </div>
+      <div id="noteAiStatus"></div></div>
+    <div class="sheet-f"><button class="btn wide" data-act="noteSave">${ic('save',17)} Shrani zapisek</button>${noteForm.id ? `<button class="btn wide ghost danger" data-act="noteDelForm">Izbriši zapisek</button>` : ''}<button class="btn wide ghost" data-act="closeSheet">Prekliči</button></div>`;
+  hydrateImgs($('#sheetBody')); renderNoteRec(); renderNoteAudio(); renderNoteAi();
 }
 async function deleteNote(id) {
   const note = S.notes.find(n => n.id === id); if (!note) return;
   if (!confirm('Izbrišem ta zapisek? Tega dejanja ni mogoče razveljaviti.')) return;
   for (const img of (note.images || [])) { await idb.del(img).catch(() => {}); imgUrls.delete(img); }
-  S.notes = S.notes.filter(n => n.id !== id); noteForm = null; save(); if (sheet.open && sheet.dataset.kind === 'note') sheet.close(); render(); toast('Zapisek je izbrisan.');
+  for (const a of (note.audio || [])) { await idb.del(a.id).catch(() => {}); imgUrls.delete(a.id); }
+  S.notes = S.notes.filter(n => n.id !== id); noteForm = null; noteMail = null; save(); if (sheet.open && sheet.dataset.kind === 'note') sheet.close(); render(); toast('Zapisek je izbrisan.');
 }
 async function saveNote() {
   if (!noteForm) return;
-  noteForm.title = ($('#noteTitle')?.value || '').trim(); noteForm.text = ($('#noteText')?.value || '').trim();
-  if (!noteForm.title && !noteForm.text && !noteForm.images.length && !noteForm.existingImages.some(id => !noteForm.removeImages.includes(id))) { toast('Najprej vpiši naslov, besedilo ali dodaj sliko.'); return; }
+  if (noteRec.on) { toast('Najprej ustavi snemanje.'); return; }
+  syncNoteDom();
+  noteForm.title = noteForm.title.trim(); noteForm.text = noteForm.text.trim();
+  const keepAud = noteForm.existingAudio.filter(a => !noteForm.removeAudio.includes(a.id));
+  const hasImg = noteForm.images.length || noteForm.existingImages.some(id => !noteForm.removeImages.includes(id));
+  if (!noteForm.title && !noteForm.text && !hasImg && !keepAud.length && !noteForm.audio.length) { toast('Najprej vpiši naslov, besedilo ali dodaj sliko ali posnetek.'); return; }
   const old = noteForm.id ? S.notes.find(n => n.id === noteForm.id) : null;
   const imageIds = noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id));
+  const audioMeta = keepAud.map(a => ({ id: a.id, dur: a.dur }));
   try {
     for (const im of noteForm.images) {
       const id = 'note-' + uid();
       const blob = await (await fetch(im.url)).blob();
       await idb.put(id, blob); imageIds.push(id);
     }
+    for (const a of noteForm.audio) {
+      const id = 'noteaud-' + uid();
+      await idb.put(id, a.blob); audioMeta.push({ id, dur: a.dur });
+    }
     for (const id of noteForm.removeImages) { await idb.del(id).catch(() => {}); imgUrls.delete(id); }
-  } catch (e) { toast('Slike ni bilo mogoče shraniti. Preveri prostor v brskalniku.'); return; }
-  const note = { id: old ? old.id : uid(), title: noteForm.title || 'Brez naslova', text: noteForm.text, images: imageIds, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+    for (const id of noteForm.removeAudio) { await idb.del(id).catch(() => {}); imgUrls.delete(id); }
+  } catch (e) { toast('Slike ali posnetka ni bilo mogoče shraniti. Preveri prostor v brskalniku.'); return; }
+  noteForm.audio.forEach(a => { try { URL.revokeObjectURL(a.url); } catch (e) {} });
+  const note = { id: old ? old.id : uid(), title: noteForm.title || 'Brez naslova', text: noteForm.text, images: imageIds, audio: audioMeta, createdAt: old?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
   if (old) S.notes = S.notes.map(n => n.id === old.id ? note : n); else S.notes.push(note);
-  noteForm = null; save(); sheet.close(); render(); toast('Zapisek je shranjen.');
+  noteForm = null; noteMail = null; save(); sheet.close(); render(); toast('Zapisek je shranjen.');
+}
+
+/* ----- snemanje zvoka ----- */
+function renderNoteRec() {
+  const b = $('#btnNoteRec'), info = $('#noteRecInfo'); if (!b) return;
+  b.classList.toggle('rec-on', noteRec.on);
+  b.innerHTML = noteRec.on ? `<span class="rec-dot"></span> Ustavi ${fmtSecs(noteRec.secs)}` : `${ic('mic',17)} Snemaj zvok`;
+  if (info) info.textContent = noteRec.on ? 'Snemam … tapni Ustavi, ko končaš.' : 'Posnetek se shrani v zapisek, AI ga po želji pretipka v besedilo.';
+}
+function hydrateAudio(root = document) {
+  const missing = el => { const p = document.createElement('p'); p.className = 'help'; p.textContent = 'Posnetek ni na voljo na tej napravi.'; el.replaceWith(p); };
+  root.querySelectorAll('audio[data-aud]:not([src])').forEach(async el => {
+    try { const u = await imgUrl(el.dataset.aud); if (u) el.src = u; else missing(el); } catch (e) { missing(el); }
+  });
+}
+function renderNoteAudio() {
+  const el = $('#noteAudList'); if (!el || !noteForm) return;
+  el.innerHTML = noteAudioItems().map(it => `<div class="aud-item"><audio controls preload="metadata" ${it.src === 'new' ? `src="${it.url}"` : `data-aud="${esc(it.id)}"`}></audio><div class="aud-row"><span>${ic('mic',14)} ${fmtSecs(it.dur || 0)}${it.src === 'new' ? ' · še ni shranjeno' : ''}</span><button type="button" class="btn sm plain" data-act="noteTr" data-key="${esc(it.key)}" ${noteAi.busy ? 'disabled' : ''}>${noteAi.busy === 'tr:' + it.key ? '<span class="spin"></span> Pretipkavam …' : ic('spark',14) + ' Pretipkaj z AI'}</button><button type="button" class="btn sm plain" data-act="noteAudRm" data-key="${esc(it.key)}">Odstrani</button></div></div>`).join('');
+  hydrateAudio(el);
+}
+async function noteRecToggle() {
+  if (!noteForm) return;
+  if (noteRec.on) { if (noteRec.mr && noteRec.mr.state !== 'inactive') noteRec.mr.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Ta brskalnik ne podpira snemanja zvoka.'); return; }
+  if (noteAudioItems().length >= NOTE_AUD_MAX) { toast(`Največ ${NOTE_AUD_MAX} posnetkov na zapisek.`); return; }
+  if (quickRecognition) { try { quickRecognition.stop(); } catch (e) {} }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const chunks = [], mr = new MediaRecorder(stream);
+    Object.assign(noteRec, { on: true, t0: Date.now(), secs: 0, mr, stream, discard: false });
+    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = () => {
+      clearInterval(noteRec.timer); stream.getTracks().forEach(t => t.stop());
+      const dur = Math.max(1, Math.round((Date.now() - noteRec.t0) / 1000));
+      const discard = noteRec.discard;
+      noteRec.on = false; noteRec.mr = null; noteRec.stream = null;
+      if (!discard && noteForm && chunks.length) {
+        const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+        noteForm.audio.push({ blob, url: URL.createObjectURL(blob), dur });
+        toast('Posnetek je dodan. Shrani zapisek, da ga obdržiš.');
+      }
+      renderNoteRec(); renderNoteAudio();
+    };
+    mr.start();
+    noteRec.timer = setInterval(() => {
+      noteRec.secs = Math.round((Date.now() - noteRec.t0) / 1000); renderNoteRec();
+      if (noteRec.secs >= NOTE_REC_MAX && mr.state !== 'inactive') mr.stop();
+    }, 500);
+    renderNoteRec();
+  } catch (e) {
+    noteRec.on = false; renderNoteRec();
+    toast('Dostop do mikrofona ni dovoljen. Dovoli ga v nastavitvah brskalnika.');
+  }
+}
+function noteAudRemove(key) {
+  if (!noteForm) return;
+  if (key.startsWith('o:')) { const id = key.slice(2); if (!noteForm.removeAudio.includes(id)) noteForm.removeAudio.push(id); }
+  else { const i = +key.slice(2), a = noteForm.audio[i]; if (a) { try { URL.revokeObjectURL(a.url); } catch (e) {} noteForm.audio.splice(i, 1); } }
+  renderNoteAudio();
+}
+
+/* ----- AI: stanje in izpis ----- */
+function renderNoteAi() {
+  sheet.querySelectorAll('[data-ai]').forEach(b => { b.disabled = !!noteAi.busy; });
+  const el = $('#noteAiStatus'); if (!el) return;
+  let h = '';
+  if (noteAi.busy) {
+    const t = noteAi.busy === 'improve' ? 'Izboljšujem zapis …' : noteAi.busy === 'tasks' ? 'Iščem opravila in dogodke …' : 'Pretipkavam posnetek …';
+    h += `<p class="busy"><span class="spin"></span> ${t}</p>`;
+  }
+  if (noteAi.err) h += `<p class="err" role="alert">${esc(noteAi.err)}</p>`;
+  if (noteAi.info) h += `<p class="help">${esc(noteAi.info)}</p>`;
+  if (noteAi.improved) {
+    const im = noteAi.improved;
+    h += `<div class="ai-prev"><b>${esc(im.title || 'Predlog AI')}</b><div>${esc(im.text)}</div></div>${im.info ? `<p class="help">${esc(im.info)}</p>` : ''}<div class="set-actions"><button type="button" class="btn sm" data-act="noteAiUse">${ic('check',15)} Uporabi</button><button type="button" class="btn sm plain" data-act="noteAiDiscard">Zavrži</button></div>`;
+  }
+  if (noteAi.undo && !noteAi.improved) h += `<div class="set-actions"><button type="button" class="btn sm plain" data-act="noteAiUndo">Razveljavi izboljšavo</button></div>`;
+  el.innerHTML = h;
+  renderNoteAudio();
+}
+function noteAiGuard() {
+  if (!noteForm || noteAi.busy) return false;
+  syncNoteDom();
+  noteAi.err = ''; noteAi.info = '';
+  if (!noteHasKey()) { noteAi.err = 'Manjka Gemini API ključ. Vnesi ga v Nastavitvah (zobnik zgoraj desno).'; renderNoteAi(); return false; }
+  return true;
+}
+
+/* ----- AI: izboljšaj zapis ----- */
+async function noteAiImprove() {
+  if (!noteForm || noteAi.busy) return;
+  syncNoteDom();
+  if (!noteForm.text.trim()) { toast('Najprej napiši ali narekuj zapisek.'); return; }
+  if (!noteAiGuard()) return;
+  const form = noteForm; noteAi.busy = 'improve'; noteAi.improved = null; renderNoteAi();
+  try {
+    const parts = [{ text: 'ZAPISEK UPORABNIKA:\n' + noteSource() }];
+    if (form.instr.trim()) parts.push({ text: 'NAVODILO UPORABNIKA: ' + form.instr.trim() });
+    const r = await callGemini(parts, NOTE_PROMPTS.improve);
+    if (noteForm !== form) return;
+    const text = String(r && r.besedilo || '').trim();
+    if (!text) throw new UserErr('AI ni vrnil besedila. Poskusi znova.');
+    noteAi.improved = { title: String(r.naslov || form.title || '').trim().slice(0, 120), text, info: str(r.povzetek) || '' };
+  } catch (e) { if (noteForm === form) noteAi.err = e.message || 'AI ni uspel izboljšati zapisa.'; }
+  if (noteForm === form) { noteAi.busy = ''; renderNoteAi(); }
+}
+function noteAiUse() {
+  if (!noteForm || !noteAi.improved) return;
+  syncNoteDom();
+  noteAi.undo = { title: noteForm.title, text: noteForm.text };
+  if (noteAi.improved.title) noteForm.title = noteAi.improved.title;
+  noteForm.text = noteAi.improved.text;
+  noteAi.improved = null;
+  const t = $('#noteTitle'), x = $('#noteText'); if (t) t.value = noteForm.title; if (x) x.value = noteForm.text;
+  renderNoteAi(); toast('Zapisek je posodobljen. Shrani ga, ko si zadovoljen.');
+}
+function noteAiUndo() {
+  if (!noteForm || !noteAi.undo) return;
+  noteForm.title = noteAi.undo.title; noteForm.text = noteAi.undo.text; noteAi.undo = null;
+  const t = $('#noteTitle'), x = $('#noteText'); if (t) t.value = noteForm.title; if (x) x.value = noteForm.text;
+  renderNoteAi();
+}
+
+/* ----- AI: pretipkaj posnetek ----- */
+async function noteTranscribe(key) {
+  if (!noteForm || noteAi.busy) return;
+  const it = noteAudioItems().find(x => x.key === key); if (!it) return;
+  if (!noteAiGuard()) return;
+  const form = noteForm; noteAi.busy = 'tr:' + key; renderNoteAi();
+  try {
+    const blob = it.src === 'new' ? it.blob : await idb.get(it.id);
+    if (!blob) throw new UserErr('Posnetka ni na tej napravi.');
+    let wav;
+    try { wav = await blobToWav(blob); } catch (e) { throw new UserErr('Posnetka ni bilo mogoče obdelati.'); }
+    const r = await callGemini([{ inlineData: { mimeType: 'audio/wav', data: wav.b64 } }, { text: 'Pretipkaj ta posnetek.' }], NOTE_PROMPTS.transcribe);
+    if (noteForm !== form) return;
+    const t = String(r && r.besedilo || '').trim();
+    if (!t) throw new UserErr('V posnetku nisem zaznal govora.');
+    syncNoteDom();
+    noteForm.text = (noteForm.text.trim() ? noteForm.text.replace(/\s+$/, '') + '\n\n' : '') + t;
+    const x = $('#noteText'); if (x) x.value = noteForm.text;
+    toast('Posnetek je pretipkan v zapisek.');
+  } catch (e) { if (noteForm === form) noteAi.err = e.message || 'Pretipkavanje ni uspelo.'; }
+  if (noteForm === form) { noteAi.busy = ''; renderNoteAi(); }
+}
+
+/* ----- AI: opravilo / dogodek iz zapiska ----- */
+async function noteAiTasks() {
+  if (!noteForm || noteAi.busy) return;
+  syncNoteDom();
+  if (!noteForm.text.trim() && !noteForm.title.trim()) { toast('Zapisek je prazen.'); return; }
+  if (cap.busy) { toast('AI še obdeluje drug vnos. Poskusi čez trenutek.'); return; }
+  if (!noteAiGuard()) return;
+  const form = noteForm; noteAi.busy = 'tasks'; renderNoteAi();
+  try {
+    const instr = form.instr.trim() ? '\nNavodilo uporabnika: ' + form.instr.trim() : '';
+    const r = normalize(await callGemini([{ text: 'Zapisek uporabnika:\n' + noteSource() }, { text: analyzePrompt() }], NOTE_PROMPTS.tasks + instr));
+    if (noteForm !== form) return;
+    noteAi.busy = '';
+    if (!countOn(r)) { noteAi.info = r.opazil || 'AI v zapisku ni našel konkretnih opravil ali dogodkov.'; renderNoteAi(); return; }
+    resetCap(); cap.result = r; cap.fromNote = true;
+    openSheet(null, 'cap'); renderResult();
+  } catch (e) { if (noteForm === form) { noteAi.busy = ''; noteAi.err = e.message || 'AI ni uspel prebrati zapiska.'; renderNoteAi(); } }
+}
+
+/* ----- e-pošta: osnutek z AI, Gmail osnutki in pošiljanje ----- */
+function parseRecipients(s) { return String(s || '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean); }
+function syncMailDom() {
+  const m = noteMail; if (!m) return;
+  const g = id => { const e = $(id); return e ? e.value : null; };
+  const to = g('#mailTo'), su = g('#mailSubj'), bo = g('#mailBody'), ins = g('#mailInstr');
+  if (to != null) m.to = to; if (su != null) m.subject = su; if (bo != null) m.body = bo;
+  if (ins != null && noteForm) noteForm.instr = ins;
+}
+function noteMailOpen() {
+  if (!noteForm) return;
+  syncNoteDom();
+  if (!noteMail) noteMail = { to: '', subject: '', body: '', note: '', busy: '', err: '', ok: '', link: '', auth: false };
+  renderNoteMail(); openSheet(null, 'note');
+}
+function renderNoteMail() {
+  const m = noteMail; if (!m || !noteForm) return;
+  $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>E-pošta z AI</h2>${closeBtn}</div>
+    <p class="hint">AI napiše osnutek na podlagi zapiska. Pregledaj ga, popravi in ga shrani med Gmail osnutke ali pošlji.</p>
+    <div class="field"><label for="mailTo">Za</label><input id="mailTo" type="text" inputmode="email" autocomplete="off" spellcheck="false" placeholder="ime@primer.si (več naslovov ločiš z vejico)" value="${esc(m.to)}"></div>
+    <div class="field"><label for="mailSubj">Zadeva</label><input id="mailSubj" maxlength="200" value="${esc(m.subject)}"></div>
+    <div class="field"><label for="mailBody">Sporočilo</label><textarea id="mailBody" rows="10" maxlength="12000">${esc(m.body)}</textarea></div>
+    <div class="field"><label for="mailInstr">Navodilo za AI</label><div class="inline"><input id="mailInstr" type="text" maxlength="300" autocomplete="off" placeholder="npr. vljudno, kratko, v angleščini" value="${esc(noteForm.instr || '')}"><button type="button" class="btn ghost" data-mail data-act="noteMailGen">${ic('spark',16)} Napiši z AI</button></div></div>
+    <div id="mailStatus"></div>
+    <div class="sheet-f">
+      <button type="button" class="btn wide" data-mail data-act="noteMailDraft">${ic('save',17)} Shrani osnutek v Gmail</button>
+      <button type="button" class="btn wide ghost" data-mail data-act="noteMailSend">${ic('inbox',17)} Pošlji e-pošto</button>
+      <div class="set-actions"><button type="button" class="btn sm plain" data-act="noteMailGmail">Odpri v Gmailu</button><button type="button" class="btn sm plain" data-act="noteMailApp">V e-poštnem odjemalcu</button></div>
+      <button type="button" class="btn wide ghost" data-act="noteMailBack">Nazaj na zapisek</button>
+    </div>`;
+  renderMailStatus();
+}
+function renderMailStatus() {
+  const m = noteMail, el = $('#mailStatus'); if (!m || !el) return;
+  sheet.querySelectorAll('[data-mail]').forEach(b => { b.disabled = !!m.busy; });
+  let h = '';
+  if (m.busy) h += `<p class="busy"><span class="spin"></span> ${({ gen: 'AI piše osnutek …', draft: 'Shranjujem osnutek v Gmail …', send: 'Pošiljam …' })[m.busy] || ''}</p>`;
+  if (m.err) h += `<p class="err" role="alert">${esc(m.err)}</p>`;
+  if (m.auth) h += `<div class="set-actions"><button type="button" class="btn sm" data-act="gSignIn">${ic('check',15)} Ponovno avtoriziraj Google</button></div>`;
+  if (m.note) h += `<p class="suggest">${esc(m.note)}</p>`;
+  if (m.ok) h += `<p class="suggest">${esc(m.ok)}${m.link ? ` <a href="${esc(m.link)}" target="_blank" rel="noopener">Odpri v Gmailu</a>` : ''}</p>`;
+  if (!gcalOn()) h += `<p class="help">Za shranjevanje osnutkov in pošiljanje neposredno iz aplikacije se v Nastavitvah prijavi z Google. Brez prijave uporabi »Odpri v Gmailu«.</p>`;
+  el.innerHTML = h;
+}
+async function noteAiMail() {
+  if (!noteForm) return;
+  syncNoteDom();
+  const first = !noteMail;
+  noteMailOpen();
+  if (first && (noteForm.text.trim() || noteForm.title.trim() || noteForm.instr.trim())) await noteMailGen(true);
+}
+async function noteMailGen(auto) {
+  const m = noteMail; if (!m || !noteForm || m.busy) return;
+  syncMailDom();
+  const form = noteForm;
+  if (!form.text.trim() && !form.title.trim() && !form.instr.trim()) { m.err = 'Napiši zapisek ali navodilo, da AI ve, o čem naj bo e-pošta.'; renderMailStatus(); return; }
+  if (!noteHasKey()) { m.err = 'Manjka Gemini API ključ. Vnesi ga v Nastavitvah (zobnik zgoraj desno).'; renderMailStatus(); return; }
+  if (auto !== true && m.body.trim() && !confirm('Zamenjam trenutno besedilo e-pošte z novim AI osnutkom?')) return;
+  m.busy = 'gen'; m.err = ''; m.ok = ''; m.link = ''; m.auth = false; renderMailStatus();
+  try {
+    const r = await callGemini([{ text: 'ZAPISEK UPORABNIKA:\n' + (noteSource() || '(prazen)') }, { text: 'NAVODILO ZA E-POŠTO: ' + (form.instr.trim() || '(brez posebnega navodila)') }], NOTE_PROMPTS.mail());
+    if (noteMail !== m) return;
+    const body = String(r && r.besedilo || '').trim();
+    if (!body) throw new UserErr('AI ni vrnil besedila. Poskusi znova.');
+    const to = parseRecipients(r.za).filter(x => MAIL_RE.test(x)).join(', ');
+    if (!m.to.trim() && to) m.to = to;
+    m.subject = String(r.zadeva || '').trim().slice(0, 200); m.body = body; m.note = str(r.opomba) || '';
+    const set = (id, v) => { const e = $(id); if (e) e.value = v; };
+    set('#mailTo', m.to); set('#mailSubj', m.subject); set('#mailBody', m.body);
+  } catch (e) { if (noteMail === m) m.err = e.message || 'AI ni uspel napisati osnutka.'; }
+  if (noteMail === m) { m.busy = ''; renderMailStatus(); }
+}
+const mailB64 = s => abToB64(new TextEncoder().encode(s));
+function mailRaw(to, subject, body) {
+  const clean = s => String(s || '').replace(/[\r\n]+/g, ' ').trim();
+  const lines = [];
+  if (to) lines.push('To: ' + clean(to));
+  lines.push('Subject: =?UTF-8?B?' + mailB64(clean(subject) || '(brez zadeve)') + '?=');
+  lines.push('MIME-Version: 1.0', 'Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: base64', '');
+  lines.push((mailB64(String(body || '').replace(/\r?\n/g, '\r\n')).match(/.{1,76}/g) || ['']).join('\r\n'));
+  return mailB64(lines.join('\r\n')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function gmPost(path, body) {
+  if (!gcalOn() && gcal.user && fbCfg()) await gSignIn();
+  if (!gcalOn()) throw new UserErr('GCAL_AUTH');
+  const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + path, { method: 'POST', headers: { Authorization: 'Bearer ' + gcal.token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => null);
+  const msg = (d && d.error && d.error.message) || '';
+  if (r.status === 401) { clearGToken(); throw new UserErr('GCAL_AUTH'); }
+  if (r.status === 403 && /insufficient|scope/i.test(msg)) throw new UserErr('GMAIL_COMPOSE_SCOPE');
+  if (!r.ok) throw new UserErr(`Gmail ni uspel (${r.status})${msg ? ': ' + msg : ''}`);
+  return d;
+}
+function mailErr(e) {
+  const m = noteMail; if (!m) return;
+  m.auth = false;
+  if (e && e.message === 'GCAL_AUTH') { m.err = 'Nisi prijavljen z Google ali je povezava potekla. Prijavi se v Nastavitvah ali tapni spodaj.'; m.auth = !!(gcal.user || fbCfg()); }
+  else if (e && e.message === 'GMAIL_COMPOSE_SCOPE') { m.err = 'Aplikacija še nima dovoljenja za pisanje e-pošte. Tapni »Ponovno avtoriziraj Google« in odobri dostop do Gmaila.'; m.auth = true; }
+  else if (e instanceof UserErr) m.err = e.message;
+  else m.err = 'Ni povezave z Gmailom. Preveri internet in poskusi znova.';
+}
+async function noteMailSave(send) {
+  const m = noteMail; if (!m || m.busy) return;
+  syncMailDom();
+  const rec = parseRecipients(m.to), bad = rec.find(x => !MAIL_RE.test(x));
+  m.ok = ''; m.link = ''; m.err = ''; m.auth = false;
+  if (bad) { m.err = 'Neveljaven e-naslov: ' + bad; renderMailStatus(); return; }
+  if (!m.body.trim()) { m.err = 'Sporočilo je prazno.'; renderMailStatus(); return; }
+  if (send) {
+    if (!rec.length) { m.err = 'Za pošiljanje vpiši prejemnika.'; renderMailStatus(); return; }
+    if (!confirm(`Pošljem to e-pošto na ${rec.join(', ')}?`)) return;
+  }
+  m.busy = send ? 'send' : 'draft'; renderMailStatus();
+  try {
+    const raw = mailRaw(rec.join(', '), m.subject, m.body);
+    if (send) { await gmPost('messages/send', { raw }); m.ok = 'E-pošta je poslana.'; toast('E-pošta je poslana.'); }
+    else {
+      const d = await gmPost('drafts', { message: { raw } }), id = d && d.message && d.message.id;
+      m.link = 'https://mail.google.com/mail/u/0/#drafts' + (id ? '?compose=' + encodeURIComponent(id) : '');
+      m.ok = 'Osnutek je shranjen med Gmail osnutke.'; toast('Osnutek je shranjen v Gmail.');
+    }
+  } catch (e) { mailErr(e); }
+  if (noteMail === m) { m.busy = ''; renderMailStatus(); }
+}
+function noteMailOpenGmail() {
+  const m = noteMail; if (!m) return; syncMailDom();
+  const params = (withBody) => 'https://mail.google.com/mail/?' + new URLSearchParams({ view: 'cm', fs: '1', to: parseRecipients(m.to).join(','), su: m.subject, ...(withBody ? { body: m.body } : {}) }).toString().replace(/\+/g, '%20');
+  let url = params(true);
+  if (url.length > 7000) {
+    try { navigator.clipboard.writeText(m.body); } catch (e) {}
+    url = params(false); toast('Besedilo je predolgo za povezavo, zato sem ga kopiral. Prilepi ga v sporočilo.');
+  }
+  window.open(url, '_blank', 'noopener');
+}
+function noteMailOpenApp() {
+  const m = noteMail; if (!m) return; syncMailDom();
+  let url = 'mailto:' + parseRecipients(m.to).join(',') + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(String(m.body).replace(/\r?\n/g, '\r\n'));
+  if (url.length > 7000) {
+    try { navigator.clipboard.writeText(m.body); } catch (e) {}
+    url = 'mailto:' + parseRecipients(m.to).join(',') + '?subject=' + encodeURIComponent(m.subject); toast('Besedilo je predolgo za povezavo, zato sem ga kopiral. Prilepi ga v sporočilo.');
+  }
+  location.href = url;
 }
 const NAV = [['today', 'Danes', 'sun'], ['calendar', 'Koledar', 'calendar'], ['tasks', 'Opravila', 'list'], ['notes', 'Zapiski', 'pen']];
 /* ---------- stable UI rendering ---------- */
@@ -1190,7 +1612,7 @@ function render(options = {}) {
 /* ---------- capture (Zero-Input Engine) ---------- */
 const cap = { text: '', images: [], audio: null, recording: false, secs: 0, busy: false, result: null, error: null };
 let mr = null, recTimer = null, recStream = null;
-const resetCap = () => Object.assign(cap, { text: '', images: [], audio: null, recording: false, secs: 0, busy: false, result: null, error: null, inboxId: null });
+const resetCap = () => Object.assign(cap, { text: '', images: [], audio: null, recording: false, secs: 0, busy: false, result: null, error: null, inboxId: null, fromNote: false });
 
 function openCapture(mode) {
   if (cap.busy) renderBusy(); else if (cap.result) renderResult(); else renderCompose();
@@ -1563,6 +1985,7 @@ const FB_VER = '12.19.0';
 const GCAL_SCOPE = ['https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.calendarlist.readonly'];
 const GTASK_SCOPE = 'https://www.googleapis.com/auth/tasks';
 const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const GMAIL_COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose'; // osnutki in pošiljanje e-pošte
 const GTZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Ljubljana'; } catch (e) { return 'Europe/Ljubljana'; } })();
 const gcal = { fb: null, user: null, token: null, exp: 0, events: [], eventsTmr: [], calendars: [], loadedAt: 0, loading: false, err: null, busy: false };
 const gtask = { lists: [], defaultListId: '@default', loadedAt: 0, syncing: false, err: null };
@@ -1833,6 +2256,7 @@ async function gSignIn() {
     GCAL_SCOPE.forEach(scope => p.addScope(scope));
     p.addScope(GTASK_SCOPE);
     p.addScope(GMAIL_SCOPE);
+    p.addScope(GMAIL_COMPOSE_SCOPE);
     p.setCustomParameters(gcal.user && gcal.user.email ? { login_hint: gcal.user.email } : { prompt: 'select_account' });
     let res;
     try { res = await M.signInWithPopup(auth, p); }
@@ -2802,10 +3226,11 @@ function toggleQuickVoice(kind) {
   if (!SR) { toast('Ta brskalnik ne podpira glasovnega vnosa. Poskusi Chrome na telefonu ali računalniku.'); return; }
   if (quickRecognition) { try { quickRecognition.stop(); } catch(e){}; return; }
   const cfg = kind === 'cap' ? { input: '#capText', btn: '[data-act="capDictate"]' }
+    : kind === 'note' ? { input: '#noteText', btn: '[data-act="noteDictate"]' }
     : { input: '#quickTask', btn: '[data-act="taskVoice"]' };
   const input = $(cfg.input); if (!input) return;
   const btn = $(cfg.btn);
-  const base = kind === 'cap' ? (input.value || '').trim() : '';
+  const base = (kind === 'cap' || kind === 'note') ? (input.value || '').trim() : '';
   const r = new SR(); quickRecognition = r;
   r.lang = 'sl-SI'; r.interimResults = true; r.continuous = false;
   if (btn) btn.classList.add('recording');
@@ -2820,6 +3245,7 @@ function toggleQuickVoice(kind) {
     quickRecognition = null; if (btn) btn.classList.remove('recording');
     const textNow = (input.value || '').trim(); if (!textNow) return;
     if (kind === 'cap') { cap.text = input.value; return; }
+    if (kind === 'note') { if (noteForm) noteForm.text = input.value; return; }
     const titles = splitVoiceTasks(textNow);
     if (!titles.length) return;
     addTasksFromText(titles); input.value = ''; save(); render();
@@ -2999,6 +3425,35 @@ Object.assign(A, {
     save(); render();
   },
 });
+/* ---------- zapiski: akcije (zvok, AI, e-pošta) ---------- */
+Object.assign(A, {
+  noteMailNew() { openNote(); noteMailOpen(); },
+  noteDictate() { if (noteRec.on) { toast('Najprej ustavi snemanje.'); return; } toggleQuickVoice('note'); },
+  noteRec() { noteRecToggle(); },
+  noteAudRm(b) { noteAudRemove(b.dataset.key); },
+  noteTr(b) { noteTranscribe(b.dataset.key); },
+  noteAiImprove() { noteAiImprove(); },
+  noteAiUse() { noteAiUse(); },
+  noteAiDiscard() { noteAi.improved = null; renderNoteAi(); },
+  noteAiUndo() { noteAiUndo(); },
+  noteAiTasks() { noteAiTasks(); },
+  noteAiMail() { noteAiMail(); },
+  noteMailGen() { noteMailGen(); },
+  noteMailDraft() { noteMailSave(false); },
+  noteMailSend() { noteMailSave(true); },
+  noteMailGmail() { noteMailOpenGmail(); },
+  noteMailApp() { noteMailOpenApp(); },
+  noteMailBack() { syncMailDom(); renderNoteForm(); },
+  backCompose() {
+    if (cap.fromNote) { resetCap(); renderNoteForm(); openSheet(null, 'note'); return; }
+    cap.result = null; renderCompose();
+  }
+});
+sheet.addEventListener('close', () => {
+  if (noteRec.on) { noteRec.discard = true; if (noteRec.mr && noteRec.mr.state !== 'inactive') noteRec.mr.stop(); }
+  if (cap.fromNote) resetCap();
+});
+
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = A[b.dataset.act]; if (f) f(b, e);
