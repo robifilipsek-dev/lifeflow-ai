@@ -633,6 +633,7 @@ body[data-tab=today] .fab{display:none}
 [data-theme="dark"] .set-tab[aria-selected=true]{color:var(--on-accent)}
 .set-panel .rvh:first-child{margin-top:4px}
 .set-panel textarea{min-height:84px}
+.blk .edit-hint{margin-left:10px}
 </style>
 </head>
 <body>
@@ -3863,6 +3864,7 @@ async function agentExecTool(name, a, batch) {
 async function agentLoop() {
   const batch = [];
   try {
+    let fakeRetry = false;
     for (let step = 0; step < AGENT_MAX_STEPS; step++) {
       agent.status = 'Razmišljam …'; agentUi();
       const content = await agentCall();
@@ -3870,6 +3872,12 @@ async function agentLoop() {
       const parts = arr(content.parts);
       const calls = parts.filter(p => p.functionCall);
       const text = parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+      if (!calls.length && !fakeRetry && /predlagaj_\w+\s*\(/.test(text)) {
+        /* model je klice orodij izpisal kot besedilo namesto da bi jih poklical: zavrži in ponovi */
+        fakeRetry = true; agent.contents.pop();
+        const last = agent.contents[agent.contents.length - 1];
+        if (last && last.role === 'user') { last.parts.push({ text: 'Orodij nisi poklical, ampak si jih izpisal kot besedilo. Pokliči jih kot prave funkcije (function call) in ne piši klicev v besedilo.' }); continue; }
+      }
       if (text) agent.msgs.push({ role: 'ai', text });
       if (!calls.length) break;
       const resp = [];
