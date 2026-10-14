@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F7F8F6">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F3F6F5">
+<meta name="color-scheme" content="light dark">
+<script>
+/* Tema nastavljena pred prvim izrisom, da ne utripne napačna barva. */
+(function(){try{var t=localStorage.getItem("lf.theme");if(t!=="light"&&t!=="dark")t=(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";var r=document.documentElement;r.dataset.theme=t;r.style.colorScheme=t;var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==="dark"?"#0B1519":"#F3F6F5";}catch(e){}})();
+</script>
 <title>LifeFlow AI</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -135,7 +139,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-hover);box-shado
 ::placeholder{color:var(--blue-placeholder);opacity:1}
 
 .advice{margin:18px 0 4px;padding:12px 14px;border-radius:12px;background:var(--petrol-t);color:var(--petrol-d);font-weight:500}
-.warns{margin:8px 0 0;padding-left:20px;color:#8E2C10}
+.warns{margin:8px 0 0;padding-left:20px;color:var(--danger-ink)}
 
 /* flow timeline */
 .flow{list-style:none;margin:16px 0 0;padding:0}
@@ -170,13 +174,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-hover);box-shado
 .row.done .grow strong{text-decoration:line-through;color:var(--ink2);font-weight:500}
 .badge{font:700 13px var(--font-b);padding:3px 10px;border-radius:8px;background:var(--moss-t);color:#1E5A37;white-space:nowrap}
 .badge.warn{background:var(--gold-t);color:#7A5300}
-.badge.bad{background:var(--coral-t);color:#8E2C10}
+.badge.bad{background:var(--coral-t);color:var(--danger-ink)}
 .badge.plain{background:#DCE5E8;color:var(--ink2)}
 .chk{width:44px;height:44px;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;flex:0 0 auto;padding:0}
 .circle{width:26px;height:26px;border-radius:50%;border:2px solid var(--petrol);display:grid;place-items:center;color:#fff}
 .chk[aria-pressed=true] .circle{background:var(--petrol)}
 .mini{width:44px;height:44px;border:0;background:transparent;border-radius:12px;display:grid;place-items:center;color:var(--ink2);cursor:pointer;flex:0 0 auto;padding:0;touch-action:manipulation}
-.mini:hover{background:var(--coral-t);color:#8E2C10}
+.mini:hover{background:var(--coral-t);color:var(--danger-ink)}
 .cal-action{white-space:nowrap}
 .task-source{display:flex;align-items:center;gap:4px;color:var(--blue-ink);font-size:12px!important;font-weight:700}.task-source svg{flex:0 0 auto}.task-rem{display:flex;align-items:center;gap:5px;margin-top:3px;color:var(--ink2);font-size:13px}
 .task-rem svg{width:15px;height:15px;flex:0 0 auto}
@@ -201,7 +205,7 @@ details.bill summary::-webkit-details-marker{display:none}
 .bar b{font-variant-numeric:tabular-nums}
 details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--ink2);min-height:44px}
 
-/* inbox */.hero-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--coral-t);color:#8E2C10;font-size:12px;line-height:1}
+/* inbox */.hero-count{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--coral-t);color:var(--danger-ink);font-size:12px;line-height:1}
 .inbox-dash{background:linear-gradient(180deg,var(--paper),var(--blue-soft));border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .inbox-mini-list{display:grid;gap:8px;margin-top:8px}
 .inbox-mini{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.52);border:1px solid var(--line)}
@@ -209,7 +213,7 @@ details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--i
 .inbox-mini-ico{width:32px;height:32px;border-radius:10px;background:var(--petrol-t);display:grid;place-items:center;color:var(--petrol-d);flex:0 0 auto}
 .inbox-mini div{min-width:0}.inbox-mini strong,.inbox-mini small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.inbox-mini small{color:var(--ink2);margin-top:2px}
 .capture-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
-.inbox-count{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 7px;border-radius:999px;background:var(--coral-t);color:#8E2C10;font:800 14px var(--font-b);vertical-align:3px}
+.inbox-count{display:inline-grid;place-items:center;min-width:28px;height:28px;padding:0 7px;border-radius:999px;background:var(--coral-t);color:var(--danger-ink);font:800 14px var(--font-b);vertical-align:3px}
 .inbox-list{display:grid;gap:10px}
 .inbox-card{padding:13px 14px;border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:0 1px 2px rgba(15,37,48,.04)}
 .inbox-card-top{display:flex;align-items:center;gap:9px}.inbox-card-ico{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:var(--blue-soft);color:var(--blue-ink);flex:0 0 auto}
@@ -218,7 +222,7 @@ details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--i
 @media(max-width:520px){.capture-actions{grid-template-columns:1fr}.inbox-card-actions{display:grid;grid-template-columns:1fr 1fr}.inbox-card-actions .btn{width:100%}}
 
 .quick-mic{flex:0 0 42px;width:42px;height:42px;border-radius:12px}
-.quick-mic.recording{background:var(--coral-t);color:#8E2C10;animation:pulse 1s ease-in-out infinite}
+.quick-mic.recording{background:var(--coral-t);color:var(--danger-ink);animation:pulse 1s ease-in-out infinite}
 @media(max-width:700px){
   .quick-mic{flex:0 0 42px}
 }
@@ -259,7 +263,7 @@ dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
 .aud{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 8px 8px 14px;border-radius:12px;background:var(--gold-t)}
 .aud .btn{margin-left:auto}
 .sheet-f{margin-top:16px;display:grid;gap:8px}
-.err{margin:12px 0 0;padding:10px 14px;border-radius:12px;background:var(--coral-t);color:#8E2C10}
+.err{margin:12px 0 0;padding:10px 14px;border-radius:12px;background:var(--coral-t);color:var(--danger-ink)}
 .busy{display:flex;align-items:center;gap:12px;padding:26px 2px;font-size:17px}
 .rvh{font:800 16px var(--font-h);color:var(--petrol-d);margin:18px 0 4px}
 .rvl{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
@@ -301,8 +305,8 @@ dialog#sheet::backdrop{background:rgba(15,37,48,.5)}
 .field .help{color:var(--ink2);font-size:14px;margin:6px 0 0}
 .field .inline{display:flex;gap:8px}
 .set-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.danger{color:#8E2C10!important;border-color:var(--blue)!important;box-shadow:inset 0 0 0 1.5px var(--blue)}
-.danger:hover{background:var(--blue)!important;color:#7A2410!important}
+.danger{color:var(--danger-ink)!important;border-color:var(--blue)!important;box-shadow:inset 0 0 0 1.5px var(--blue)}
+.danger:hover{background:var(--blue)!important;color:var(--danger-ink)!important}
 
 .toolbar+.toolbar{margin-top:-6px}
 .sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -342,30 +346,6 @@ dialog #toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .work-day input:focus-visible+span{outline:3px solid var(--blue-soft);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}.spin{animation:none;border-right-color:currentColor;opacity:.6}}
 
-[data-theme="dark"]{
-  --mist:#0B1519; --paper:#111E23; --ink:#E8F0F2; --ink2:#AABCC2; --line:#30434A;
-  --petrol:#48B7C8; --petrol-d:#8DDFEA; --petrol-t:#18343B;
-  --gold:#F2B93F; --gold-t:#453817; --coral:#F27652; --coral-t:#45251D;
-  --moss:#67C58A; --moss-t:#183A27;
-  --blue:#8FD3E3; --blue-hover:#B2E8F1; --blue-soft:#173B43; --blue-ink:#DDF8FC; --blue-placeholder:#8FBBC4;
-}
-[data-theme="dark"] body{background:var(--mist)}
-[data-theme="dark"] .src{background:var(--blue-soft);color:var(--blue-ink)}
-[data-theme="dark"] .seg{background:var(--blue-soft)}
-[data-theme="dark"] .seg button{color:var(--blue-ink)}
-[data-theme="dark"] .chip{background:var(--blue-soft);color:var(--blue-ink)}
-[data-theme="dark"] .badge.plain{background:#26383F}
-[data-theme="dark"] .invite{background:var(--blue-soft);color:var(--blue-ink)}
-[data-theme="dark"] .blk:hover{background:rgba(255,255,255,.05)}
-[data-theme="dark"] input[type=time],
-[data-theme="dark"] input[type=date],
-[data-theme="dark"] input[type=datetime-local],
-[data-theme="dark"] input[type=number],
-[data-theme="dark"] input[type=text],
-[data-theme="dark"] input[type=password],
-[data-theme="dark"] input[type=search],
-[data-theme="dark"] select,
-[data-theme="dark"] textarea{background:var(--blue-soft);color:var(--ink);border-color:var(--blue)}
 @media(max-width:560px){
   .set-actions .btn{min-height:44px}
   .cal-action{flex:1 1 auto;justify-content:center}
@@ -418,7 +398,7 @@ code{font-size:.9em;background:var(--blue-soft);padding:1px 5px;border-radius:6p
 .cal-check{display:flex!important;align-items:center;gap:10px;font-weight:700}.cal-check input{width:22px;height:22px;min-height:0;flex:0 0 auto}
 a.btn.plain{text-decoration:none;color:var(--ink2);background:transparent;border-color:transparent}
 
-.sync-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.sync-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:8px 0;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
 .sync-status{font-size:.82rem;font-weight:700}
 .sync-status.ok{color:#16834b}
 .sync-status.busy{color:#a36b00}
@@ -450,7 +430,7 @@ input[type=time],input[type=date],input[type=datetime-local],input[type=number],
 input:focus,select:focus,textarea:focus{border-color:var(--petrol);box-shadow:0 0 0 3px rgba(27,107,104,.11)}
 nav{background:rgba(255,255,255,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(18,50,50,.06)}
 nav .in{max-width:760px;padding:7px 10px}.in nav{}
-nav button{min-height:58px;border-radius:15px;gap:4px;color:#718084;font-size:11.5px}.
+nav button{min-height:58px;border-radius:15px;gap:4px;color:#718084;font-size:11.5px}
 nav button[aria-current=page]{background:var(--petrol-t);color:var(--petrol-d)}
 nav button[aria-current=page]::before{display:none}
 .fab{right:max(18px,calc((100vw - 760px)/2 + 18px));bottom:calc(82px + env(safe-area-inset-bottom,0px));min-height:52px;padding:0 18px;border-radius:15px;background:var(--ink);box-shadow:0 8px 24px rgba(23,37,42,.22)}
@@ -464,13 +444,13 @@ nav button[aria-current=page]::before{display:none}
 .day-plan-card{padding:17px 17px 14px;margin:0 0 18px}.day-plan-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.day-plan-header h2{margin:2px 0 2px;font:800 23px var(--font-h);letter-spacing:-.025em}.day-plan-header p{margin:0;color:var(--ink2);font-size:13px}.plan-mark{width:38px;height:38px;display:grid;place-items:center;flex:0 0 auto;border-radius:12px;background:var(--petrol-t);color:var(--petrol-d)}
 .day-plan-card>.sec{display:none}.day-plan-card .ctl-row{margin-top:18px}.day-plan-card .flow{margin-top:14px}.day-plan-card .advice{background:#F6F2E5;color:#6E5826;border:1px solid #EBDCB1}.day-plan-card .warns{margin-bottom:0}
 .flow li::before{left:68px;width:2px;background:#D9E9E6}.flow time{color:var(--petrol-d)}.node{box-shadow:0 0 0 4px var(--paper);border:3px solid var(--paper)}.blk{padding:7px 10px 9px;margin:2px 0;border:1px solid transparent;border-radius:13px;background:#FCFEFD}.blk:hover{background:var(--petrol-t);border-color:#C9E3DE}.blk .t{font-size:15px}.blk .k{font-size:12px;color:var(--ink2)}.edit-hint{display:inline-block;margin-top:4px;color:var(--petrol);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}.is-done .blk{opacity:.68}.is-done .t{text-decoration:line-through}
-.seg{background:var(--blue-soft);border:1px solid #BFD7D2;border-radius:13px;padding:3px}.seg button{min-height:39px;border-radius:10px;color:var(--petrol-d)}.seg button[aria-pressed=true]{background:var(--paper);color:var(--petrol-d);box-shadow:0 2px 7px rgba(20,84,81,.09)}.dash-section{padding:14px}.dash-section+.dash-section{margin-top:12px}.dash-list{border-color:var(--line);border-radius:14px}.
+.seg{background:var(--blue-soft);border:1px solid #BFD7D2;border-radius:13px;padding:3px}.seg button{min-height:39px;border-radius:10px;color:var(--petrol-d)}.seg button[aria-pressed=true]{background:var(--paper);color:var(--petrol-d);box-shadow:0 2px 7px rgba(20,84,81,.09)}.dash-section{padding:14px}.dash-section+.dash-section{margin-top:12px}.dash-list{border-color:var(--line);border-radius:14px}
 .welcome.compact-welcome{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin:10px 0 18px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}.welcome-ico{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--petrol-t);color:var(--petrol-d);flex:0 0 auto}.compact-welcome strong{font-size:15px}.compact-welcome p{margin:3px 0 0;color:var(--ink2);font-size:13px}.compact-invites{grid-column:1/-1;margin:2px 0 0;grid-template-columns:repeat(3,1fr)}.compact-invites .invite{min-height:58px;padding:8px 10px;border:1px solid #C6DCD8;border-radius:13px;background:#FBFDFC;color:var(--petrol-d);justify-content:center;box-shadow:none}.compact-invites .invite .ico{background:transparent;color:var(--petrol);width:auto;height:auto}
 .tag{border-radius:9px;padding:3px 9px;background:var(--petrol-t);color:var(--petrol-d)}
 .row{min-height:56px;border-color:var(--line)}.row:hover{background:#FBFDFC}
 .chk{width:42px;height:42px}.circle{border-color:var(--petrol)}.chk[aria-pressed=true] .circle{background:var(--petrol)}.mini{width:40px;height:40px;border-radius:11px}.mini:hover{background:var(--petrol-t);color:var(--petrol-d)}
-.fold{border-top:1px solid var(--line)}.fold>summary{font-weight:800;padding:11px 0}.quick{padding:10px;border:1px solid var(--line);border-radius:15px;background:#FAFCFB}.quick input,.quick select{background:#fff}.
-details.bill summary{min-height:62px}.
+.fold{border-top:1px solid var(--line)}.fold>summary{font-weight:800;padding:11px 0}.quick{padding:10px;border:1px solid var(--line);border-radius:15px;background:#FAFCFB}.quick input,.quick select{background:#fff}
+details.bill summary{min-height:62px}
 #toast{bottom:calc(140px + env(safe-area-inset-bottom,0px));background:var(--ink);border-radius:13px;box-shadow:0 10px 26px rgba(23,37,42,.2)}
 dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0}.sheet-in{padding:20px 20px calc(24px + env(safe-area-inset-bottom,0px))}.sheet-h h2{font-size:23px}.src{background:#F8FCFB;border-color:#C6DCD8;color:var(--petrol-d)}.src:hover{background:var(--petrol-t)}
 @media(max-width:700px){
@@ -514,6 +494,97 @@ dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0
 .ai-prev div{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto}
 #mailStatus .suggest a{color:inherit;font-weight:700}
 @media (prefers-reduced-motion:reduce){.btn.rec-on .rec-dot{animation:none}}
+/* ---------- barve za rdeča besedila + temna tema (mora ostati na koncu) ---------- */
+:root{--danger-ink:#8E2C10;--on-accent:#fff}
+.cal-inline{padding:14px}
+.cal-inline .cal-nav{margin-top:0}
+[data-theme="dark"]{
+  color-scheme:dark;
+  --mist:#0B1519; --paper:#13222A; --ink:#E8F0F2; --ink2:#A9BDC4; --line:#2A3F47;
+  --petrol:#4FB9C9; --petrol-d:#8EDDE8; --petrol-t:#173740;
+  --gold:#F2B93F; --gold-t:#3D3216; --coral:#F27B58; --coral-t:#43241C;
+  --moss:#67C58A; --moss-t:#183A27;
+  --blue:#2B5560; --blue-hover:#356773; --blue-soft:#18323A; --blue-ink:#CFF1F7; --blue-placeholder:#7FA3AC;
+  --danger-ink:#FFB4A0; --on-accent:#06262D;
+}
+[data-theme="dark"] html,html[data-theme="dark"]{background:var(--mist)}
+[data-theme="dark"] body{background:linear-gradient(180deg,#0E1A1F 0%,#0A1317 100%);color:var(--ink)}
+[data-theme="dark"] .icon-btn{background:var(--paper);border-color:var(--line);box-shadow:none}
+[data-theme="dark"] .icon-btn:hover{background:var(--petrol-t);color:var(--petrol-d)}
+/* gumbi */
+[data-theme="dark"] .btn{background:var(--petrol);border-color:var(--petrol);color:var(--on-accent);box-shadow:none}
+[data-theme="dark"] .btn:hover{background:#6FCCDA;border-color:#6FCCDA}
+[data-theme="dark"] .btn.ghost{background:var(--paper);color:var(--petrol-d);border-color:#35606B}
+[data-theme="dark"] .btn.ghost:hover{background:var(--petrol-t);border-color:#4A7F8B}
+[data-theme="dark"] .btn.plain,[data-theme="dark"] a.btn.plain{background:transparent;border-color:transparent;color:var(--petrol-d)}
+[data-theme="dark"] .btn.plain:hover{background:var(--petrol-t)}
+[data-theme="dark"] .btn.rec-on{background:var(--coral-t);color:var(--ink);border-color:var(--coral)}
+[data-theme="dark"] .alert .btn{background:var(--blue);border-color:var(--blue);color:var(--blue-ink)}
+[data-theme="dark"] .alert .btn:hover{background:var(--blue-hover);border-color:var(--blue-hover)}
+[data-theme="dark"] .alert .btn.plain{background:var(--blue-soft);border:1.5px solid var(--blue);color:var(--blue-ink)}
+[data-theme="dark"] .ai-box .btn.ghost{background:var(--paper)}
+[data-theme="dark"] .danger{color:var(--danger-ink)!important;border-color:#35606B!important;box-shadow:none}
+[data-theme="dark"] .danger:hover{background:var(--coral-t)!important;color:var(--danger-ink)!important}
+[data-theme="dark"] .fab{background:var(--petrol);color:var(--on-accent);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+[data-theme="dark"] .fab:hover{background:#6FCCDA}
+/* polja */
+[data-theme="dark"] input[type=time],
+[data-theme="dark"] input[type=date],
+[data-theme="dark"] input[type=datetime-local],
+[data-theme="dark"] input[type=number],
+[data-theme="dark"] input[type=text],
+[data-theme="dark"] input[type=password],
+[data-theme="dark"] input[type=search],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .qa textarea,
+[data-theme="dark"] .qa input,
+[data-theme="dark"] .quick input,
+[data-theme="dark"] .quick select{background:#0E1B21;color:var(--ink);border-color:#31484F}
+[data-theme="dark"] input:focus,[data-theme="dark"] select:focus,[data-theme="dark"] textarea:focus{border-color:var(--petrol);box-shadow:0 0 0 3px rgba(79,185,201,.22)}
+[data-theme="dark"] ::placeholder{color:var(--blue-placeholder)}
+[data-theme="dark"] input[type=date],[data-theme="dark"] input[type=time],[data-theme="dark"] input[type=datetime-local]{color-scheme:dark}
+[data-theme="dark"] .qa,[data-theme="dark"] .quick{background:var(--paper);border-color:var(--line)}
+/* nav, kartice, plan */
+[data-theme="dark"] nav{background:rgba(19,34,42,.96);border-top-color:var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.35)}
+[data-theme="dark"] nav button{color:var(--ink2)}
+[data-theme="dark"] nav button[aria-current=page]{background:var(--petrol-t);color:var(--petrol-d)}
+[data-theme="dark"] .day-actions{background:var(--paper);box-shadow:none}
+[data-theme="dark"] .day-plan-card,[data-theme="dark"] .dash-section,[data-theme="dark"] .inbox-card,[data-theme="dark"] .dash-clear,[data-theme="dark"] .note-card{box-shadow:none}
+[data-theme="dark"] .day-plan-card .advice{background:var(--gold-t);color:#F5DC9A;border-color:#5C4B1F}
+[data-theme="dark"] .flow li::before{background:var(--line)}
+[data-theme="dark"] .blk{background:transparent}
+[data-theme="dark"] .blk:hover{background:var(--petrol-t);border-color:#2C5560}
+[data-theme="dark"] .tip-rekreacija{--ct:#A6E5BD}
+[data-theme="dark"] .tip-opomnik{--ct:#FFB4A0}
+[data-theme="dark"] .row:hover{background:rgba(255,255,255,.03)}
+[data-theme="dark"] .seg{border-color:#35606B}
+[data-theme="dark"] .seg button[aria-pressed=true]{background:var(--petrol);color:var(--on-accent);box-shadow:none}
+[data-theme="dark"] .chip[aria-pressed=true]{background:var(--petrol);border-color:var(--petrol);color:var(--on-accent)}
+[data-theme="dark"] .src{background:var(--blue-soft);border-color:#35606B;color:var(--petrol-d)}
+[data-theme="dark"] .src:hover,[data-theme="dark"] .src.on{background:var(--petrol-t)}
+[data-theme="dark"] .compact-invites .invite{background:var(--blue-soft);border-color:#35606B;color:var(--petrol-d)}
+[data-theme="dark"] .invite:hover{background:var(--petrol-t)}
+[data-theme="dark"] .chk[aria-pressed=true] .circle{color:var(--on-accent)}
+[data-theme="dark"] .work-day input:checked+span{color:var(--on-accent)}
+[data-theme="dark"] .th button{background:var(--ink);color:var(--mist)}
+[data-theme="dark"] .cal-cell.sel{background:var(--petrol);border-color:var(--petrol);color:var(--on-accent)}
+[data-theme="dark"] .cal-cell.sel .cal-dots b{background:var(--on-accent)}
+[data-theme="dark"] .cal-cell.other{opacity:.45}
+/* značke in besedila */
+[data-theme="dark"] .badge{color:#A6E5BD}
+[data-theme="dark"] .badge.warn{color:#F5DC9A}
+[data-theme="dark"] .badge.bad{color:var(--danger-ink)}
+[data-theme="dark"] .badge.plain{background:#243840;color:var(--ink2)}
+[data-theme="dark"] .sync-status.ok{color:#6FD39A}
+[data-theme="dark"] .sync-status.busy{color:#F2B93F}
+[data-theme="dark"] .sync-status.err{color:#FF8E7A}
+[data-theme="dark"] .rv-edit>summary{color:var(--petrol-d)}
+[data-theme="dark"] #toast{background:#26414A;color:#E8F0F2;border:1px solid #35606B;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+[data-theme="dark"] dialog#sheet{background:var(--paper);color:var(--ink)}
+[data-theme="dark"] dialog#sheet::backdrop{background:rgba(0,0,0,.6)}
+[data-theme="dark"] .inbox-dash{background:linear-gradient(180deg,var(--paper),var(--blue-soft))}
+[data-theme="dark"] audio{color-scheme:dark}
 </style>
 </head>
 <body>
@@ -525,6 +596,7 @@ dialog#sheet{max-width:760px;background:var(--paper);border-radius:26px 26px 0 0
     </div>
     <div class="top-a">
     <button class="btn sm" id="btnInstall" data-act="install" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/></svg>Namesti</button>
+    <button class="icon-btn" id="btnTheme" data-act="theme" aria-label="Preklopi temo" title="Svetli / temni način"></button>
     <button class="icon-btn" data-act="settings" aria-label="Nastavitve"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg></button>
     </div>
   </header>
@@ -599,6 +671,7 @@ const str = v => (v == null || v === '' || v === 'null') ? null : String(v).trim
 const arr = v => Array.isArray(v) ? v : [];
 
 const ICON = {
+  moon: '<path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
   list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
   camera: '<path d="M3.5 8.5h3.2l1.6-2.5h7.4l1.6 2.5h3.2v11h-17z"/><circle cx="12" cy="13.5" r="3.6"/>',
@@ -704,9 +777,28 @@ function workLine(dateStr, who) {
   return `${who}: služba ${w.from}–${w.to}${w.commute ? `, pot v eno smer ${w.commute} min (odhod od doma ob ${w.leave}, nazaj doma okoli ${w.back})` : ''}.`;
 }
 
+const THEME_KEY = 'lf.theme';
+function savedTheme() { try { const t = localStorage.getItem(THEME_KEY); return t === 'dark' || t === 'light' ? t : null; } catch (e) { return null; } }
+function applyTheme(t) {
+  const r = document.documentElement;
+  r.dataset.theme = t; r.style.colorScheme = t;
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'dark' ? '#0B1519' : '#F3F6F5';
+  const b = $('#btnTheme');
+  if (b) {
+    b.innerHTML = ic(t === 'dark' ? 'sun' : 'moon', 22);
+    const l = t === 'dark' ? 'Preklopi na svetli način' : 'Preklopi na temni način';
+    b.setAttribute('aria-label', l); b.title = l;
+  }
+}
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* tema velja vsaj za to sejo */ }
+  applyTheme(next);
+}
 function initTheme() {
-  document.documentElement.dataset.theme = 'light';
-  document.documentElement.style.colorScheme = 'light';
+  const dark = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+  applyTheme(savedTheme() || (dark && dark.matches ? 'dark' : 'light'));
+  if (dark && dark.addEventListener) dark.addEventListener('change', e => { if (!savedTheme()) applyTheme(e.matches ? 'dark' : 'light'); });
 }
 const save = () => {
   store.set(JSON.stringify(S));
@@ -810,7 +902,9 @@ function openSheet(html, kind) {
 const closeBtn = `<button class="icon-btn" data-act="closeSheet" aria-label="Zapri">${ic('x')}</button>`;
 sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
 sheet.addEventListener('close', () => {
+  if (sheet.dataset.kind === 'cal') calUi.form = null;
   sheet.dataset.kind = '';
+  if (S.ui.tab === 'calendar') { calEnsure(); calRender(); }
   if (cap.recording && mr && mr.state !== 'inactive') mr.stop();
 });
 
@@ -1040,7 +1134,8 @@ function quickBar(o) {
   return `<div class="qa">${field}<button type="button" class="icon-btn quick-mic" data-act="${o.voice}" aria-label="Povej na glas">${ic('mic',20)}</button><button type="button" class="btn" data-act="${o.add}">${ic('plus',16)} Dodaj</button>${o.extra ? `<div class="qa-extra">${o.extra}</div>` : ''}</div>`;
 }
 function renderCalendar() {
-  return `<section class="dash-section calendar-intro"><div class="day-kicker">TVOJI DOGODKI</div><h2 class="sec">Koledar na enem mestu</h2><p class="dash-sub">Preglej dogodke po dnevih, dodaj termin ali uredi obstoječi dogodek. Dogodke iz e-pošte najprej preveriš v Inboxu, preden jih dodaš.</p><div class="toolbar"><button class="btn" data-act="calOpen">${ic('calendar',18)} Odpri koledar</button><button class="btn ghost" data-act="capture">${ic('plus',18)} Dodaj dogodek ali opravilo</button></div></section>${gcalHtml()}<section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Iz e-pošte v načrt</h2><p class="dash-sub">AI pripravi predloge opravil in dogodkov. Pred shranjevanjem jih lahko pregledaš in popraviš.</p></div></div><button class="btn ghost" data-act="openInbox">${ic('inbox',18)} Odpri Inbox</button></section>`;
+  calEnsure();
+  return `<section class="dash-section cal-inline" id="calInline">${calHtml()}</section><section class="dash-section"><div class="dash-section-head"><div><h2 class="sec">Iz e-pošte v načrt</h2><p class="dash-sub">AI pripravi predloge opravil in dogodkov. Pred shranjevanjem jih lahko pregledaš in popraviš.</p></div></div><button class="btn ghost" data-act="openInbox">${ic('inbox',18)} Odpri Inbox</button></section>`;
 }
 
 function renderTasks() {
@@ -1150,7 +1245,7 @@ function renderNoteForm() {
   const thumbs = [...noteForm.existingImages.filter(id => !noteForm.removeImages.includes(id)).map(id => `<div class="th"><img data-img="${esc(id)}" alt="Shranjena slika"><button data-act="noteRmExisting" data-id="${esc(id)}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`), ...noteForm.images.map((im,i) => `<div class="th"><img src="${im.url}" alt="Nova slika"><button data-act="noteRmImage" data-i="${i}" aria-label="Odstrani sliko">${ic('x',14)}</button></div>`)].join('');
   const imgCount = noteForm.images.length + noteForm.existingImages.length - noteForm.removeImages.length;
   $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>${noteForm.id ? 'Uredi zapisek' : 'Nov zapisek'}</h2>${closeBtn}</div>
-    <div class="field"><label for="noteTitle">Naslov</label><input id="noteTitle" maxlength="120" placeholder="Npr. Ideje za projekt" value="${esc(noteForm.title)}"></div>
+    <div class="field"><label for="noteTitle">Naslov</label><input id="noteTitle" type="text" maxlength="120" placeholder="Npr. Ideje za projekt" value="${esc(noteForm.title)}"></div>
     <div class="field"><label for="noteText">Zapisek</label><div class="cap-ta"><textarea id="noteText" rows="8" maxlength="12000" placeholder="Zapiši misli, pomembne podatke, seznam ali načrt …">${esc(noteForm.text)}</textarea><button type="button" class="icon-btn quick-mic cap-mic" data-act="noteDictate" aria-label="Narekuj besedilo">${ic('mic',20)}</button></div><p class="help">Mikrofon ob polju sam napiše, kar poveš.</p></div>
     <div class="field"><label>Slike (do 6)</label><div class="set-actions"><button class="btn ghost" data-act="noteAddImage" ${imgCount >= 6 ? 'disabled' : ''}>${ic('image',17)} Dodaj slike</button><span class="help">Slike se shranijo lokalno v tej napravi.</span></div>${thumbs ? `<div class="thumbs">${thumbs}</div>` : ''}</div>
     <div class="field"><label>Zvočni posnetki (do ${NOTE_AUD_MAX})</label><div class="set-actions"><button type="button" class="btn ghost" id="btnNoteRec" data-act="noteRec"></button></div><p class="help" id="noteRecInfo"></p><div id="noteAudList"></div></div>
@@ -1385,7 +1480,7 @@ function renderNoteMail() {
   $('#sheetBody').innerHTML = `<div class="sheet-h"><h2>E-pošta z AI</h2>${closeBtn}</div>
     <p class="hint">AI napiše osnutek na podlagi zapiska. Pregledaj ga, popravi in ga shrani med Gmail osnutke ali pošlji.</p>
     <div class="field"><label for="mailTo">Za</label><input id="mailTo" type="text" inputmode="email" autocomplete="off" spellcheck="false" placeholder="ime@primer.si (več naslovov ločiš z vejico)" value="${esc(m.to)}"></div>
-    <div class="field"><label for="mailSubj">Zadeva</label><input id="mailSubj" maxlength="200" value="${esc(m.subject)}"></div>
+    <div class="field"><label for="mailSubj">Zadeva</label><input id="mailSubj" type="text" maxlength="200" value="${esc(m.subject)}"></div>
     <div class="field"><label for="mailBody">Sporočilo</label><textarea id="mailBody" rows="10" maxlength="12000">${esc(m.body)}</textarea></div>
     <div class="field"><label for="mailInstr">Navodilo za AI</label><div class="inline"><input id="mailInstr" type="text" maxlength="300" autocomplete="off" placeholder="npr. vljudno, kratko, v angleščini" value="${esc(noteForm.instr || '')}"><button type="button" class="btn ghost" data-mail data-act="noteMailGen">${ic('spark',16)} Napiši z AI</button></div></div>
     <div id="mailStatus"></div>
@@ -1936,9 +2031,9 @@ async function genPlan() {
   if (gcalOn()) await gcalLoadToday(true);
   const u = S.ui, t = today();
   const ctx = {
-    tasks: S.tasks.filter(x => !x.done).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, zamujeno: !!(x.due && x.due < t), ura: x.time || null, trajanje_min: x.min || null })),
+    tasks: S.tasks.filter(x => !x.done && !(x.due && x.due > t)).map(x => ({ id: x.id, naslov: x.title, prioriteta: x.prio, casovni_okvir: x.frame || null, rok: x.due || null, zamujeno: !!(x.due && x.due < t), ura: x.time || null, trajanje_min: x.min || null })),
     rem: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at && r.at.slice(0, 10) === t).map(r => ({ besedilo: r.text, cas: r.at.slice(11, 16) })),
-    roki: S.deadlines.filter(d => !d.done && dayDiff(d.due) <= 14).map(d => ({ naziv: d.title, rok: d.due })),
+    roki: S.deadlines.filter(d => !d.done && d.due && dayDiff(d.due) <= 0).map(d => ({ naziv: d.title, rok: d.due })),
     kol: gcalOn() ? gcal.events.filter(e => !e.allDay && e.start).map(e => ({ naslov: e.title, od: hm(e.start), do: e.end ? hm(e.end) : null })) : [],
     koljutri: gcalOn() ? gcal.eventsTmr.map(e => ({ naslov: e.title, od: e.allDay || !e.start ? 'cel dan' : hm(e.start) })) : []
   };
@@ -1950,9 +2045,9 @@ async function genPlan() {
 Sestavi realen dnevni načrt za danes.
 Energija uporabnika: ${u.energy}. Prost čas: od ${freeFrom} do ${u.to}.
 Delovni urnik: ${workTxt}
-Odprta opravila: ${JSON.stringify(ctx.tasks)}
+Opravila za danes (rok je danes, zamujena ali brez roka; opravil z rokom v prihodnjih dneh tu ni namenoma): ${JSON.stringify(ctx.tasks)}
 Opomniki za danes: ${JSON.stringify(ctx.rem)}
-Roki v naslednjih 14 dneh (servis, vinjeta, tehnični pregled …): ${JSON.stringify(ctx.roki)}
+Roki, ki zapadejo danes ali so zamujeni (servis, vinjeta, tehnični pregled …): ${JSON.stringify(ctx.roki)}
 Dogodki v Google koledarju danes (fiksni, ne prekrivaj jih): ${JSON.stringify(ctx.kol)}
 Dogodki v Google koledarju jutri (samo za pripravo, ne vstavljaj jih v današnji načrt; če je kaj zgodaj ali pomembno, nevsiljivo predlagaj pripravo zvečer): ${JSON.stringify(ctx.koljutri)}
 Vrni JSON:
@@ -1963,14 +2058,15 @@ Pravila:
 - Pri visoki energiji daj zahtevnejša opravila zgodaj; pri nizki energiji največ 2-3 zahtevna opravila in več odmorov.
 - Če je urnik natrpan, predlagaj realistične bloke in kratke odmore.
 - V prosta okna nevsiljivo predlagaj rekreacijo, sprostitev ali osebni opravek.
-- Če se kak rok izteče v 3 dneh, ga nevsiljivo vstavi kot kratek blok tipa "opomnik" v prosto okno.
+- Opravila in roke vstavi v načrt šele na dan, ko zapadejo (ali če so zamujeni). Ničesar, kar ima rok v prihodnjih dneh, ne načrtuj vnaprej.
 - Dogodke iz Google koledarja vstavi kot bloke tipa "fiksno" točno ob njihovi uri in čez njih ne načrtuj ničesar drugega.
 - Bloki se ne prekrivajo, "do" je za "od", največ 12 blokov. Če blok izhaja iz opravila, nastavi task_id.`;
   busy.plan = true; render();
   try {
     const r = await callGemini([{ text: prompt }]);
-    const ids = new Set(S.tasks.map(x => x.id));
-    const bloki = arr(r.bloki).map(b => ({ od: tm(b && b.od), do: tm(b && b.do), naslov: str(b && b.naslov), tip: TIP[b && b.tip] ? b.tip : 'opravilo', task_id: b && ids.has(b.task_id) ? b.task_id : null, done: false }))
+    const ids = new Set(S.tasks.filter(x => !(x.due && x.due > t)).map(x => x.id));
+    const futureTaskIds = new Set(S.tasks.filter(x => x.due && x.due > t).map(x => x.id));
+    const bloki = arr(r.bloki).filter(b => !(b && futureTaskIds.has(b.task_id))).map(b => ({ od: tm(b && b.od), do: tm(b && b.do), naslov: str(b && b.naslov), tip: TIP[b && b.tip] ? b.tip : 'opravilo', task_id: b && ids.has(b.task_id) ? b.task_id : null, done: false }))
       .filter(b => b.od && b.do && b.naslov && toM(b.do) > toM(b.od)).sort((a, b) => toM(a.od) - toM(b.od));
     if (!bloki.length) throw new UserErr('Model ni vrnil uporabnega načrta. Poskusi znova.');
     S.plan = { date: t, energy: u.energy, bloki, nasvet: str(r.nasvet) || '', opozorila: arr(r.opozorila).map(str).filter(Boolean).slice(0, 4) };
@@ -2276,7 +2372,6 @@ async function gSignOut() {
 }
 function refreshGoogleUi() {
   const gb = $('#gBlock'); if (gb) gb.innerHTML = googleBlockInner();
-  if (sheet.open && sheet.dataset.kind === 'cal') { calRender(); if (gcalOn() && !calUi.events.length && !calUi.loading) calLoad(); return; }
   if (!(sheet.open && sheet.dataset.kind !== 'settings')) render();
 }
 function googleBlockInner() {
@@ -2293,7 +2388,7 @@ function googleBlockInner() {
     h += `<button class="btn ghost" data-act="gSignOut">Odjava</button>`;
   }
   h += `</div>`;
-  if (!ok && (S.settings.fbConfig || '').trim()) h += `<p class="help" style="color:#8E2C10">Konfiguracije ni mogoče prebrati. Potrebni so vsaj apiKey, authDomain in projectId.</p>`;
+  if (!ok && (S.settings.fbConfig || '').trim()) h += `<p class="help" style="color:var(--danger-ink)">Konfiguracije ni mogoče prebrati. Potrebni so vsaj apiKey, authDomain in projectId.</p>`;
   return h;
 }
 /* ---------- Gmail → Inbox (predlogi, ki jih potrdiš) ---------- */
@@ -2600,11 +2695,10 @@ function gcalHtml() {
   const body = loading ? '' : dayBlock('Danes', ev, 'Danes ni dogodkov.') + dayBlock('Jutri <small>' + esc(tmrLabel) + '</small>', tm2, 'Jutri ni dogodkov.');
   return `<section class="dash-section gcal"><div class="dash-section-head"><div><h2 class="sec">Koledar</h2><p class="dash-sub">${sub}</p></div><div class="dash-btns"><button class="btn sm ghost" data-act="gRefresh" aria-label="Osveži koledar">${ic('repeat', 16)}</button><button class="btn sm" data-act="calOpen">${ic('calendar', 16)} Koledar</button></div></div>${body}</section>`;
 }
-if (fbCfg()) fbInit().catch(() => {});
 
 
 /* ---------- Pogled in urejanje Google koledarja ---------- */
-const calUi = { y: 0, m: 0, sel: null, events: [], loading: false, err: null, seq: 0, form: null, saving: false };
+const calUi = { y: 0, m: 0, sel: null, events: [], loading: false, err: null, seq: 0, form: null, saving: false, key: '', loadedAt: 0 };
 const DAYN = ['Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob', 'Ned'];
 function calNorm(e) {
   const allDay = !!e.start.date;
@@ -2619,17 +2713,26 @@ function calRange() {
   return { start, end };
 }
 function calRender() {
-  if (!(sheet.open && sheet.dataset.kind === 'cal')) return;
-  $('#sheetBody').innerHTML = calUi.form ? calFormHtml() : calHtml();
+  const host = $('#calInline'); if (host) host.innerHTML = calHtml();
+  if (sheet.open && sheet.dataset.kind === 'cal' && calUi.form) $('#sheetBody').innerHTML = calFormHtml();
+}
+function calCloseForm() { calUi.form = null; if (sheet.open && sheet.dataset.kind === 'cal') sheet.close(); }
+function calInitState() { if (calUi.y) return; const t = new Date(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.sel = today(); }
+function calEnsure() {
+  calInitState();
+  if (!gcalOn() || calUi.loading) return;
+  const key = calUi.y + '-' + calUi.m;
+  if (calUi.key !== key || Date.now() - calUi.loadedAt > 120000) calLoad();
 }
 function calOpen() {
-  const t = new Date();
-  calUi.sel = today(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.form = null; calUi.err = null;
-  openSheet(calHtml(), 'cal'); calLoad();
+  if (sheet.open) sheet.close();
+  const t = new Date(); calUi.sel = today(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.loadedAt = 0;
+  if (S.ui.tab === 'calendar') { render(); return; }
+  A.tab({ dataset: { tab: 'calendar' } });
 }
 async function calLoad() {
   if (!gcalOn()) { calUi.loading = false; calRender(); return; }
-  const my = ++calUi.seq; calUi.loading = true; calUi.err = null; calRender();
+  const my = ++calUi.seq; calUi.loading = true; calUi.err = null; calUi.key = calUi.y + '-' + calUi.m; calUi.loadedAt = Date.now(); calRender();
   try {
     const { start, end } = calRange();
     const raw = await loadEventsForCalendars(start, end);
@@ -2656,9 +2759,9 @@ function calTimeLabel(e, day) {
   return hm(e.start) + (e.end && e.end > e.start ? '–' + hm(e.end) : '');
 }
 function calHtml() {
-  let h = `<div class="sheet-h"><h2>Koledar</h2>${closeBtn}</div>`;
+  let h = '';
   if (!gcalOn()) {
-    return h + `<div class="empty"><p>${gcal.user ? 'Povezava z Google koledarjem je potekla.' : 'Poveži Google koledar, da vidiš in urejaš dogodke.'}</p>${fbCfg() ? `<button class="btn" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 18) + (gcal.user ? ' Poveži znova' : ' Prijava z Google')}</button>` : '<p class="help">Firebase podatki niso vpisani v index.html.</p>'}</div>`;
+    return h + `<h2 class="sec" style="margin-top:0">Koledar</h2><div class="empty" style="padding-top:6px"><p>${gcal.user ? 'Povezava z Google koledarjem je potekla.' : 'Poveži Google koledar, da vidiš in urejaš dogodke.'}</p>${fbCfg() ? `<button class="btn" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span> Povezujem …' : ic('calendar', 18) + (gcal.user ? ' Poveži znova' : ' Prijava z Google')}</button>` : '<p class="help">Firebase podatki niso vpisani v index.html.</p>'}</div>`;
   }
   const first = new Date(calUi.y, calUi.m, 1), label = first.toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' });
   const { start } = calRange(), byDay = calEventsByDay(), t = today();
@@ -2672,7 +2775,7 @@ function calHtml() {
   h += `</div>`;
   const sel = parseYmd(calUi.sel), list = byDay[calUi.sel] || [];
   h += `<div class="cal-day-h"><h3>${esc(sel.toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' }))}</h3><button class="btn sm" data-act="calNew">${ic('plus', 16)} Nov dogodek</button></div>`;
-  if (calUi.err) h += `<p class="help" style="color:#8E2C10">${esc(calUi.err)}</p>`;
+  if (calUi.err) h += `<p class="help" style="color:var(--danger-ink)">${esc(calUi.err)}</p>`;
   if (calUi.loading) h += `<p class="help"><span class="spin"></span> Nalagam …</p>`;
   else if (!list.length && !calUi.err) h += `<p class="muted">Ta dan ni dogodkov.</p>`;
   h += `<div class="cal-list">${list.map(e => `<button class="cal-ev" data-act="calEdit" data-id="${esc(e.id)}"><time>${esc(calTimeLabel(e, calUi.sel))}</time><div><strong>${esc(e.title)}</strong><small>${esc(e.calendarName || 'Google koledar')}${e.loc ? ' · ' + esc(e.loc) : ''}</small></div></button>`).join('')}</div>`;
@@ -2729,11 +2832,11 @@ async function calSave() {
     const body = JSON.stringify(calBody(f));
     if (f.id) await gapi(`calendars/${encodeURIComponent(f.calendarId || 'primary')}/events/${encodeURIComponent(f.id)}`, { method: 'PATCH', body });
     else await gapi('calendars/primary/events', { method: 'POST', body });
-    const d = parseYmd(f.date); calUi.sel = f.date; calUi.y = d.getFullYear(); calUi.m = d.getMonth(); calUi.form = null;
+    const d = parseYmd(f.date); calUi.sel = f.date; calUi.y = d.getFullYear(); calUi.m = d.getMonth(); calCloseForm();
     toast('Dogodek je shranjen.'); gcal.loadedAt = 0; gcalLoadToday(true);
     calUi.saving = false; await calLoad(); return;
   } catch (e) {
-    if (e.message === 'GCAL_AUTH') { calUi.form = null; toast('Povezava je potekla. Poveži znova.'); }
+    if (e.message === 'GCAL_AUTH') { calCloseForm(); toast('Povezava je potekla. Poveži znova.'); }
     else toast(e.message === 'NOTFOUND' ? 'Dogodka ni več v koledarju.' : e.message);
   }
   calUi.saving = false; calRender();
@@ -2745,10 +2848,10 @@ async function calDel() {
   try {
     try { await gapi(`calendars/${encodeURIComponent(f.calendarId || 'primary')}/events/${encodeURIComponent(f.id)}`, { method: 'DELETE' }); }
     catch (e) { if (e.message !== 'NOTFOUND') throw e; }
-    calUi.form = null; toast('Dogodek izbrisan.'); gcal.loadedAt = 0; gcalLoadToday(true);
+    calCloseForm(); toast('Dogodek izbrisan.'); gcal.loadedAt = 0; gcalLoadToday(true);
     calUi.saving = false; await calLoad(); return;
   } catch (e) {
-    if (e.message === 'GCAL_AUTH') { calUi.form = null; toast('Povezava je potekla. Poveži znova.'); } else toast(e.message);
+    if (e.message === 'GCAL_AUTH') { calCloseForm(); toast('Povezava je potekla. Poveži znova.'); } else toast(e.message);
   }
   calUi.saving = false; calRender();
 }
@@ -2811,7 +2914,7 @@ function openSettings() {
       <p class="help">Modeli, ki jih tvoj ključ dejansko lahko uporablja, se razlikujejo. <strong>Osveži seznam</strong> ga prebere neposredno iz Googla.</p></div>
     <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button><button class="btn" data-act="testKey">Preveri povezavo</button></div>
     <h3 class="rvh">Google račun in koledar</h3>
-    ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:#8E2C10">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code> in vpiši vrednosti iz Firebase konzole.</p>`}
+    ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:var(--danger-ink)">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code> in vpiši vrednosti iz Firebase konzole.</p>`}
     <div id="gBlock">${googleBlockInner()}</div>
     <div class="field"><label for="setGmailQuery">Gmail: kateri emaili se pregledajo</label><input type="text" id="setGmailQuery" value="${esc(s.gmailQuery || GMAIL_DEFAULT_Q)}" autocomplete="off" spellcheck="false"><p class="help">Običajen Gmail iskalni niz (npr. <code>label:AI newer_than:7d</code>). Vsebina emailov gre v Gemini z vašim ključem; opravila in dogodki se ustvarijo šele, ko jih potrdite v Inboxu.</p></div>
     ${isStandalone() ? '' : `<h3 class="rvh">Aplikacija</h3>
@@ -3266,6 +3369,7 @@ const A = {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   },
   settings() { openSettings(); },
+  theme() { toggleTheme(); },
   noteNew() { openNote(); },
   noteEdit(b) { openNote(b.dataset.id); },
   noteAddImage() { if (!noteForm) return; noteForm.title = $('#noteTitle')?.value || noteForm.title; noteForm.text = $('#noteText')?.value || noteForm.text; imgTarget = 'note'; $('#fileGal').click(); },
@@ -3392,13 +3496,13 @@ Object.assign(A, {
   calNext() { calShift(1); },
   calToday() { const t = new Date(); calUi.y = t.getFullYear(); calUi.m = t.getMonth(); calUi.sel = today(); calLoad(); },
   calDay(b) { calUi.sel = b.dataset.d; calRender(); },
-  calNew() { calUi.form = calForm(null); calRender(); },
-  calEdit(b) { const e = calUi.events.find(x => x.id === b.dataset.id); if (!e) return; calUi.form = calForm(e); calRender(); },
-  calBack() { calUi.form = null; calRender(); },
+  calNew() { calUi.form = calForm(null); openSheet(calFormHtml(), 'cal'); },
+  calEdit(b) { const e = calUi.events.find(x => x.id === b.dataset.id); if (!e) return; calUi.form = calForm(e); openSheet(calFormHtml(), 'cal'); },
+  calBack() { calCloseForm(); },
   calSave() { calSave(); },
   calDel() { calDel(); },
   calToggleAllDay(b) { const on = b.checked; const t = $('#calTimes'), w = $('#calEndDateWrap'); if (t) t.hidden = on; if (w) w.hidden = !on; },
-  gRefresh() { gcalLoadToday(true).then(() => { if (sheet.open) toast('Dogodki osveženi.'); }); },
+  gRefresh() { calUi.loadedAt = 0; gcalLoadToday(true).then(() => { if (sheet.open) toast('Dogodki osveženi.'); }); if (S.ui.tab === 'calendar') calEnsure(); },
   install() { installApp(); },
 taskVoice() { toggleQuickVoice('task'); },
   capDictate() { toggleQuickVoice('cap'); },
