@@ -162,7 +162,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-hover);box-shado
 .tip-odmor,.tip-rekreacija{--c:var(--moss);--ct:#1E6B3E}
 .tip-opomnik{--c:var(--coral);--ct:#A93815}
 .flow li.now{--c:var(--gold)}
-.flow li.now .node{width:18px;height:18px;margin-top:8px}
+.flow li.now .node{width:9px;height:9px;margin-top:12px;box-shadow:0 0 0 2px var(--paper);border-width:2px}
 .flow li.now .pill{grid-column:3;justify-self:start;margin:6px 0 6px 10px;background:var(--gold);color:var(--ink);font-weight:700;font-size:13.5px;padding:2px 12px;border-radius:999px}
 
 /* lists */
@@ -1195,14 +1195,22 @@ function planHtml() {
   if (!p) return h;
   const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
   let marked = false, items = '';
-  p.bloki.forEach((b, i) => {
-    if (!marked && toM(b.do) > nowM) {
+  // Prikaži bloke v kronološkem vrstnem redu, da se oznaka »zdaj« ne znajde
+  // za kasnejšim dogodkom, če jih je AI vrnil v napačnem vrstnem redu.
+  const sortedBlocks = p.bloki.map((b, originalIndex) => ({ b, originalIndex }))
+    .sort((a, b) => toM(a.b.od) - toM(b.b.od));
+  sortedBlocks.forEach(({ b, originalIndex }) => {
+    const startM = toM(b.od), endM = toM(b.do);
+    // Oznako postavi pred trenutno potekajoči blok ali pred naslednji prihodnji blok.
+    // Če so vsi bloki že mimo, bo dodana na konec spodaj.
+    if (!marked && (startM >= nowM || (startM <= nowM && endM > nowM))) {
       marked = true;
       items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
     }
     items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}"><time>${b.od}<small>${b.do}</small></time><i class="node"></i>
-      <button class="blk" data-act="blk" data-i="${i}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
+      <button class="blk" data-act="blk" data-i="${originalIndex}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
   });
+  if (!marked) items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
   h += p.nasvet ? `<p class="advice">${esc(p.nasvet)}</p>` : '';
   h += p.opozorila && p.opozorila.length ? `<ul class="warns">${p.opozorila.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '';
   h += `<ol class="flow">${items}</ol>`;
