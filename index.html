@@ -851,6 +851,13 @@ function load() {
   return base;
 }
 let S = normalizeState(load());
+/* popravi neveljavna / upokojena imena modelov iz starejših nastavitev */
+(function fixModelName() {
+  const MAP = { 'gemini-3.1-flash': 'gemini-3.5-flash', 'gemini-3.1-flash-preview': 'gemini-3.5-flash', 'gemini-3.1-pro': 'gemini-3.1-pro-preview',
+    'gemini-2.5-flash': 'gemini-3.5-flash', 'gemini-2.5-pro': 'gemini-3.1-pro-preview', 'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite', 'gemini-3.1-flash-lite-preview': 'gemini-3.1-flash-lite' };
+  const m = ((S.settings && S.settings.model) || '').trim();
+  if (MAP[m]) S.settings.model = MAP[m];   /* shrani se ob naslednjem save() */
+})();
 /* ---------- delovni čas ---------- */
 function workCfg() {
   const w = (S.settings && S.settings.work) || {};
@@ -960,6 +967,21 @@ function parseJson(t) {
   if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { /* fallthrough */ } }
   throw new UserErr('Odgovora modela nisem mogel razbrati. Poskusi znova.');
 }
+/* POST na generateContent; če model vrne 404, poskusi še z '-preview' in ga ob uspehu zapomni */
+async function genPost(model, key, body, signal) {
+  const post = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(body),
+    signal
+  });
+  let res = await post(model);
+  if (res.status === 404 && !/preview$/.test(model)) {
+    const r2 = await post(model + '-preview');
+    if (r2.ok) { S.settings.model = model + '-preview'; save(); res = r2; }
+  }
+  return res;
+}
 async function callGemini(parts, extra = '') {
   const key = (S.settings.apiKey || '').trim();
   if (!key) throw new UserErr('NO_KEY');
@@ -971,18 +993,8 @@ async function callGemini(parts, extra = '') {
   };
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), 90000);
-  const post = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-    body: JSON.stringify(body),
-    signal: ctrl.signal
-  });
   try {
-    let res = await post(model);
-    if (res.status === 404 && !/preview$/.test(model)) {
-      const r2 = await post(model + '-preview');
-      if (r2.ok) { S.settings.model = model + '-preview'; save(); res = r2; }
-    }
+    const res = await genPost(model, key, body, ctrl.signal);
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new UserErr(apiErrText(res.status, data));
     const cand = data && data.candidates && data.candidates[0];
@@ -3013,8 +3025,8 @@ function calShift(n) {
 /* ---------- settings: izbira modela ---------- */
 const MODEL_KNOWN = [
   { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite — najhitrejši in najcenejši, privzet' },
-  { id: 'gemini-3.1-flash', label: 'Gemini 3.1 Flash — zmogljivejši, malo počasnejši' },
-  { id: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro — najzmogljivejši, najdražji' }
+  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — zmogljivejši, malo počasnejši' },
+  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (preview) — najzmogljivejši, najdražji; lahko zahteva plačljiv ključ' }
 ];
 function modelOptions() {
   const cached = S.modelCache, cur = S.settings.model;
@@ -3022,20 +3034,29 @@ function modelOptions() {
   if (!list.some(m => m.id === cur)) list.unshift({ id: cur, label: cur + ' (trenuten)' });
   return list;
 }
-async function refreshModels(btn) {
-  if (!(S.settings.apiKey || '').trim()) { toast('Najprej vnesi API ključ.'); return; }
+async function refreshModels(btn, silent) {
+  if (!(S.settings.apiKey || '').trim()) { if (!silent) toast('Najprej vnesi API ključ.'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Iščem …'; }
   try {
     const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': S.settings.apiKey.trim() } });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new UserErr(apiErrText(res.status, data));
     const ids = arr(data && data.models).filter(m => arr(m.supportedGenerationMethods).includes('generateContent') && /^models\/gemini/.test(m.name || ''))
-      .map(m => m.name.replace(/^models\//, '')).sort();
+      .map(m => m.name.replace(/^models\//, ''))
+      .filter(id => !/image|tts|live|audio|embedding|robotics|computer-use|vision|aqa|customtools|cyber|thinking-exp|-exp/i.test(id)).sort();
     if (!ids.length) throw new UserErr('Ključ nima dostopa do nobenega Gemini modela.');
-    S.modelCache = ids; save();
-    if (sheet.open && sheet.dataset.kind === 'settings') openSettings();
-    toast(`Najdenih ${ids.length} modelov.`);
-  } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); if (btn) { btn.disabled = false; btn.textContent = 'Osveži seznam'; } }
+    S.modelCache = ids;
+    let msg = `Najdenih ${ids.length} modelov.`;
+    const cur = (S.settings.model || '').trim();
+    if (!ids.includes(cur) && !ids.includes(cur + '-preview')) {
+      const pick = ids.includes('gemini-3.1-flash-lite') ? 'gemini-3.1-flash-lite' : (ids.find(i => /flash-lite/.test(i)) || ids.find(i => /flash/.test(i)) || ids[0]);
+      S.settings.model = pick;
+      msg = `Model ${cur || '(prazno)'} tvoj ključ ne podpira, preklopljeno na ${pick}.`;
+    }
+    save();
+    if (sheet.open && sheet.dataset.kind === 'settings') openSettings('gemini');
+    toast(msg);
+  } catch (e) { if (!silent) toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); if (btn) { btn.disabled = false; btn.textContent = 'Osveži seznam'; } }
 }
 /* ---------- settings ---------- */
 function workSettingsHtml() {
@@ -3080,7 +3101,7 @@ function settingsPaneHtml(p) {
       <p class="help">Ključ dobiš brezplačno v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Shranjen je samo v tej napravi; slike in zvok gredo neposredno h Googlu.</p></div>
     <div class="field"><label for="setModel">Model</label>
       <select id="setModel">${modelOptions().map(m => `<option value="${esc(m.id)}" ${m.id === s.model ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}<option value="__custom" ${modelOptions().some(m => m.id === s.model) ? '' : 'selected'}>Drug model (vpišem sam) …</option></select>
-      <input type="text" id="setModelCustom" value="${esc(s.model)}" autocomplete="off" spellcheck="false" placeholder="npr. gemini-2.5-flash" ${modelOptions().some(m => m.id === s.model) ? 'hidden' : ''} style="margin-top:8px">
+      <input type="text" id="setModelCustom" value="${esc(s.model)}" autocomplete="off" spellcheck="false" placeholder="npr. gemini-3.5-flash" ${modelOptions().some(m => m.id === s.model) ? 'hidden' : ''} style="margin-top:8px">
       <p class="help"><strong>Osveži seznam</strong> prebere modele, ki jih tvoj ključ dejansko lahko uporablja.</p></div>
     <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button><button class="btn" data-act="testKey">Preveri povezavo</button></div>`;
   if (p === 'google') return `<h3 class="rvh">Google račun in povezave</h3>
@@ -3136,7 +3157,13 @@ const onSettingInput = e => {
     S.settings.fbConfig = e.target.value;
     setTimeout(() => { const gb = $('#gBlock'); if (gb) gb.innerHTML = googleBlockInner(); if (e.type === 'change' && fbCfg()) fbInit().catch(() => {}); }, 0);
   }
-  else if (id === 'setKey') S.settings.apiKey = e.target.value.trim();
+  else if (id === 'setKey') {
+    const nk = e.target.value.trim();
+    const changed = nk !== S.settings.apiKey;
+    S.settings.apiKey = nk;
+    if (changed) S.modelCache = null;   /* seznam modelov velja za določen ključ */
+    if (changed && e.type === 'change' && nk.length >= 30) setTimeout(() => refreshModels(null, true), 0);
+  }
   else if (id === 'setModel') {
     const c = $('#setModelCustom');
     if (e.target.value === '__custom') { if (c) { c.hidden = false; c.focus(); } S.settings.model = (c && c.value.trim()) || S.settings.model; }
@@ -4014,7 +4041,7 @@ async function agentWebSearch(q) {
   const body = { systemInstruction: { parts: [{ text: 'Odgovori v slovenščini, kratko in dejansko (do 120 besed). Navedi samo preverljiva dejstva; če podatka ne najdeš, to jasno povej.' }] }, contents: [{ role: 'user', parts: [{ text: q }] }], tools: [{ google_search: {} }] };
   const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 45000);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body), signal: ctrl.signal });
+    const res = await genPost(model, key, body, ctrl.signal);
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new UserErr(apiErrText(res.status, data));
     const cand = data && data.candidates && data.candidates[0];
@@ -4042,7 +4069,7 @@ async function agentCall() {
   const body = { systemInstruction: { parts: [{ text: agentPrompt() }] }, contents: agent.contents, tools: agentTools(), toolConfig: { functionCallingConfig: { mode: 'AUTO' } } };
   const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 90000);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body), signal: ctrl.signal });
+    const res = await genPost(model, key, body, ctrl.signal);
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new UserErr(apiErrText(res.status, data));
     const cand = data && data.candidates && data.candidates[0];
