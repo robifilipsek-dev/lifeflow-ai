@@ -166,6 +166,33 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-hover);box-shado
 .flow li.now .node{width:9px;height:9px;margin-top:12px;box-shadow:0 0 0 2px var(--paper);border-width:2px}
 .flow li.now .pill{grid-column:3;justify-self:start;margin:6px 0 6px 10px;background:var(--gold);color:var(--ink);font-weight:700;font-size:13.5px;padding:2px 12px;border-radius:999px}
 
+/* izboljšan videz: blok, ki poteka, pretekli bloki, vrstice opravil */
+.flow li.is-live .blk{background:var(--gold-t);box-shadow:0 0 0 2px var(--gold)}
+.flow li.is-past:not(.is-done) .blk{opacity:.55}
+.flow li.now{position:relative}
+.flow li.now::after{content:"";position:absolute;left:78px;right:0;top:17px;height:2px;background:var(--gold);opacity:.55;z-index:0}
+.flow li.now .pill{position:relative;z-index:1}
+.live-bar{display:block;height:5px;border-radius:3px;background:rgba(15,37,48,.14);margin-top:6px;overflow:hidden}
+.live-bar i{display:block;height:100%;background:var(--petrol);border-radius:3px;transition:width .6s ease}
+.row{position:relative;padding-left:10px;transition:background .2s,opacity .25s}
+.row::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:2px;background:var(--line)}
+.row.prio-visoka::before{background:var(--coral)}
+.row.prio-srednja::before{background:var(--gold)}
+.row.prio-nizka::before{background:var(--petrol-t)}
+.row.done{opacity:.6}
+.row.overdue .grow small:first-of-type{color:var(--coral);font-weight:700}
+.row.duetoday .grow small:first-of-type{color:var(--petrol-d);font-weight:700}
+.row-more b{font-size:24px;line-height:1}
+.row{flex-wrap:wrap}
+.row-menu{flex:1 0 100%;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;padding:2px 0 6px;animation:rmIn .18s ease}
+.row-menu[hidden]{display:none}
+@keyframes rmIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.wx-hours.three>div{padding:12px 4px;gap:4px}
+.wx-hours.three>div span{font-size:30px;line-height:1}
+.wx-hours.three>div strong{font-size:20px}
+.wx-hours.three>div small:last-child{color:#2a6fb0;font-weight:700}
+@media (prefers-reduced-motion:reduce){.row-menu,.live-bar i{animation:none;transition:none}}
+
 /* lists */
 .list{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
 .row{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);min-height:56px}
@@ -667,6 +694,74 @@ textarea.ag-body{display:block;width:100%;box-sizing:border-box;font:inherit;pad
   #toast{bottom:calc(90px + env(safe-area-inset-bottom,0px))}
 }
 @keyframes pop{from{transform:scale(.97) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+
+/* ===== enotna lestvica: razmiki, zaobljenost, sence ===== */
+:root{--r-sm:14px;--r-md:16px;--r-lg:20px;--sp-1:6px;--sp-2:10px;--sp-3:16px;--sp-4:24px;
+  --sh-1:0 1px 2px rgba(15,37,48,.06),0 6px 18px rgba(15,37,48,.06);--sh-2:0 10px 30px rgba(15,37,48,.14)}
+[data-theme="dark"]{--sh-1:0 1px 2px rgba(0,0,0,.45),0 6px 18px rgba(0,0,0,.28);--sh-2:0 12px 32px rgba(0,0,0,.55)}
+.agent-card,.wx-card,.day-plan-card,.dash-clear{border-radius:var(--r-lg);box-shadow:var(--sh-1);padding:var(--sp-3);margin:0 0 var(--sp-3)}
+.dash-section{margin:0 0 var(--sp-3)}
+.inbox-mini,.wx-hours>div,.advice,.wx-sport,.btn,.blk{border-radius:var(--r-sm)}
+h2.sec{margin:var(--sp-4) 0 var(--sp-2)}
+.btn,.chip,.icon-btn{transition:background .15s,border-color .15s,transform .1s,box-shadow .15s}
+.chip{min-height:40px}
+.sheet-in{border-radius:var(--r-lg) var(--r-lg) 0 0}
+/* mehek prehod ob zamenjavi zavihka */
+#view.tab-in{animation:tabIn .22s ease}
+@keyframes tabIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* temni način: kontrast */
+[data-theme="dark"] .wx-hours.three>div small:last-child{color:#7FC4F0}
+[data-theme="dark"] .live-bar{background:rgba(255,255,255,.18)}
+[data-theme="dark"] .flow li.is-live .blk{background:var(--gold-t);color:var(--ink)}
+[data-theme="dark"] .row::before{opacity:.9}
+[data-theme="dark"] .row.prio-nizka::before{background:#2C5560}
+/* telefon */
+@media (max-width:400px){#app{padding-left:12px;padding-right:12px}.top h1{font-size:26px}.wx-hours.three>div span{font-size:26px}}
+@media (prefers-reduced-motion:reduce){#view.tab-in{animation:none}}
+
+/* ===== dodatki: ura »zdaj«, pretekli bloki, vreme, fade, telefon ===== */
+.flow li.now::after{left:67px;top:16px;height:2px;opacity:.7}
+.flow li.is-past:not(.is-done) time,.flow li.is-past:not(.is-done) .node{opacity:.5}
+.flow li.is-live time{color:var(--ink)}
+.flow li.is-live .node{background:var(--gold);box-shadow:0 0 0 4px var(--paper),0 0 0 7px rgba(216,148,35,.28)}
+.flow li.is-live .blk .k{font-weight:700}
+.row.overdue .grow small:first-of-type{color:var(--danger-ink)}
+.row.completing{opacity:.5;transition:opacity .25s ease,transform .25s ease;transform:translateX(3px)}
+.row.completing .grow strong,.dash-row.completing strong{text-decoration:line-through;color:var(--ink2)}
+.dash-row.completing{opacity:.5;transition:opacity .25s ease}
+.circle{transition:background .2s ease,border-color .2s ease}
+.chk[aria-pressed=true] .circle{animation:chkPop .22s ease}
+@keyframes chkPop{50%{transform:scale(1.15)}}
+.wx-card{transition:background .4s ease}
+.wx-card.wx-sun{background:linear-gradient(135deg,#FFF3D0 0%,var(--paper) 72%)}
+.wx-card.wx-cloud{background:linear-gradient(135deg,#E4EBEE 0%,var(--paper) 72%)}
+.wx-card.wx-rain{background:linear-gradient(135deg,#D6E6F3 0%,var(--paper) 72%)}
+.wx-card.wx-snow{background:linear-gradient(135deg,#E9F0F8 0%,var(--paper) 72%)}
+.wx-card.wx-storm{background:linear-gradient(135deg,#D9DBEC 0%,var(--paper) 72%)}
+.wx-card.wx-night{background:linear-gradient(135deg,#DDE3F1 0%,var(--paper) 72%)}
+[data-theme="dark"] .wx-card.wx-sun{background:linear-gradient(135deg,#3B3215 0%,var(--paper) 78%)}
+[data-theme="dark"] .wx-card.wx-cloud{background:linear-gradient(135deg,#243842 0%,var(--paper) 78%)}
+[data-theme="dark"] .wx-card.wx-rain{background:linear-gradient(135deg,#17344A 0%,var(--paper) 78%)}
+[data-theme="dark"] .wx-card.wx-snow{background:linear-gradient(135deg,#243A4A 0%,var(--paper) 78%)}
+[data-theme="dark"] .wx-card.wx-storm{background:linear-gradient(135deg,#2B2745 0%,var(--paper) 78%)}
+[data-theme="dark"] .wx-card.wx-night{background:linear-gradient(135deg,#17213B 0%,var(--paper) 78%)}
+.wx-hours>div{background:rgba(255,255,255,.62)}
+[data-theme="dark"] .wx-hours>div{background:rgba(255,255,255,.05)}
+.wx-hours .rain{display:block;width:62%;height:4px;border-radius:2px;background:rgba(42,111,176,.2);overflow:hidden;margin:2px 0}
+.wx-hours .rain i{display:block;height:100%;border-radius:2px;background:#2a6fb0}
+[data-theme="dark"] .wx-hours .rain{background:rgba(127,196,240,.22)}
+[data-theme="dark"] .wx-hours .rain i{background:#7FC4F0}
+@media (max-width:700px),(pointer:coarse){
+  .chk,.mini{width:46px;height:46px}
+  .row{min-height:62px}
+  .row-menu{gap:8px;padding:2px 0 8px}
+  .row-menu .btn.sm{min-height:46px}
+  .chip,.set-tab{min-height:44px}
+  .seg button{min-height:44px}
+  nav button{min-height:62px}
+  .cal-cell{min-height:48px}
+}
+@media (prefers-reduced-motion:reduce){.row.completing,.dash-row.completing,.chk[aria-pressed=true] .circle,.wx-card{animation:none;transition:none}}
 </style>
 </head>
 <body>
@@ -1216,8 +1311,10 @@ function planFlowItems(p) {
   sorted.forEach(({ b, originalIndex, st, en }) => {
     if (!marked && st > nowM) { marked = true; items += nowLi; }
     const live = st <= nowM && nowM < en && !b.done;
-    items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}${live ? ' is-live' : ''}"><time>${esc(b.od)}<small>${esc(b.do)}</small></time><i class="node"></i>
-      <button class="blk" data-act="blk" data-i="${originalIndex}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : live ? ' · poteka zdaj' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
+    const pct = live ? Math.round((nowM - st) / Math.max(1, en - st) * 100) : 0;
+    const past = !live && en <= nowM;
+    items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}${live ? ' is-live' : ''}${past && !b.done ? ' is-past' : ''}"><time>${esc(b.od)}<small>${esc(b.do)}</small></time><i class="node"></i>
+      <button class="blk" data-act="blk" data-i="${originalIndex}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : live ? ' · še ' + (en - nowM) + ' min' : ''}</span>${live ? `<span class="live-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>` : ''}<span class="edit-hint">Uredi</span></button></li>`;
   });
   if (!marked) items += nowLi;
   return items;
@@ -1279,7 +1376,7 @@ function renderTasks() {
     const source=t.googleTask ? `Google Tasks${t.googleTaskListName ? ' · '+t.googleTaskListName : ''}` : 'LifeFlow';
     const reminder=taskReminderLabel(t);
     const calDate=t.due|| (t.time?today():null);
-    return `<li class="row ${t.done?'done':''}" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></li>`;
+    return `<li class="row prio-${esc(t.prio||'srednja')} ${t.done?'done':''}${(!t.done&&t.due&&t.due<today())?' overdue':''}${(!t.done&&t.due===today())?' duetoday':''}" data-id="${t.id}">${chk(t.done,'toggleTask',t.id,t.done?'Vrni med odprta':'Opravljeno')}<div class="grow" data-act="taskEdit" data-id="${t.id}" role="button" tabindex="0" aria-label="Uredi opravilo: ${esc(t.title)}"><strong>${esc(t.title)}<span class="edit-ico">${ic('pen',13)}</span></strong><small>${esc(meta)}</small><small class="task-source">${ic(t.googleTask?'check':'list',13)} ${esc(source)}</small>${reminder?`<small class="task-rem ${t.reminder.type==='location'?'location':''}">${ic(t.reminder.type==='location'?'pin':'bell',15)} ${esc(reminder)}</small>`:''}</div><button class="mini row-more" data-act="rowMenu" aria-label="Več dejanj" aria-expanded="false"><b aria-hidden="true">⋯</b></button><div class="row-menu" hidden>${calDate?`<button class="btn sm ghost cal-action" data-act="taskCal" data-id="${t.id}" aria-label="Dodaj ${esc(t.title)} v koledar">${ic('calendar',16)} <span class="cal-lbl">Dodaj v koledar</span></button>`:''}<button class="mini" data-act="taskRepeat" data-id="${t.id}" aria-label="${normalizedRepeatTask(t)?'Uredi ponavljanje':'Nastavi ponavljanje'}" title="${normalizedRepeatTask(t)?esc(repeatLabel(normalizedRepeatTask(t))):'Nastavi ponavljanje'}">${ic('repeat',19)}</button><button class="mini" data-act="taskReminder" data-id="${t.id}" aria-label="${reminder?'Uredi opomnik':'Dodaj opomnik'} za opravilo">${ic('bell',19)}</button><button class="mini" data-act="delTask" data-id="${t.id}" aria-label="Izbriši opravilo">${ic('trash',19)}</button></div></li>`;
   };
   let h=tasksTopHtml()+quickBar({id:'quickTask',placeholder:'Dodaj opravilo …',label:'Novo opravilo',voice:'taskVoice',add:'quickTask',multiline:true})+`<div class="set-actions" style="margin:0 0 10px"><button class="btn sm ghost" data-act="syncGoogleTasks" ${gtask.syncing?'disabled':''}>${gtask.syncing?'<span class="spin"></span> Sinhroniziram …':ic('check',16)+' Sinhroniziraj Google Tasks'}</button>${gcalOn()?'<span class="help">'+(gtask.err?esc(gtask.err):'Google Tasks povezan')+'</span>':''}</div><div class="chips"><button class="chip" data-act="taskSort" data-v="due" aria-pressed="${sortMode==='due'}">Po roku</button><button class="chip" data-act="taskSort" data-v="priority" aria-pressed="${sortMode==='priority'}">Po prioriteti</button></div>`;
   if(!open.length) h+=`<div class="empty"><p>Ni odprtih opravil. Zapiši opravilo ali ga narekuj, pa ga dodaj v seznam.</p><button class="btn" data-act="capture" data-mode="voice">${ic('mic',18)} Povej opravila</button></div>`;
@@ -1822,6 +1919,7 @@ function render(options = {}) {
   $('#title').textContent = H.t;
   $('#sub').textContent = H.s;
   $('#view').innerHTML = ({ today: renderToday, calendar: renderCalendar, tasks: renderTasks, notes: renderNotes })[tab]();
+  if (window.__lfLastTab !== tab) { const v = $('#view'); v.classList.remove('tab-in'); void v.offsetWidth; v.classList.add('tab-in'); window.__lfLastTab = tab; }
   $('#nav').innerHTML = NAV.map(([id, l, i]) =>
     `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
   ).join('');
@@ -3618,6 +3716,16 @@ dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
   savePlanBlock() { savePlanBlock(); },
   toggleTask(b) {
     const t = byId(S.tasks, b.dataset.id); if (!t) return;
+    if (!t.done && !b.dataset.faded) {
+      const li = b.closest('.row,.dash-row');
+      if (li && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        if (b.dataset.fading) return;
+        b.dataset.fading = '1'; li.classList.add('completing'); b.setAttribute('aria-pressed', 'true');
+        const c = b.querySelector('.circle'); if (c) c.innerHTML = ic('check', 16);
+        setTimeout(() => { b.dataset.faded = '1'; A.toggleTask(b); }, 280);
+        return;
+      }
+    }
     if (!t.done && normalizedRepeatTask(t)) {
       const rep = normalizedRepeatTask(t);
       const base = t.due || today();
@@ -3646,6 +3754,7 @@ dismiss(b) { S.dismissed[b.dataset.key] = true; save(); render(); },
     }
   },
   taskReminder(b) { taskReminder(b.dataset.id); },
+  rowMenu(b) { const li = b.closest('.row'), m = li && li.querySelector('.row-menu'); if (!m) return; const open = m.hidden; document.querySelectorAll('.row-menu').forEach(x => { x.hidden = true; }); document.querySelectorAll('.row-more').forEach(x => x.setAttribute('aria-expanded', 'false')); m.hidden = !open; b.setAttribute('aria-expanded', String(open)); },
   taskRepeat(b) { taskRepeat(b.dataset.id); },
   taskEdit(b) { taskEdit(b.dataset.id); },
   saveTaskEdit(b) { saveTaskEdit(b.dataset.id); },
@@ -3910,17 +4019,31 @@ function wxInner() {
       <div class="grow"><strong>Vreme · ${esc(w.city)}</strong><small class="help" style="display:block;margin:2px 0 0">${esc(wxDesc(w.now.c))}, občutek ${w.now.f}°</small></div>
       <div class="wx-temp">${w.now.t}°</div></div>
     <div class="wx-meta"><span>Danes ${d0.min}° / ${d0.max}°</span><span>Dež ${d0.p} %${d0.mm ? ' (' + d0.mm + ' mm)' : ''}</span><span>Veter ${w.now.w} km/h</span><span>Sonce ${esc(d0.sr)}–${esc(d0.ss)}</span></div>
-    ${strip.length ? `<div class="wx-hours three">${strip.map(x => `<div><small>${pad(x.h)}:00${x.d !== today() ? ' · jutri' : ''}</small><span aria-hidden="true">${wxEmoji(x.c)}</span><strong>${x.t}°</strong><small>${x.p} %</small></div>`).join('')}</div>` : ''}
+    ${strip.length ? `<div class="wx-hours three">${strip.map(x => `<div><small>${pad(x.h)}:00${x.d !== today() ? ' · jutri' : ''}</small><span aria-hidden="true">${wxEmoji(x.c)}</span><strong>${x.t}°</strong><span class="rain" role="img" aria-label="Verjetnost dežja ${x.p} %"><i style="width:${Math.max(4, Math.min(100, +x.p || 0))}%"></i></span><small>${x.p} %</small></div>`).join('')}</div>` : ''}
     <p class="wx-sport ${win ? 'good' : 'bad'}">${win ? '🏃 Vadba na prostem: najbolje ob <strong>' + esc(win) + '</strong>.' : '🏠 Danes zunaj ni idealnega okna za vadbo: raje doma ali v telovadnici.'}</p>
     ${d1 ? `<p class="help" style="margin:6px 0 0">Jutri: ${esc(wxDesc(d1.c))}, ${d1.min}° / ${d1.max}°, dež ${d1.p} %.</p>` : ''}
     <div class="ag-chips" style="margin-bottom:0"><button class="btn sm ghost" data-act="wxRefresh" ${wxSt.busy ? 'disabled' : ''}>${wxSt.busy ? '<span class="spin"></span>' : ic('repeat', 15)} Osveži</button></div>`;
 }
+/* ton kartice glede na vreme (WMO koda) in dan/noč */
+function wxTone() {
+  const w = S.ui.wx; if (!w || !w.now) return '';
+  const c = w.now.c, d0 = (w.days && w.days[0]) || {};
+  const m = t => { const r = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return r ? (+r[1]) * 60 + (+r[2]) : null; };
+  const d = new Date(), nm = d.getHours() * 60 + d.getMinutes(), sr = m(d0.sr), ss = m(d0.ss);
+  const night = sr != null && ss != null ? (nm < sr || nm >= ss) : (d.getHours() < 6 || d.getHours() >= 21);
+  if (c >= 95) return 'wx-storm';
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'wx-snow';
+  if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'wx-rain';
+  if (night) return 'wx-night';
+  if (c === 0 || c === 1) return 'wx-sun';
+  return 'wx-cloud';
+}
 function wxCardHtml() {
   const w = S.ui.wx;
   if (!wxSt.busy && (!w || w.city !== wxCity() || w.date !== today() || Date.now() - w.at > 30 * 60000 || !w.all) && Date.now() - wxSt.errAt > 300000) setTimeout(() => wxLoad(), 0);
-  return `<section class="wx-card" id="wxCard">${wxInner()}</section>`;
+  return `<section class="wx-card ${wxTone()}" id="wxCard">${wxInner()}</section>`;
 }
-function wxUi() { const c = $('#wxCard'); if (c) c.innerHTML = wxInner(); }
+function wxUi() { const c = $('#wxCard'); if (c) { c.className = 'wx-card ' + wxTone(); c.innerHTML = wxInner(); } }
 
 /* ---------- Agent: pogovor + orodja (branje takoj, pisanje šele po potrditvi) ---------- */
 const AGENT_MAX_STEPS = 10;
@@ -4525,6 +4648,11 @@ function liveTick() {
   } catch (e) { /* ignore */ }
 }
 setInterval(liveTick, 20000);
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('.row-menu,.row-more')) return;
+  document.querySelectorAll('.row-menu:not([hidden])').forEach(x => { x.hidden = true; });
+  document.querySelectorAll('.row-more[aria-expanded=true]').forEach(x => x.setAttribute('aria-expanded', 'false'));
+});
 function autoSyncTick() { if (!document.hidden && gcalOn() && !gtask.syncing && Date.now() - (gtask.lastSync || 0) > 120000) syncGoogleTasks(true); }
 setInterval(autoSyncTick, 30000);
 setTimeout(autoSyncTick, 4000);
