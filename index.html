@@ -1199,6 +1199,7 @@ function planHtml() {
   h += p.nasvet ? `<p class="advice">${esc(p.nasvet)}</p>` : '';
   h += p.opozorila && p.opozorila.length ? `<ul class="warns">${p.opozorila.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '';
   h += `<ol class="flow" id="planFlow">${planFlowItems(p)}</ol>`;
+  h += `<button class="btn ghost" data-act="planToCal">${ic('calendar', 18)} Dodaj načrt v Google koledar</button>`;
   return h;
 }
 /* Kronološki seznam blokov z oznako »zdaj«.
@@ -2734,19 +2735,27 @@ async function deleteGoogleTask(t) {
   try { await gtapi(`lists/${encodeURIComponent(t.googleTaskListId || '@default')}/tasks/${encodeURIComponent(t.googleTaskId)}`, { method: 'DELETE' }); }
   catch (e) { if (e.message !== 'NOTFOUND') console.warn('Google Tasks delete:', e); }
 }
-async function syncGoogleTasks() {
-  if (!gcalOn()) { toast('Najprej poveži Google račun.'); return; }
+async function syncGoogleTasks(silent) {
+  if (!gcalOn()) { if (!silent) toast('Najprej poveži Google račun.'); return; }
   if (gtask.syncing) return;
-  gtask.syncing = true; gtask.err = null; render();
+  gtask.syncing = true; gtask.err = null; if (!silent) render();
   try {
     const remote = await loadGoogleTasks(true), r = mergeGoogleTasksIntoLocal(remote);
+    // opravila, ki so v Googlu izbrisana, odstrani tudi lokalno
+    const keys = new Set(remote.map(x => x.googleTaskListId + '|' + x.googleTaskId));
+    const lists = new Set(gtask.lists.map(l => l.id));
+    const before = S.tasks.length;
+    S.tasks = S.tasks.filter(t => !(t.googleTask && t.googleTaskId && lists.has(t.googleTaskListId) && !keys.has(t.googleTaskListId + '|' + t.googleTaskId)));
+    r.removed = before - S.tasks.length;
     let uploaded = 0;
     for (const t of S.tasks.filter(t => !t.googleTaskId)) { const before = t.googleTaskId; await pushTaskToGoogle(t, true); if (!before && t.googleTaskId) uploaded++; }
-    save(); toast(`Google Tasks sinhronizirano · ${r.added} novih, ${r.updated} posodobljenih, ${uploaded} prenesenih v Google.`);
+    save(); gtask.lastSync = Date.now();
+    if (!silent) toast(`Google Tasks sinhronizirano · ${r.added} novih, ${r.updated} posodobljenih, ${r.removed || 0} odstranjenih, ${uploaded} prenesenih v Google.`);
+    else if (r.added || r.removed || r.updated) { if (!sheet.open) render(); }
   } catch (e) {
-    toast(e.message === 'GTASK_SCOPE' ? 'Google Tasks še ni dovoljen. Poveži Google račun znova in potrdi dostop do opravil.' : (e.message || 'Sinhronizacija Google Tasks ni uspela.'));
+    if (!silent) toast(e.message === 'GTASK_SCOPE' ? 'Google Tasks še ni dovoljen. Poveži Google račun znova in potrdi dostop do opravil.' : (e.message || 'Sinhronizacija Google Tasks ni uspela.'));
   }
-  gtask.syncing = false; render();
+  gtask.syncing = false; if (!silent) render();
 }
 async function autoSyncNewTask(t) {
   if (!gcalOn() || !t || t.googleTaskId) return;
@@ -3435,6 +3444,24 @@ function taskReminder(id) {
     <div class="set-actions"><button class="btn" data-act="saveTaskReminder">${ic('bell', 17)} Shrani</button>${t.due || t.time ? `<button class="btn ghost danger" data-act="removeTaskReminder">Odstrani datum in uro</button>` : ''}</div>`, 'taskReminder');
 }
 function toggleTaskReminderFields() {}
+async function planToCalendar() {
+  const p = S.plan && S.plan.date === today() ? S.plan : null; if (!p) return;
+  if (!gcalOn() && gcal.user && fbCfg()) await gSignIn();
+  if (!gcalOn()) { toast('Najprej poveži Google račun.'); return; }
+  const mine = p.bloki.filter(b => b.tip !== 'fiksno' && !b.done);
+  if (!mine.length) { toast('Ni blokov za dodajanje (fiksni dogodki so že v koledarju).'); return; }
+  let n = 0;
+  try {
+    for (const b of mine) {
+      const body = JSON.stringify({ summary: b.naslov, description: 'LifeFlow AI · dnevni načrt', start: { dateTime: `${p.date}T${b.od}:00`, timeZone: GTZ }, end: { dateTime: `${p.date}T${b.do}:00`, timeZone: GTZ }, reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 5 }] } });
+      let ev = null;
+      if (b.gcalId) { try { ev = await gapi(`calendars/primary/events/${encodeURIComponent(b.gcalId)}`, { method: 'PATCH', body }); } catch (e) { if (e.message !== 'NOTFOUND') throw e; } }
+      if (!ev) ev = await gapi('calendars/primary/events', { method: 'POST', body });
+      if (ev && ev.id) { b.gcalId = ev.id; n++; }
+    }
+    save(); gcal.loadedAt = 0; calUi.loadedAt = 0; render(); toast(`V Google koledar dodanih/posodobljenih ${n} blokov (z opomnikom 5 min prej).`);
+  } catch (e) { toast(e.message === 'GCAL_AUTH' ? 'Povezava z Google računom je potekla. Poveži znova.' : e.message); }
+}
 async function saveTaskReminder() {
   const t = byId(S.tasks, taskReminderForm.id); if (!t) return;
   t.due = dt($('#trDate') && $('#trDate').value);
@@ -3563,6 +3590,7 @@ const A = {
 undo() { pruneUndo(); const u = undoStack.pop(); if (!u) { $('#toast').classList.remove('on'); return; } try { u.fn(); } catch (e) { console.warn(e); } showToast('Razveljavljeno.', undoStack.length > 0); },
   taskSort(b) { S.ui.taskSort = b.dataset.v; save(); render(); },
   syncGoogleTasks() { syncGoogleTasks(); },
+  planToCal() { planToCalendar(); },
   dismissBackup() { S.settings.backupReminderDismissedAt = today(); save(); render(); },
   dlCal(b) { const x = byId(S.deadlines,b.dataset.id); if (x) addToCalendar(x.title,x.due,null,x.note || x.category,x); },
   dlCalForm() { syncDl(); const f=dlForm; addToCalendar(f.title,f.due,null,f.note || f.category, f.id ? byId(S.deadlines,f.id) : null); },
@@ -4497,6 +4525,10 @@ function liveTick() {
   } catch (e) { /* ignore */ }
 }
 setInterval(liveTick, 20000);
+function autoSyncTick() { if (!document.hidden && gcalOn() && !gtask.syncing && Date.now() - (gtask.lastSync || 0) > 120000) syncGoogleTasks(true); }
+setInterval(autoSyncTick, 30000);
+setTimeout(autoSyncTick, 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSyncTick(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
 setTimeout(() => agentAutoStart(false), 700);
 setTimeout(() => wxLoad().catch(() => {}), 300);
