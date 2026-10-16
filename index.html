@@ -161,6 +161,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue-hover);box-shado
 .tip-fiksno{--c:var(--ink);--ct:var(--ink2)}
 .tip-odmor,.tip-rekreacija{--c:var(--moss);--ct:#1E6B3E}
 .tip-opomnik{--c:var(--coral);--ct:#A93815}
+.flow li.is-live .blk{box-shadow:0 0 0 2px var(--gold)}
 .flow li.now{--c:var(--gold)}
 .flow li.now .node{width:9px;height:9px;margin-top:12px;box-shadow:0 0 0 2px var(--paper);border-width:2px}
 .flow li.now .pill{grid-column:3;justify-self:start;margin:6px 0 6px 10px;background:var(--gold);color:var(--ink);font-weight:700;font-size:13.5px;padding:2px 12px;border-radius:999px}
@@ -643,6 +644,8 @@ body[data-tab=today] .fab{display:none}
 .wx-hours{display:flex;gap:6px;margin:12px 0 0;overflow-x:auto}
 .wx-hours>div{flex:1 0 54px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--line);border-radius:12px;font-size:13px}
 .wx-hours small{font-size:11.5px;color:var(--ink2)}
+.wx-hours.three{overflow:visible}
+.wx-hours.three>div{flex:1 1 0;min-width:0}
 .wx-sport{margin:12px 0 0;padding:10px 12px;border-radius:12px;font-size:14px}
 .wx-sport.good{background:var(--moss-t)}.wx-sport.bad{background:var(--gold-t)}
 .gm-adv{margin:4px 0 12px;font-size:14px}.gm-adv summary{cursor:pointer;font-weight:700;color:var(--ink2)}
@@ -1193,28 +1196,30 @@ function planHtml() {
     <p class="help work-line">${(() => { const w = workOn(); return w ? `${ic('calendar', 14)} Služba danes ${w.from}–${w.to}${w.commute ? ` · pot ${w.commute} min` : ''}` : `${ic('calendar', 14)} Danes ni službe`; })()}</p>
     <button class="btn" data-act="plan" ${busy.plan ? 'disabled' : ''}>${busy.plan ? '<span class="spin"></span> Sestavljam …' : ic('spark', 18) + (p ? ' Sestavi znova' : ' Sestavi moj dan')}</button>`;
   if (!p) return h;
-  const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
-  let marked = false, items = '';
-  // Prikaži bloke v kronološkem vrstnem redu, da se oznaka »zdaj« ne znajde
-  // za kasnejšim dogodkom, če jih je AI vrnil v napačnem vrstnem redu.
-  const sortedBlocks = p.bloki.map((b, originalIndex) => ({ b, originalIndex }))
-    .sort((a, b) => toM(a.b.od) - toM(b.b.od));
-  sortedBlocks.forEach(({ b, originalIndex }) => {
-    const startM = toM(b.od), endM = toM(b.do);
-    // Oznako postavi pred trenutno potekajoči blok ali pred naslednji prihodnji blok.
-    // Če so vsi bloki že mimo, bo dodana na konec spodaj.
-    if (!marked && (startM >= nowM || (startM <= nowM && endM > nowM))) {
-      marked = true;
-      items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
-    }
-    items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}"><time>${b.od}<small>${b.do}</small></time><i class="node"></i>
-      <button class="blk" data-act="blk" data-i="${originalIndex}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
-  });
-  if (!marked) items += `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
   h += p.nasvet ? `<p class="advice">${esc(p.nasvet)}</p>` : '';
   h += p.opozorila && p.opozorila.length ? `<ul class="warns">${p.opozorila.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : '';
-  h += `<ol class="flow">${items}</ol>`;
+  h += `<ol class="flow" id="planFlow">${planFlowItems(p)}</ol>`;
   return h;
+}
+/* Kronološki seznam blokov z oznako »zdaj«.
+   Pravilo: oznaka stoji takoj za zadnjim blokom, ki se je že začel (start <= zdaj),
+   in pred prvim blokom, ki se šele začne (start > zdaj). Blok, ki trenutno poteka, je torej
+   nad oznako in je posebej poudarjen. */
+function planFlowItems(p) {
+  const d = new Date(), nowM = d.getHours() * 60 + d.getMinutes();
+  const nowLi = `<li class="now"><time>${pad(d.getHours())}:${pad(d.getMinutes())}</time><i class="node"></i><span class="pill">zdaj</span></li>`;
+  const safeM = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t || '')); return m ? (+m[1]) * 60 + (+m[2]) : 0; };
+  const sorted = p.bloki.map((b, originalIndex) => ({ b, originalIndex, st: safeM(b.od), en: safeM(b.do) }))
+    .sort((x, y) => x.st - y.st || x.en - y.en || x.originalIndex - y.originalIndex);
+  let marked = false, items = '';
+  sorted.forEach(({ b, originalIndex, st, en }) => {
+    if (!marked && st > nowM) { marked = true; items += nowLi; }
+    const live = st <= nowM && nowM < en && !b.done;
+    items += `<li class="tip-${esc(b.tip)}${b.done ? ' is-done' : ''}${live ? ' is-live' : ''}"><time>${esc(b.od)}<small>${esc(b.do)}</small></time><i class="node"></i>
+      <button class="blk" data-act="blk" data-i="${originalIndex}" aria-label="Uredi dogodek: ${esc(b.naslov)}"><span class="t">${esc(b.naslov)}</span><span class="k">${TIP[b.tip] || ''}${b.done ? ' · opravljeno' : live ? ' · poteka zdaj' : ''}</span><span class="edit-hint">Uredi</span></button></li>`;
+  });
+  if (!marked) items += nowLi;
+  return items;
 }
 
 
@@ -1241,6 +1246,9 @@ function normalizedRepeatTask(t) {
   return '';
 }
 function taskReminderLabel(t) {
+  return ''; // čas in datum že prikazuje vrstica opravila; sprožanje poteka v Google Opravilih
+}
+function _unusedTaskReminderLabel(t) {
   const r = t && t.reminder;
   if (!r || !r.type) return '';
   if (r.type === 'time' && r.at) {
@@ -3348,15 +3356,6 @@ function normalizeTaskReminder(t) {
 function checkTaskTimeReminders() {
   const now = Date.now();
   let changed = false;
-  S.tasks.forEach(t => {
-    const r = normalizeTaskReminder(t);
-    if (!r || r.type !== 'time' || t.done || r.fired || !r.at) return;
-    const ts = new Date(r.at).getTime();
-    if (!Number.isFinite(ts) || now < ts || now - ts > 24 * 60 * 60 * 1000) return;
-    t.reminder = { ...r, fired: true };
-    changed = true;
-    notifyUser('LifeFlow AI – opomnik', t.title);
-  });
   S.reminders.forEach(r => {
     if (r.done || r.fired || r.trigger !== 'cas' || !r.at) return;
     const ts = new Date(r.at).getTime();
@@ -3366,38 +3365,12 @@ function checkTaskTimeReminders() {
   });
   if (changed) { save(); if (!sheet.open) render(); }
 }
-let geoWatch = null;
-function checkTaskLocationReminders(pos) {
-  if (!pos || !pos.coords) return;
-  let changed = false;
-  const { latitude, longitude } = pos.coords;
-  S.tasks.forEach(t => {
-    const r = normalizeTaskReminder(t);
-    if (!r || r.type !== 'location' || t.done || r.fired) return;
-    const d = distanceM(latitude, longitude, r.lat, r.lon);
-    if (d <= r.radius) {
-      t.reminder = { ...r, fired: true };
-      changed = true;
-      notifyUser('LifeFlow AI – opomnik', `${t.title} · ${r.label}`);
-    }
-  });
-  if (changed) { save(); if (!sheet.open) render(); }
-}
 function startReminderMonitoring() {
   checkTaskTimeReminders();
   clearInterval(window.lifeFlowReminderTimer);
   window.lifeFlowReminderTimer = setInterval(checkTaskTimeReminders, 15000);
-  const hasLocation = S.tasks.some(t => { const r = normalizeTaskReminder(t); return r && r.type === 'location' && !t.done && !r.fired; });
-  if (!hasLocation || !navigator.geolocation) return;
-  if (geoWatch != null) return;
-  try {
-    geoWatch = navigator.geolocation.watchPosition(checkTaskLocationReminders, () => { /* location unavailable */ }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 10000 });
-  } catch (e) { geoWatch = null; }
 }
-function stopReminderMonitoring() {
-  if (geoWatch != null && navigator.geolocation) navigator.geolocation.clearWatch(geoWatch);
-  geoWatch = null;
-}
+function stopReminderMonitoring() { clearInterval(window.lifeFlowReminderTimer); }
 let taskRepeatForm = { id: null };
 function taskEdit(id) {
   const t = byId(S.tasks, id); if (!t) return;
@@ -3451,64 +3424,36 @@ function removeTaskRepeat() {
 function taskReminder(id) {
   const t = byId(S.tasks, id); if (!t) return;
   taskReminderForm.id = id;
-  const r = normalizeTaskReminder(t) || {};
-  const type = r.type || 'time';
-  const d = new Date(); if (d.getTime() < Date.now() + 60000) d.setMinutes(d.getMinutes() + 5);
-  const fallbackAt = `${ymd(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  const html = `<div class="sheet-h"><h2>Opomnik za opravilo</h2>${closeBtn}</div>
+  const cur = normalizedRepeatTask(t) || '';
+  const opts = REPEAT_OPTIONS.map(([v,l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('');
+  const gOn = gcalOn();
+  openSheet(`<div class="sheet-h"><h2>Datum in ura</h2>${closeBtn}</div>
     <p class="hint"><strong>${esc(t.title)}</strong></p>
-    <div class="field"><label for="trType">Sprožilec</label><select id="trType"><option value="time" ${type === 'time' ? 'selected' : ''}>Ob določeni uri</option><option value="location" ${type === 'location' ? 'selected' : ''}>Ko pridem na lokacijo</option></select></div>
-    <div id="trTime" ${type === 'time' ? '' : 'hidden'}><div class="field"><label for="trAt">Datum in ura</label><input type="datetime-local" id="trAt" value="${esc(r.at || fallbackAt)}"></div></div>
-    <div id="trLoc" ${type === 'location' ? '' : 'hidden'}>
-      <div class="field"><label for="trLabel">Ime lokacije</label><input type="text" id="trLabel" value="${esc(r.label || '')}" placeholder="npr. Mercator Trebnje"></div>
-      <div class="field"><label>Koordinate lokacije</label><div class="field two"><input type="number" id="trLat" step="any" value="${r.lat != null ? esc(r.lat) : ''}" placeholder="Zemljepisna širina"><input type="number" id="trLon" step="any" value="${r.lon != null ? esc(r.lon) : ''}" placeholder="Zemljepisna dolžina"></div></div>
-      <div class="field"><label for="trRadius">Radij zaznave (m)</label><input type="number" id="trRadius" min="30" max="3000" step="10" value="${esc(r.radius || 150)}"></div>
-      <button class="btn sm ghost" data-act="useCurrentLocation" type="button">${ic('pin', 16)} Uporabi mojo trenutno lokacijo</button>
-      <p class="help">Za poljubno lokacijo lahko vneseš koordinate iz Google Maps. GPS opozorilo se preverja, ko aplikacija teče in ima dovoljenje za lokacijo.</p>
-    </div>
-    <div class="set-actions"><button class="btn" data-act="saveTaskReminder">${ic('bell', 17)} Shrani opomnik</button>${r.type ? `<button class="btn ghost danger" data-act="removeTaskReminder">Odstrani opomnik</button>` : ''}</div>
-    <button class="btn plain" data-act="requestNotifications">Dovoli obvestila brskalnika</button>`;
-  openSheet(html, 'taskReminder');
+    <div class="field two"><div><label for="trDate">Datum</label><input type="date" id="trDate" value="${esc(t.due || '')}"></div><div><label for="trTimeOnly">Ura</label><input type="time" id="trTimeOnly" value="${esc(t.time || '')}"></div></div>
+    <div class="field"><label for="trRepeat">Ponavljanje</label><select id="trRepeat">${opts}</select></div>
+    <p class="help">${gOn ? 'Nastavitev se shrani v Google Opravila (datum v polje roka, ura v opombo opravila).' : 'Poveži Google račun, da se opravilo shrani v Google Opravila.'} Opomnik ob uri sproži aplikacija Google Opravila, ne LifeFlow. Google API za Opravila ne omogoča nastavitve ure opomnika in lokacijskih opomnikov, zato ju v Google Opravilih nastavi ročno: odpri opravilo → Datum/ura.</p>
+    <div class="set-actions"><button class="btn" data-act="saveTaskReminder">${ic('bell', 17)} Shrani</button>${t.due || t.time ? `<button class="btn ghost danger" data-act="removeTaskReminder">Odstrani datum in uro</button>` : ''}</div>`, 'taskReminder');
 }
-function toggleTaskReminderFields() {
-  const type = $('#trType') && $('#trType').value;
-  const a = $('#trTime'), b = $('#trLoc');
-  if (a) a.hidden = type !== 'time';
-  if (b) b.hidden = type !== 'location';
-}
+function toggleTaskReminderFields() {}
 async function saveTaskReminder() {
   const t = byId(S.tasks, taskReminderForm.id); if (!t) return;
-  const type = $('#trType') && $('#trType').value;
-  if (type === 'time') {
-    const at = $('#trAt') && $('#trAt').value;
-    if (!at) { toast('Izberi datum in uro.'); return; }
-    t.reminder = { type: 'time', at: at.slice(0, 16), fired: false };
-  } else {
-    const label = ($('#trLabel') && $('#trLabel').value.trim()) || 'nastavljeni lokaciji';
-    const lat = num($('#trLat') && $('#trLat').value), lon = num($('#trLon') && $('#trLon').value), radius = num($('#trRadius') && $('#trRadius').value) || 150;
-    if (lat == null || lon == null || lat < -90 || lat > 90 || lon < -180 || lon > 180) { toast('Za lokacijski opomnik vnesi veljavne koordinate.'); return; }
-    t.reminder = { type: 'location', label, lat, lon, radius: Math.max(30, Math.min(3000, radius)), fired: false };
-  }
-  const p = await ensureNotifyPermission();
-  save(); stopReminderMonitoring(); startReminderMonitoring(); sheet.close(); render();
-  if (p === 'denied') toast('Opomnik je shranjen, vendar so obvestila brskalnika blokirana.');
-  else if (p === 'unsupported') toast('Opomnik je shranjen. Ta brskalnik ne podpira obvestil.');
-  else toast('Opomnik je shranjen.');
+  t.due = dt($('#trDate') && $('#trDate').value);
+  t.time = tm($('#trTimeOnly') && $('#trTimeOnly').value);
+  if (t.time && !t.due) t.due = today();
+  t.repeat = ($('#trRepeat') && $('#trRepeat').value) || '';
+  delete t.reminder; // lokalni sprožilci opravil so ukinjeni: sproža Google Opravila
+  save(); sheet.close(); render();
+  if (t.googleTaskId) await pushTaskToGoogle(t, false); else await autoSyncNewTask(t);
+  toast(gcalOn() ? 'Shranjeno v Google Opravila.' : 'Shranjeno. Poveži Google račun za sinhronizacijo v Google Opravila.');
 }
 function removeTaskReminder() {
   const t = byId(S.tasks, taskReminderForm.id); if (!t) return;
-  delete t.reminder; save(); stopReminderMonitoring(); startReminderMonitoring(); sheet.close(); render(); toast('Opomnik odstranjen.');
+  t.due = null; t.time = null; delete t.reminder;
+  save(); sheet.close(); render();
+  if (t.googleTaskId) pushTaskToGoogle(t, false);
+  toast('Datum in ura odstranjena.');
 }
-function useCurrentLocation() {
-  if (!navigator.geolocation) { toast('Ta brskalnik ne podpira GPS lokacije.'); return; }
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = $('#trLat'), lon = $('#trLon');
-    if (lat) lat.value = pos.coords.latitude.toFixed(6);
-    if (lon) lon.value = pos.coords.longitude.toFixed(6);
-    const lab = $('#trLabel'); if (lab && !lab.value.trim()) lab.value = 'Trenutna lokacija';
-    toast('Trenutna lokacija je nastavljena.');
-  }, () => toast('GPS lokacije ni bilo mogoče določiti. Dovoli dostop do lokacije.'), { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-}
+function useCurrentLocation() {}
 
 /* ---------- daily plan editing ---------- */
 let planBlockForm = { i: null, value: null };
@@ -3839,7 +3784,6 @@ document.addEventListener('touchcancel', () => { tabSwipe = null; });
 document.addEventListener('change', e => {
   if (e.target.id === 'planFrom') { S.ui.from = tm(e.target.value) || '08:00'; save(); }
   if (e.target.id === 'planTo') { S.ui.to = tm(e.target.value) || '21:00'; save(); }
-  if (e.target.id === 'trType') toggleTaskReminderFields();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && e.target.id === 'quickTask') { e.preventDefault(); A.quickTask(); }
@@ -3869,7 +3813,7 @@ async function wxGeo(city) {
 }
 async function wxLoad(force) {
   const city = wxCity(), c = S.ui.wx;
-  if (!force && c && c.city === city && c.date === today() && Date.now() - c.at < 30 * 60000) return c;
+  if (!force && c && c.all && c.city === city && c.date === today() && Date.now() - c.at < 30 * 60000) return c;
   if (wxSt.busy && wxSt.p) return wxSt.p;
   wxSt.busy = true; wxSt.err = ''; wxUi();
   wxSt.p = (async () => {
@@ -3881,11 +3825,16 @@ async function wxLoad(force) {
         + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset,uv_index_max'
         + '&timezone=Europe%2FLjubljana&forecast_days=3');
       const cur = j.current, d = j.daily, h = j.hourly, t = today(), hours = [];
-      arr(h.time).forEach((tt, i) => { if (tt.slice(0, 10) === t) hours.push({ h: +tt.slice(11, 13), t: Math.round(h.temperature_2m[i]), p: h.precipitation_probability[i] || 0, c: h.weather_code[i], w: Math.round(h.wind_speed_10m[i]) }); });
+      const all = [];
+      arr(h.time).forEach((tt, i) => {
+        const row = { h: +tt.slice(11, 13), t: Math.round(h.temperature_2m[i]), p: h.precipitation_probability[i] || 0, c: h.weather_code[i], w: Math.round(h.wind_speed_10m[i]) };
+        if (tt.slice(0, 10) === t) hours.push(row);
+        all.push({ ...row, d: tt.slice(0, 10) });
+      });
       const w = {
         city, at: Date.now(), date: t,
         now: { t: Math.round(cur.temperature_2m), f: Math.round(cur.apparent_temperature), c: cur.weather_code, w: Math.round(cur.wind_speed_10m), mm: cur.precipitation || 0 },
-        hours,
+        hours, all,
         days: arr(d.time).map((date, i) => ({ date, c: d.weather_code[i], min: Math.round(d.temperature_2m_min[i]), max: Math.round(d.temperature_2m_max[i]), mm: Math.round((d.precipitation_sum[i] || 0) * 10) / 10, p: d.precipitation_probability_max[i] || 0, sr: String(d.sunrise[i]).slice(11, 16), ss: String(d.sunset[i]).slice(11, 16), uv: Math.round(d.uv_index_max[i] || 0) }))
       };
       S.ui.wx = w; save(); return w;
@@ -3926,19 +3875,21 @@ function wxInner() {
     return `<div class="wx-head"><span class="wx-big">🌡️</span><div class="grow"><strong>Vreme · ${esc(city)}</strong><small class="help" style="display:block;margin:2px 0 0">${esc(wxSt.err || 'Vreme še ni naloženo.')}</small></div><button class="btn sm ghost" data-act="wxRefresh">${ic('repeat', 15)} Poskusi znova</button></div>`;
   }
   const d0 = w.days[0], d1 = w.days[1], win = wxWindow(w), nowH = new Date().getHours();
-  const strip = w.hours.filter(x => x.h >= nowH && x.h <= 21 && x.h % 2 === (nowH % 2 === 0 ? 0 : 1)).slice(0, 6);
+  // vedno 3 okvirčki za naslednje tri polne ure, čez cel dan in čez polnoč
+  const nowTs = Date.now();
+  const strip = arr(w.all).filter(x => new Date(x.d + 'T' + pad(x.h) + ':00:00').getTime() > nowTs).slice(0, 3);
   return `<div class="wx-head"><span class="wx-big" aria-hidden="true">${wxEmoji(w.now.c)}</span>
       <div class="grow"><strong>Vreme · ${esc(w.city)}</strong><small class="help" style="display:block;margin:2px 0 0">${esc(wxDesc(w.now.c))}, občutek ${w.now.f}°</small></div>
       <div class="wx-temp">${w.now.t}°</div></div>
     <div class="wx-meta"><span>Danes ${d0.min}° / ${d0.max}°</span><span>Dež ${d0.p} %${d0.mm ? ' (' + d0.mm + ' mm)' : ''}</span><span>Veter ${w.now.w} km/h</span><span>Sonce ${esc(d0.sr)}–${esc(d0.ss)}</span></div>
-    ${strip.length ? `<div class="wx-hours">${strip.map(x => `<div><small>${pad(x.h)}:00</small><span aria-hidden="true">${wxEmoji(x.c)}</span><strong>${x.t}°</strong><small>${x.p} %</small></div>`).join('')}</div>` : ''}
+    ${strip.length ? `<div class="wx-hours three">${strip.map(x => `<div><small>${pad(x.h)}:00${x.d !== today() ? ' · jutri' : ''}</small><span aria-hidden="true">${wxEmoji(x.c)}</span><strong>${x.t}°</strong><small>${x.p} %</small></div>`).join('')}</div>` : ''}
     <p class="wx-sport ${win ? 'good' : 'bad'}">${win ? '🏃 Vadba na prostem: najbolje ob <strong>' + esc(win) + '</strong>.' : '🏠 Danes zunaj ni idealnega okna za vadbo: raje doma ali v telovadnici.'}</p>
     ${d1 ? `<p class="help" style="margin:6px 0 0">Jutri: ${esc(wxDesc(d1.c))}, ${d1.min}° / ${d1.max}°, dež ${d1.p} %.</p>` : ''}
     <div class="ag-chips" style="margin-bottom:0"><button class="btn sm ghost" data-act="wxRefresh" ${wxSt.busy ? 'disabled' : ''}>${wxSt.busy ? '<span class="spin"></span>' : ic('repeat', 15)} Osveži</button></div>`;
 }
 function wxCardHtml() {
   const w = S.ui.wx;
-  if (!wxSt.busy && (!w || w.city !== wxCity() || w.date !== today() || Date.now() - w.at > 30 * 60000) && Date.now() - wxSt.errAt > 300000) setTimeout(() => wxLoad(), 0);
+  if (!wxSt.busy && (!w || w.city !== wxCity() || w.date !== today() || Date.now() - w.at > 30 * 60000 || !w.all) && Date.now() - wxSt.errAt > 300000) setTimeout(() => wxLoad(), 0);
   return `<section class="wx-card" id="wxCard">${wxInner()}</section>`;
 }
 function wxUi() { const c = $('#wxCard'); if (c) c.innerHTML = wxInner(); }
@@ -4536,6 +4487,17 @@ render();
 if (fbCfg()) fbInit().catch(() => {});
 
 startReminderMonitoring();
+/* sprotno osveževanje oznake »zdaj« v dnevnem načrtu in urnih okvirčkov vremena */
+function liveTick() {
+  if (document.hidden) return;
+  try {
+    const el = $('#planFlow');
+    if (el && S.plan && S.plan.date === today() && !(sheet && sheet.open)) el.innerHTML = planFlowItems(S.plan);
+    if ($('#wxCard') && !wxSt.busy) wxUi();
+  } catch (e) { /* ignore */ }
+}
+setInterval(liveTick, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) liveTick(); });
 setTimeout(() => agentAutoStart(false), 700);
 setTimeout(() => wxLoad().catch(() => {}), 300);
 const qa = new URLSearchParams(location.search).get('a');
