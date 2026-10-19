@@ -261,7 +261,7 @@ details.fold>summary{cursor:pointer;font-weight:700;padding:10px 0;color:var(--i
 
 /* nav */
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
-nav .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav .in{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 nav button{border:0;background:transparent;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:500 12.5px var(--font-b);color:var(--ink2);cursor:pointer;position:relative}
 nav button[aria-current=page]{color:var(--petrol-d);font-weight:700}
 nav button[aria-current=page]::before{content:"";position:absolute;top:0;left:26%;right:26%;height:4px;border-radius:0 0 4px 4px;background:var(--petrol)}
@@ -840,6 +840,51 @@ input,select,textarea{box-sizing:border-box}
   .btn,.chip,.seg,.badge{border:1px solid ButtonText}
 }
 
+
+/* Finance · mobile-first, skladno z barvno temo */
+.fin-head,.fin-card-head,.fin-month,.fin-compact,.fin-pause,.fin-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.fin-head{margin:8px 0 14px}.fin-head strong{font-size:18px}.fin-head p{font-size:13px;margin:3px 0 0}
+.fin-card{padding:17px;margin:0 0 14px;background:var(--paper);border:1px solid var(--line);border-radius:19px;box-shadow:0 6px 22px rgba(15,37,48,.04);min-width:0}
+.fin-card h2{font-size:18px}.fin-card-head{align-items:flex-start;margin-bottom:13px;flex-wrap:wrap}.fin-card-head>div{min-width:0}
+.fin-card-head .muted{font-size:12px}.fin-eyebrow{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--petrol);display:block;margin-bottom:5px}
+.fin-month{justify-content:center;gap:12px;text-align:center;margin-bottom:15px}.fin-month strong{font-size:20px;display:block;text-transform:capitalize}
+.fin-month input{margin:5px auto 0;max-width:160px;font-size:12px;min-height:34px;padding:4px 8px}
+.fin-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.fin-stats>div{background:var(--blue-soft);color:var(--blue-ink);padding:11px;border-radius:12px;min-width:0}
+.fin-stats small,.fin-duodates small{display:block;font-size:12px;line-height:1.35;opacity:.8}
+.fin-stats strong{display:block;font-size:23px;line-height:1.5;font-family:var(--font-h);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fin-label{font:700 13px var(--font-b);color:var(--ink2);margin:19px 0 10px}
+.fin-chart{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px;height:104px;margin:5px 0 0}
+.fin-baritem{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;border:0;padding:2px 0;background:transparent;cursor:pointer;min-width:0;color:var(--ink2)}
+.fin-bar-track{height:76px;width:100%;max-width:25px;display:flex;align-items:flex-end;background:var(--mist);border-radius:6px;overflow:hidden}
+.fin-bar-track i{background:var(--petrol);width:100%;min-height:0;border-radius:6px 6px 0 0;display:block}
+.fin-baritem.active .fin-bar-track{outline:2px solid var(--gold);outline-offset:2px}.fin-baritem.active small{font-weight:800;color:var(--petrol)}
+.fin-baritem small{font-size:10px;line-height:1.5}.fin-note{font-size:12.5px;line-height:1.5;color:var(--ink2);margin:12px 0 2px}
+.fin-duodates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fin-duodates>div{padding:13px 10px;background:var(--petrol-t);color:var(--petrol-d);border-radius:12px}
+.fin-duodates strong{display:block;font-size:17px;font-family:var(--font-h);margin-top:4px}
+.fin-warning{font-size:12.5px;line-height:1.45;padding:10px 12px;background:var(--gold-t);color:var(--ink);border-radius:10px;margin:12px 0}
+.fin-good{background:var(--moss-t);padding:10px 12px;border-radius:10px;font-size:12.5px}
+.fin-good-text{color:var(--moss)}
+.fin-fit-tools,.fin-actions,.fin-templates,.fin-form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.fin-form-actions{flex-direction:column}
+.fin-pauses{border-top:1px solid var(--line);margin-top:15px}
+.fin-pause,.fin-compact{padding:10px 0;border-bottom:1px solid var(--line)}
+.fin-compact>div,.fin-pause>div{min-width:0;flex:1}
+.fin-compact strong,.fin-pause strong{display:block;overflow-wrap:anywhere;font-size:14px}
+.fin-compact small,.fin-pause small{display:block;color:var(--ink2);font-size:12px;margin-top:2px}
+.fin-tabs{display:flex;gap:5px;margin:8px 0 5px;background:var(--blue-soft);padding:4px;border-radius:12px}
+.fin-tabs button{flex:1;border:0;border-radius:9px;background:transparent;color:var(--blue-ink);font-size:12.5px;font-weight:700;padding:9px 4px;cursor:pointer}
+.fin-tabs button[aria-pressed=true]{background:var(--paper);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.fin-entry{flex-wrap:wrap;align-items:flex-start;border-bottom:1px solid var(--line);padding:13px 0}
+.fin-entry-main{min-width:0;flex:1 1 120px}.fin-entry-main strong{display:block;overflow-wrap:anywhere;font-size:14px}.fin-entry-main small,.fin-entry-right small{display:block;font-size:11.5px;color:var(--ink2);line-height:1.45}
+.fin-entry-right{text-align:right;flex:0 0 auto}.fin-entry-right strong{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.fin-entry-actions{width:100%;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.fin-entry-actions .btn{min-height:31px;font-size:12px}
+.fin-empty{font-size:13px;color:var(--ink2);padding:10px 0}.fin-check{display:flex!important;gap:10px;align-items:center;min-height:45px;background:var(--blue-soft);border-radius:10px;padding:9px 12px;font-size:13.5px;font-weight:500!important;margin:0 0 13px}
+.fin-check input{flex:0 0 18px;width:18px;height:18px;accent-color:var(--petrol)}
+.fin-fixed{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--blue-soft);font-size:14px}
+@media(max-width:390px){.fin-card{padding:12px}.fin-head{align-items:flex-start}.fin-stats strong{font-size:20px}.fin-duodates strong{font-size:15px}.fin-chart{gap:3px}.fin-baritem small{font-size:9px}.fin-entry-actions{justify-content:flex-start}nav button{font-size:11px}}
+
 </style>
 </head>
 <body>
@@ -926,6 +971,7 @@ const str = v => (v == null || v === '' || v === 'null') ? null : String(v).trim
 const arr = v => Array.isArray(v) ? v : [];
 
 const ICON = {
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10V6a2 2 0 0 1 2-2h13"/><path d="M15 13h6v4h-6a2 2 0 0 1 0-4z"/>',
   moon: '<path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
   list: '<path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5M3.6 6.2l1.3 1.3 2.2-2.6M3.6 12.2l1.3 1.3 2.2-2.6M3.6 18.2l1.3 1.3 2.2-2.6"/>',
@@ -961,7 +1007,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-15 · v18 · agent ureja tudi dnevni načrt';
+const APP_VERSION = '2026-10-19 · v19 · Finance in FITINN mirovanja';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -973,7 +1019,7 @@ const store = {
 const DEFAULT = {
   settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null, prefs: {}, profile: { city: 'Celje' } },
   modelCache: null, agentMem: { handled: {}, mail: {}, last: null, rules: [], edits: [] },
-  tasks: [], reminders: [], inbox: [], plan: null, deadlines: [], notes: [], dismissed: {},
+  tasks: [], reminders: [], inbox: [], plan: null, deadlines: [], notes: [], finances: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', taskSort: 'due' }
 };
 
@@ -988,6 +1034,19 @@ function normalizeState(st) {
   LEGACY.settings.forEach(k => delete st.settings[k]);
   LEGACY.ui.forEach(k => delete st.ui[k]);
   ['tasks', 'reminders', 'deadlines', 'notes', 'inbox'].forEach(k => { if (!Array.isArray(st[k])) st[k] = []; });
+  // Ob prvi nadgradnji dodaj FITINN. Ne ustvari ga ponovno, če ga uporabnik pozneje izbriše.
+  if (!Array.isArray(st.finances)) st.finances = [];
+  if (!st.financesInitialized) {
+    st.financesInitialized = true;
+    if (!st.finances.some(x => x && x.special === 'fitinn')) st.finances.push({
+      id: 'fitinn-pro-2026', type: 'subscription', special: 'fitinn',
+      title: 'FITINN PRO', category: 'Šport', amount: 30, interval: 1,
+      startMonth: '2026-10', endMonth: '', baseEnd: '2027-03-31',
+      noticeSentOn: '', pauses: [], paidMonths: [],
+      note: 'Robert Filipšek – članska št. 4628547. Izhodiščni konec 31. 3. 2027; rok za odpoved 28. 2. 2027. Samodejno podaljšanje za 6 mesecev. Paket PRO: do 2 meseca mirovanja v posameznem 12-mesečnem obdobju članstva; urediti pred začetkom meseca. Mirovanje = 0 € vadnine in podaljšanje za isti čas. Prejšnja mirovanja so morda že vključena v izhodiščni datum.'
+    });
+  }
+  st.finances = st.finances.filter(x => x && typeof x === 'object' && ['subscription','bill','warranty'].includes(x.type)).map(x => ({ ...x, id: String(x.id || uid()), paidMonths: Array.isArray(x.paidMonths) ? x.paidMonths : [], pauses: Array.isArray(x.pauses) ? x.pauses : [] }));
   if (!st.dismissed || typeof st.dismissed !== 'object') st.dismissed = {};
   st.reminders = st.reminders.filter(r => r && !r.billId);
   st.inbox = st.inbox.filter(x => x && typeof x === 'object');
@@ -1012,7 +1071,7 @@ function normalizeState(st) {
       : { boxes: ['inbox'], period: '3', skip: ['promotions', 'social', 'forums'], unread: false, extra: '' };
   }
   delete st.settings.gmailQuery;
-  if (!['today', 'calendar', 'tasks', 'notes'].includes(st.ui.tab)) st.ui.tab = 'today';
+  if (!['today', 'calendar', 'tasks', 'notes', 'finance'].includes(st.ui.tab)) st.ui.tab = 'today';
   return st;
 }
 function load() {
@@ -1243,13 +1302,14 @@ function headerFor(tab) {
   const greet = h < 10 ? 'Dobro jutro' : h < 18 ? 'Dober dan' : 'Dober večer';
   if (tab === 'today') return { t: 'Danes', s: greet + ' · tvoj osebni načrt' };
   if (tab === 'calendar') return { t: 'Koledar', s: 'Dogodki, termini in načrtovani dnevi' };
+  if (tab === 'finance') return { t: 'Finance', s: 'Stroški, naročnine, računi in garancije' };
   if (tab === 'notes') return { t: 'Zapiski', s: 'Ideje, pomembne informacije in slike' };
   const open = S.tasks.filter(t => !t.done).length;
   return { t: 'Opravila', s: open ? `${open} odprtih` : 'Nič odprtega' };
 }
 
 function backupReminderHtml() {
-  const hasData = S.tasks.length || S.reminders.length || S.deadlines.length || S.notes.length || S.plan;
+  const hasData = S.tasks.length || S.reminders.length || S.deadlines.length || S.notes.length || (S.finances || []).length || S.plan;
   if (!hasData) return '';
   const last = S.settings.lastBackupAt || S.settings.backupReminderDismissedAt;
   if (last && dayDiff(last) < 30) return '';
@@ -1910,7 +1970,7 @@ function noteMailOpenApp() {
   }
   location.href = url;
 }
-const NAV = [['today', 'Danes', 'sun'], ['calendar', 'Koledar', 'calendar'], ['tasks', 'Opravila', 'list'], ['notes', 'Zapiski', 'pen']];
+const NAV = [['today', 'Danes', 'sun'], ['calendar', 'Koledar', 'calendar'], ['tasks', 'Opravila', 'list'], ['finance', 'Finance', 'wallet'], ['notes', 'Zapiski', 'pen']];
 /* ---------- stable UI rendering ---------- */
 /*
  * render() lahko ponovno izriše vsebino, vendar ne sme izgubiti uporabnikovega
@@ -1996,7 +2056,7 @@ function render(options = {}) {
 
   $('#title').textContent = H.t;
   $('#sub').textContent = H.s;
-  $('#view').innerHTML = ({ today: renderToday, calendar: renderCalendar, tasks: renderTasks, notes: renderNotes })[tab]();
+  $('#view').innerHTML = ({ today: renderToday, calendar: renderCalendar, tasks: renderTasks, notes: renderNotes, finance: renderFinance })[tab]();
   if (window.__lfLastTab !== tab) { const v = $('#view'); v.classList.remove('tab-in'); void v.offsetWidth; v.classList.add('tab-in'); window.__lfLastTab = tab; }
   $('#nav').innerHTML = NAV.map(([id, l, i]) =>
     `<button data-act="tab" data-tab="${id}" ${id === tab ? 'aria-current="page"' : ''}>${ic(i, 24)}<span>${l}</span></button>`
@@ -4798,6 +4858,247 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id === 'agentText') { e.preventDefault(); A.agentGo(); }
 });
+
+/* ========== FINANCE: subscriptions, invoices and warranties ========== */
+const finUi = { month: today().slice(0, 7), filter: 'all' };
+let finForm = null;
+const FIN_CATS = ['Naročnine', 'Šport', 'Dom', 'Avto', 'Zdravje', 'Zabava', 'Tehnologija', 'Nakupi', 'Drugo'];
+const finEuro = n => (Number(n) || 0).toLocaleString('sl-SI', { style: 'currency', currency: 'EUR' });
+const finMonthLabel = m => new Date(Number(m.slice(0,4)), Number(m.slice(5,7))-1, 1).toLocaleDateString('sl-SI', { month: 'long', year: 'numeric' });
+const finMonthShift = (m, n) => addMonths(m + '-01', n).slice(0,7);
+const finMonthsApart = (a,b) => (Number(a.slice(0,4))-Number(b.slice(0,4)))*12+Number(a.slice(5,7))-Number(b.slice(5,7));
+const finMonthValid = v => /^\d{4}-(0[1-9]|1[0-2])$/.test(v||'');
+const finValidDate = v => !!dt(v) && ymd(parseYmd(v)) === v;
+const finBoundedPrice = v => { const n = num(v); return n !== null && n >= 0 && n <= 100000000 ? Math.round(n*100)/100 : null; };
+const finSel = (id, pairs, v) => `<select id="${id}">${pairs.map(([key,text]) => `<option value="${esc(key)}" ${String(v)===String(key)?'selected':''}>${esc(text)}</option>`).join('')}</select>`;
+function finFit() { return S.finances.find(x=>x&&x.special==='fitinn'&&x.type==='subscription'); }
+function finPauseList(fit) {
+  return arr(fit && fit.pauses).filter(x => x && finMonthValid(x.month));
+}
+function finFitDates(fit) {
+  if (!fit) return null;
+  const base = finValidDate(fit.baseEnd) ? fit.baseEnd : '2027-03-31';
+  const pauses = finPauseList(fit).filter(p=>!p.included);
+  let renewal = 0, end = base, count = 0;
+  for(let i=0;i<100;i++) {
+    let c = 0, e = end;
+    // Mirovanja znotraj obdobja in podaljšanega konca (upoštevaj vsako samo enkrat).
+    for(let j=0;j<25;j++) {
+      c = pauses.filter(p=>p.month <= e.slice(0,7)).length;
+      const newEnd = addMonths(base, renewal * 6 + c);
+      if(newEnd === e) break;
+      e = newEnd;
+    }
+    end=e; count=c;
+    const cancelBy = addMonths(end,-1);
+    if (fit.noticeSentOn || today() <= cancelBy || renewal >= 30) return { end, cancelBy, extra:count, renewal, base };
+    renewal++;
+    end=addMonths(base, renewal*6 + c);
+  }
+  return {end, cancelBy:addMonths(end,-1), extra:count, renewal, base};
+}
+function finFitPause(fit,month) { return finPauseList(fit).find(p=>p.month===month); }
+function finEligible(s,month) {
+  if (!finMonthValid(month) || month < (s.startMonth||'0000-01') || (s.endMonth && month > s.endMonth)) return false;
+  if (s.special==='fitinn' && s.noticeSentOn) {
+    const d=finFitDates(s); if (d && month > d.end.slice(0,7)) return false;
+  }
+  const interval = Math.max(1,Math.min(120,Math.round(Number(s.interval)||1)));
+  return finMonthsApart(month,s.startMonth||month)%interval===0;
+}
+function finEntries(month) {
+  const rows=[];
+  arr(S.finances).forEach(x=>{
+    if (!x || !x.id) return;
+    if (x.type==='subscription' && finEligible(x,month)) {
+      const pause=x.special==='fitinn' ? finFitPause(x,month) : null;
+      rows.push({id:x.id, type:x.type,title:x.title,category:x.category,amount:pause?0:Number(x.amount)||0,paid:!pause&&arr(x.paidMonths).includes(month),pause:!!pause,item:x});
+    } else if (x.type==='bill' && String(x.date||'').slice(0,7)===month) {
+      rows.push({id:x.id,type:x.type,title:x.title,category:x.category,amount:Number(x.amount)||0,paid:!!x.paid, date:x.date,item:x});
+    } else if (x.type==='warranty' && String(x.date||'').slice(0,7)===month && Number(x.amount)>0) {
+      rows.push({id:x.id,type:x.type,title:x.title,category:x.category,amount:Number(x.amount)||0,paid:true,date:x.date,item:x});
+    }
+  });
+  return rows;
+}
+function finNumbers(month) {
+  const rows=finEntries(month);
+  return {rows,total:rows.reduce((v,x)=>v+x.amount,0),paid:rows.filter(x=>x.paid).reduce((v,x)=>v+x.amount,0),due:rows.filter(x=>!x.paid).reduce((v,x)=>v+x.amount,0),subscriptions:rows.filter(x=>x.type==='subscription').reduce((v,x)=>v+x.amount,0)};
+}
+function finWarrantyStatus(x) {
+  if(!finValidDate(x.expiry))return null;
+  const days=dayDiff(x.expiry);
+  return {days,label:days<0?'Potekla':days===0?'Poteče danes':days<=30?`Poteče čez ${days} dni`:`Do ${fmtDateY(x.expiry)}`};
+}
+function renderFinance() {
+  const m=finUi.month, f=finNumbers(m), fit=finFit(), fd=finFitDates(fit);
+  const yy=Number(m.slice(0,4));
+  const data=Array.from({length:12},(_,i)=>finNumbers(yy+'-'+pad(i+1)).total), max=Math.max(1,...data);
+  const list=finUi.filter==='all' ? f.rows : f.rows.filter(x=>finUi.filter==='subscription' ? x.type==='subscription' : x.type!=='subscription');
+  const warranties=S.finances.filter(x=>x.type==='warranty').sort((a,b)=>(a.expiry||'9999').localeCompare(b.expiry||'9999'));
+  const subs=S.finances.filter(x=>x.type==='subscription');
+  const dues=S.finances.filter(x=>x.type==='bill'&&!x.paid&&finValidDate(x.date)).sort((a,b)=>a.date.localeCompare(b.date));
+  const expiring=warranties.filter(x=>finValidDate(x.expiry)&&dayDiff(x.expiry)<=60&&dayDiff(x.expiry)>=-30);
+  const bars=data.map((v,i)=>{
+    const nm=yy+'-'+pad(i+1), active=nm===m;
+    return `<button type="button" class="fin-baritem ${active?'active':''}" data-act="finMonth" data-month="${nm}" title="${esc(finMonthLabel(nm))}: ${esc(finEuro(v))}" aria-label="${esc(finMonthLabel(nm))}: ${esc(finEuro(v))}" aria-pressed="${active}"><span class="fin-bar-track"><i style="height:${Math.max(v>0?5:0, Math.round(v/max*100))}%"></i></span><small>${pad(i+1)}</small></button>`;
+  }).join('');
+  return `<div class="fin-head"><div><strong>Pregled stroškov</strong><p class="muted">Naročnine, računi, nakupi in garancije na enem mestu.</p></div><button class="btn sm" data-act="finNew" data-type="subscription">+ Naročnina</button></div>
+    <section class="fin-card"><div class="fin-month"><button type="button" class="icon-btn" data-act="finShift" data-n="-1" aria-label="Prejšnji mesec">${ic('chevron-left',20)}</button><div><strong>${esc(finMonthLabel(m))}</strong><input type="month" id="finPickMonth" value="${m}" aria-label="Izberi mesec"></div><button type="button" class="icon-btn" data-act="finShift" data-n="1" aria-label="Naslednji mesec">${ic('chevron-right',20)}</button></div>
+    <div class="fin-stats"><div><small>Stroški skupaj</small><strong>${finEuro(f.total)}</strong></div><div><small>Naročnine</small><strong>${finEuro(f.subscriptions)}</strong></div><div><small>Označeno plačano</small><strong>${finEuro(f.paid)}</strong></div><div><small>Še neoznačeno</small><strong>${finEuro(f.due)}</strong></div></div>
+    <h3 class="fin-label">Pregled po mesecih · ${yy}</h3><div class="fin-chart" aria-label="Letni pregled stroškov">${bars}</div><p class="fin-note">Graf prikazuje evidentirane in predvidene stroške, ne stanja bančnega računa. Plačila označiš ročno.</p></section>
+    ${fit&&fd?`<section class="fin-card fin-fit"><div class="fin-card-head"><div><small class="fin-eyebrow">FITINN PRO · ${finEuro(fit.amount)} / mesec</small><h2>Članstvo in mirovanje</h2><span class="muted">Robert Filipšek · št. 4628547</span></div><button class="btn sm ghost" data-act="finEdit" data-id="${esc(fit.id)}">Uredi</button></div>
+      <div class="fin-duodates"><div><small>Rok za odpoved</small><strong>${fmtDateY(fd.cancelBy)}</strong></div><div><small>Možni konec članstva</small><strong>${fmtDateY(fd.end)}</strong></div></div>
+      ${fd.renewal?`<p class="fin-warning">Rok za prvotni iztek je glede na današnji datum že potekel. Prikazan je izračun ob samodejnem ${fd.renewal===1?'podaljšanju':'podaljševanju'} za 6 mesecev, če odpoved ni bila pravočasno oddana.</p>`:''}
+      ${fit.noticeSentOn?`<p class="fin-good">Odpoved evidentirana: ${fmtDateY(fit.noticeSentOn)}. Preveri, ali jo je FITINN tudi potrdil.</p>`:''}
+      <div class="fin-fit-tools"><button class="btn sm ghost" data-act="finRemind" data-kind="fitinn" data-id="${esc(fit.id)}">${ic('bell',16)} Opomnik za odpoved</button><button class="btn sm" data-act="finPauseNew">${ic('pause',16)} Dodaj mirovanje</button><button class="btn sm ghost" data-act="finPauseNew" data-month="${m}">Mirovanje za ${esc(finMonthLabel(m))}</button></div>
+      ${finPauseList(fit).length?`<div class="fin-pauses">${finPauseList(fit).slice().sort((a,b)=>a.month.localeCompare(b.month)).map(p=>`<div class="fin-pause"><div><strong>${esc(finMonthLabel(p.month))}</strong><small>${p.included?'Že upoštevano v izhodiščnem datumu':'Novo mirovanje – prestavi konec za 1 mesec'}</small></div><button class="btn sm ghost" data-act="finPauseEdit" data-month="${p.month}">Uredi</button></div>`).join('')}</div>`:''}
+      <p class="fin-note"><strong>Pravila:</strong> pogodba se samodejno podaljšuje za 6 mesecev; odpoved oddaj najmanj en mesec pred možnim koncem. Paket PRO dopušča do 2 meseca mirovanja v posameznem 12-mesečnem obdobju članstva. Mirovanje moraš urediti pri FITINN <strong>pred začetkom meseca</strong>. Tak mesec je vadnina 0 €, konec pogodbe se prestavi za mesec. Ta evidenca sama ne odda odpovedi ali zahtevka za mirovanje.</p>
+      <p class="fin-note"><strong>Pomembno:</strong> izhodiščni datum ${fmtDateY(fd.base)} lahko že vključuje starejša mirovanja. Takšna mirovanja označi kot »že upoštevano«, da ne podaljšajo datuma dvakrat. Rok po spremembah vedno potrdi pri FITINN.</p>
+    </section>`:''}
+    <section class="fin-card"><div class="fin-card-head"><h2>Stroški v mesecu</h2><button class="btn sm ghost" data-act="finNew" data-type="bill">+ Račun</button></div>
+      <div class="fin-tabs"><button data-act="finFilter" data-v="all" aria-pressed="${finUi.filter==='all'}">Vsi</button><button data-act="finFilter" data-v="subscription" aria-pressed="${finUi.filter==='subscription'}">Naročnine</button><button data-act="finFilter" data-v="other" aria-pressed="${finUi.filter==='other'}">Ostalo</button></div>
+      ${list.length?list.map(x=>`<div class="fin-entry"><div class="fin-entry-main"><strong>${esc(x.title)}</strong><small>${esc(x.category||'Drugo')} · ${x.pause?'Mirovanje – brez plačila':x.type==='subscription'?'Naročnina':x.type==='warranty'?'Nakup z garancijo':'Enkratni račun'}${x.date?' · '+esc(fmtDateY(x.date)):''}</small></div><div class="fin-entry-right"><strong>${finEuro(x.amount)}</strong><small class="${x.pause?'fin-good-text':x.paid?'fin-good-text':''}">${x.pause?'Mirovanje':x.paid?'Plačano':'Ni označeno plačano'}</small></div><div class="fin-entry-actions">${x.pause?'':x.type==='warranty'?'':`<button class="btn sm ghost" data-act="finPaid" data-id="${esc(x.id)}" data-month="${m}">${x.paid?'↩ Odznači':'✓ Plačano'}</button>`}<button class="btn sm ghost" data-act="finEdit" data-id="${esc(x.id)}">Uredi</button></div></div>`).join(''):`<p class="fin-empty">V tem mesecu še ni evidentiranih stroškov.</p>`}
+    </section>
+    <section class="fin-card"><div class="fin-card-head"><h2>Moje naročnine</h2><button class="btn sm ghost" data-act="finNew" data-type="subscription">+ Dodaj</button></div>
+      ${subs.map(s=>`<div class="fin-compact"><div><strong>${esc(s.title)}</strong><small>${finEuro(s.amount)} na ${s.interval===12?'leto':s.interval===6?'6 mesecev':s.interval===3?'3 mesece':'mesec'} · ${esc(s.startMonth||'')}</small></div><button class="btn sm ghost" data-act="finEdit" data-id="${esc(s.id)}">Uredi</button></div>`).join('')}
+      <div class="fin-templates"><button class="btn sm ghost" data-act="finTemplate" data-title="VOYO">+ VOYO</button><button class="btn sm ghost" data-act="finTemplate" data-title="ChatGPT">+ ChatGPT</button></div>
+      <p class="fin-note">Za VOYO in ChatGPT vnesi dejansko ceno in začetek obračunavanja – zneskov ne ugibam.</p></section>
+    <section class="fin-card"><div class="fin-card-head"><h2>Računi in garancije</h2><div class="fin-actions"><button class="btn sm ghost" data-act="finNew" data-type="bill">+ Račun</button><button class="btn sm ghost" data-act="finNew" data-type="warranty">+ Garancija</button></div></div>
+      ${dues.length?`<h3 class="fin-label">Neplačani računi</h3>${dues.slice(0,8).map(x=>`<div class="fin-compact"><div><strong>${esc(x.title)}</strong><small>${fmtDateY(x.date)} · ${finEuro(x.amount)}${x.date<today()?' · ZAPADLO':''}</small></div><span class="fin-actions"><button class="btn sm ghost" data-act="finRemind" data-kind="bill" data-id="${esc(x.id)}">Opomnik</button><button class="btn sm ghost" data-act="finEdit" data-id="${esc(x.id)}">Odpri</button></span></div>`).join('')}`:''}
+      <h3 class="fin-label">Garancije ${warranties.length?'('+warranties.length+')':''}</h3>
+      ${warranties.length?warranties.map(x=>{const st=finWarrantyStatus(x);return `<div class="fin-compact"><div><strong>${esc(x.title)}</strong><small>${st?esc(st.label):'Brez datuma izteka'}${x.expiry?' · '+esc(fmtDateY(x.expiry)):''}</small></div><span class="fin-actions">${x.expiry?`<button class="btn sm ghost" data-act="finRemind" data-kind="warranty" data-id="${esc(x.id)}">Opomnik</button>`:''}<button class="btn sm ghost" data-act="finEdit" data-id="${esc(x.id)}">Uredi</button></span></div>`;}).join(''):'<p class="fin-empty">Dodaj račun in datum garancije za naprave, obutev, elektroniko in druge nakupe.</p>'}
+      ${expiring.length?`<p class="fin-warning">Nekatere garancije se kmalu iztečejo. Z gumbom »Opomnik« jih lahko dodaš med roke v zavihku Opravila.</p>`:''}
+    </section>`;
+}
+function finReadForm() {
+  if (!finForm) return null;
+  const f={...finForm};
+  ['title','category','amount','startMonth','endMonth','interval','date','expiry','note','baseEnd','noticeSentOn'].forEach(k=>{const el=$('#fin_'+k);if(el)f[k]=el.value;});
+  const paid=$('#fin_paid');if(paid)f.paid=paid.checked;
+  return f;
+}
+function finFormHtml() {
+  const f=finForm, sub=f.type==='subscription', fit=f.special==='fitinn', bill=f.type==='bill';
+  const opts=FIN_CATS.map(c=>[c,c]);
+  return `<div class="sheet-h"><h2>${f.id?'Uredi':'Dodaj'} ${sub?'naročnino':bill?'račun':'garancijo'}</h2>${closeBtn}</div>
+    <p class="hint">Vnosi se shranijo v LifeFlow in se vključijo v varnostno kopijo ter povezano sinhronizacijo.</p>
+    <div class="field"><label for="fin_title">Naziv</label><input id="fin_title" type="text" maxlength="100" value="${esc(f.title||'')}" placeholder="npr. VOYO" autocomplete="off"></div>
+    <div class="field two"><div><label for="fin_amount">${f.type==='warranty'?'Cena nakupa (€)':'Znesek (€)'}</label><input id="fin_amount" type="number" min="0" max="100000000" step="0.01" inputmode="decimal" value="${esc(f.amount??'')}" placeholder="0,00"></div><div><label for="fin_category">Kategorija</label>${finSel('fin_category',opts,f.category||'Drugo')}</div></div>
+    ${sub?`<div class="field two"><div><label for="fin_startMonth">Spremljam od (mesec)</label><input id="fin_startMonth" type="month" value="${esc(f.startMonth||today().slice(0,7))}"></div><div><label for="fin_interval">Obračunavanje</label>${fit?'<input id="fin_interval" type="hidden" value="1"><div class="fin-fixed">Vsak mesec</div>':finSel('fin_interval',[[1,'Vsak mesec'],[3,'Vsake 3 mesece'],[6,'Vsakih 6 mesecev'],[12,'Vsako leto']],f.interval||1)}</div></div>
+      <div class="field"><label for="fin_endMonth">Zadnji mesec obračunavanja (neobvezno)</label><input id="fin_endMonth" type="month" value="${esc(f.endMonth||'')}"></div>
+      ${fit?`<div class="field"><label for="fin_baseEnd">Izhodiščni prvi možni konec pogodbe</label><input id="fin_baseEnd" type="date" value="${esc(f.baseEnd||'2027-03-31')}"><p class="help">Podatek FITINN: 31. 3. 2027. Datuma ne spreminjaj za nova mirovanja – ta se dodajajo posebej. Morebitna starejša mirovanja so morda že vključena.</p></div>
+      <div class="field"><label for="fin_noticeSentOn">Datum oddaje odpovedi (če je bila oddana)</label><input id="fin_noticeSentOn" type="date" value="${esc(f.noticeSentOn||'')}"><p class="help">Datum evidentiraj šele, ko odpoved dejansko oddaš. Shrani tudi potrdilo FITINN.</p></div>`:''}`:
+    `<div class="field two"><div><label for="fin_date">${bill?'Datum zapadlosti':'Datum nakupa'}</label><input id="fin_date" type="date" value="${esc(f.date||today())}"></div>${bill?`<div><label>Stanje plačila</label><label class="fin-check"><input id="fin_paid" type="checkbox" ${f.paid?'checked':''}> Plačano</label></div>`:`<div><label for="fin_expiry">Garancija do</label><input id="fin_expiry" type="date" value="${esc(f.expiry||'')}"></div>`}</div>`}
+    <div class="field"><label for="fin_note">Opombe</label><textarea id="fin_note" rows="3" maxlength="3000" placeholder="Pogoji, izvajalec, številka naročila, povezava do računa ...">${esc(f.note||'')}</textarea></div>
+    <div class="fin-form-actions"><button class="btn wide" data-act="finSave">Shrani</button>${f.id?`<button class="btn wide ghost danger" data-act="finDelete" data-id="${esc(f.id)}">Izbriši</button>`:''}</div>`;
+}
+function finOpenForm(type,id,template) {
+  const old=id?S.finances.find(x=>x.id===id):null;
+  if(id&&!old){toast('Vnos ni bil najden.');return;}
+  const defaults={id:null,type:type||'subscription',title:template||'',amount:'',category:type==='subscription'?'Naročnine':'Drugo',interval:1,startMonth:finUi.month,endMonth:'',date:today(),expiry:'',paid:false,note:''};
+  finForm={...defaults,...(old?JSON.parse(JSON.stringify(old)):{})};
+  openSheet(finFormHtml(),'finance');
+}
+function finSaveForm() {
+  const f=finReadForm();if(!f)return;
+  f.title=String(f.title||'').trim();
+  if(!f.title){toast('Vpiši naziv.');return;}
+  const n=finBoundedPrice(f.amount);
+  if(n===null){toast('Vpiši veljaven znesek v evrih (lahko 0).');return;}
+  f.amount=n;
+  if(f.type==='subscription'){
+    if(!finMonthValid(f.startMonth) || (f.endMonth && (!finMonthValid(f.endMonth)||f.endMonth<f.startMonth))){toast('Preveri začetni in zadnji mesec.');return;}
+    f.interval=f.special==='fitinn'?1:Number(f.interval);
+    if(![1,3,6,12].includes(f.interval)){toast('Preveri obračunavanje.');return;}
+    if(f.special==='fitinn'&&(!finValidDate(f.baseEnd)||(f.noticeSentOn&&!finValidDate(f.noticeSentOn)))){toast('Preveri datum pogodbe ali oddaje odpovedi.');return;}
+    f.paidMonths=arr(f.paidMonths);f.pauses=arr(f.pauses);
+  }else if(!finValidDate(f.date)){toast('Izberi pravilen datum.');return;}
+  else if(f.type==='warranty'&&f.expiry&&(!finValidDate(f.expiry)||f.expiry<f.date)){toast('Garancija ne more poteči pred nakupom.');return;}
+  f.note=String(f.note||'').trim();
+  if(f.id){const i=S.finances.findIndex(x=>x.id===f.id);if(i<0)return;S.finances[i]=f;}
+  else{f.id=uid();S.finances.push(f);}
+  finForm=null;finRefreshLinkedDeadlines();save();sheet.close();render();toast('Finance: vnos shranjen.');
+}
+let finPauseForm=null;
+function finPauseOpen(month) {
+  const fit=finFit();if(!fit){toast('Članstvo FITINN ni bilo najdeno.');return;}
+  const p=finPauseList(fit).find(x=>x.month===month);
+  finPauseForm={month:month||finUi.month,oldMonth:p?p.month:null,included:p?!!p.included:false};
+  $('#sheetBody').innerHTML='';
+  openSheet(`<div class="sheet-h"><h2>${p?'Uredi':'Dodaj'} mirovanje FITINN</h2>${closeBtn}</div>
+    <div class="field"><label for="fin_pauseMonth">Mesec mirovanja</label><input id="fin_pauseMonth" type="month" value="${esc(finPauseForm.month)}"></div>
+    <label class="fin-check"><input id="fin_pauseIncluded" type="checkbox" ${finPauseForm.included?'checked':''}> To mirovanje je <strong>že upoštevano</strong> v izhodiščnem datumu 31. 3. 2027</label>
+    <p class="hint">Če ni že upoštevano, bo podaljšalo pogodbo za en mesec. Za ta mesec se 30 € vadnine ne bo štelo v stroške.</p>
+    <p class="fin-warning">Ureditev tukaj je samo osebna evidenca. Mirovanje moraš pravočasno potrditi pri FITINN pred začetkom meseca; velja omejitev do dveh mesecev v ustreznem 12-mesečnem obdobju članstva.</p>
+    <div class="fin-form-actions"><button class="btn wide" data-act="finPauseSave">Shrani mirovanje</button>${p?'<button class="btn wide ghost danger" data-act="finPauseDelete">Odstrani mirovanje</button>':''}</div>`, 'finPause');
+}
+function finPauseSave() {
+  const fit=finFit(), f=finPauseForm; if(!fit||!f)return;
+  const month=$('#fin_pauseMonth')?.value, included=!!$('#fin_pauseIncluded')?.checked;
+  if(!finMonthValid(month)){toast('Izberi mesec mirovanja.');return;}
+  if(finPauseList(fit).some(p=>p.month===month&&p.month!==f.oldMonth)){toast('Za ta mesec je mirovanje že vpisano.');return;}
+  const pauses=finPauseList(fit).filter(p=>p.month!==f.oldMonth);
+  pauses.push({month,included});fit.pauses=pauses;
+  finPauseForm=null;finRefreshLinkedDeadlines();save();sheet.close();render();
+  const d=finFitDates(fit);
+  const recent=pauses.filter(p=>finMonthsApart(month,p.month)>=0&&finMonthsApart(month,p.month)<12).length;
+  toast(recent>2?`Shranjeno. Pozor: v zadnjih 12 mesecih so evidentirana ${recent} mirovanja – preveri dovoljeno kvoto pri FITINN.`:`Mirovanje shranjeno. Izračunan konec: ${fmtDateY(d.end)}.`);
+}
+function finPauseDelete() {
+  const fit=finFit(),f=finPauseForm;if(!fit||!f||!f.oldMonth)return;
+  fit.pauses=finPauseList(fit).filter(x=>x.month!==f.oldMonth);
+  finPauseForm=null;finRefreshLinkedDeadlines();save();sheet.close();render();toast('Mirovanje odstranjeno.');
+}
+
+function finDeadlineFor(item,kind) {
+  if(!item)return null;
+  if(kind==='fitinn' && item.special==='fitinn') return {date:finFitDates(item).cancelBy,title:'FITINN PRO – oddaj odpoved',lead:30,done:!!item.noticeSentOn};
+  if(kind==='bill' && item.type==='bill' && finValidDate(item.date)) return {date:item.date,title:'Plačaj račun: '+item.title,lead:7,done:!!item.paid};
+  if(kind==='warranty' && item.type==='warranty' && finValidDate(item.expiry)) return {date:item.expiry,title:'Iztek garancije: '+item.title,lead:30,done:false};
+  return null;
+}
+function finRefreshLinkedDeadlines() {
+  arr(S.deadlines).forEach(d=>{
+    if(!d.financeId || !d.financeKind)return;
+    const item=S.finances.find(x=>x.id===d.financeId);
+    const val=finDeadlineFor(item,d.financeKind);if(!val)return;
+    if(d.due!==val.date){d.due=val.date;d.done=false;}
+    d.title=val.title;
+    if(val.done)d.done=true;
+  });
+}
+function finMakeReminder(id,kind) {
+  const item=S.finances.find(x=>x.id===id),data=finDeadlineFor(item,kind);
+  if(!data){toast('Za opomnik manjka pravilen datum.');return;}
+  let dl=S.deadlines.find(x=>x.financeId===id&&x.financeKind===kind);
+  if(dl){dl.due=data.date;dl.title=data.title;dl.done=data.done;}
+  else S.deadlines.push({id:uid(),title:data.title,due:data.date,done:data.done,category:'Drugo',lead:data.lead,repeat:0,financeId:id,financeKind:kind,note:'Samodejno posodobljen datum iz zavihka Finance.'});
+  save();render();toast('Opomnik je dodan med roke v zavihku Opravila.');
+}
+Object.assign(A, {
+  finShift(b){finUi.month=finMonthShift(finUi.month,Number(b.dataset.n)||0);render();},
+  finMonth(b){finUi.month=b.dataset.month;render();},
+  finFilter(b){finUi.filter=b.dataset.v;render();},
+  finNew(b){finOpenForm(b.dataset.type);},
+  finTemplate(b){finOpenForm('subscription',null,b.dataset.title);},
+  finEdit(b){const x=S.finances.find(x=>x.id===b.dataset.id);if(x)finOpenForm(x.type,x.id);},
+  finSave(){finSaveForm();},
+  finDelete(b){const x=S.finances.find(v=>v.id===b.dataset.id);if(!x)return;if(!confirm('Izbrišem »'+x.title+'«?'))return;S.finances=S.finances.filter(v=>v.id!==x.id);finForm=null;save();sheet.close();render();toast('Vnos izbrisan.',()=>{S.finances.push(x);save();render();});},
+  finRemind(b){finMakeReminder(b.dataset.id,b.dataset.kind);},
+  finPaid(b){const x=S.finances.find(v=>v.id===b.dataset.id),month=b.dataset.month;if(!x)return;
+    if(x.type==='subscription'){if(!finEligible(x,month)||x.special==='fitinn'&&finFitPause(x,month))return;const set=new Set(arr(x.paidMonths));set.has(month)?set.delete(month):set.add(month);x.paidMonths=[...set].sort();}
+    else if(x.type==='bill')x.paid=!x.paid;
+    finRefreshLinkedDeadlines();save();render();},
+  finPauseNew(b){finPauseOpen(b.dataset.month||finUi.month);},
+  finPauseEdit(b){finPauseOpen(b.dataset.month);},
+  finPauseSave(){finPauseSave();},
+  finPauseDelete(){finPauseDelete();}
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='finPickMonth'&&finMonthValid(e.target.value)){finUi.month=e.target.value;render();}
+});
+/* ========== END FINANCE ========== */
 
 initTheme();
 store.set(JSON.stringify(S));
