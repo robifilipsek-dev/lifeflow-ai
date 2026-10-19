@@ -964,6 +964,74 @@ html{background:var(--mist)}body{background:var(--mist)}
   .flow li.now::after { left:69px; }
 }
 
+
+/* v24 — profesionalen, enoten izgled in namizna postavitev */
+:root{--card-shadow:0 2px 4px rgba(19,44,95,.035),0 12px 36px rgba(19,44,95,.055)}
+[data-theme="dark"]{--card-shadow:0 4px 10px rgba(0,0,0,.15),0 14px 32px rgba(0,0,0,.2)}
+/* Prejšnji generični max-width:100% je razveljavil namizno omejitev #app. */
+#app{width:100%;max-width:880px;margin-inline:auto;padding-inline:clamp(14px,2.4vw,26px)}
+nav .in{max-width:880px}
+#view{min-width:0;max-width:100%}
+.top{padding:4px 2px 8px;align-items:center}
+.top h1{letter-spacing:-.035em}
+.top p{font-size:14px;line-height:1.45;text-transform:none}
+.agent-card,.wx-card,.day-plan-card,.dash-clear,.fin-card,.dash-section,.note-card{box-shadow:var(--card-shadow)}
+.agent-card,.wx-card,.day-plan-card,.dash-clear,.fin-card{border:1px solid var(--line);border-radius:21px}
+.day-plan-header h2,.fin-card h2{letter-spacing:-.02em}
+.btn{transition:background .16s ease,border-color .16s ease,transform .12s ease,box-shadow .16s ease}
+.btn:focus-visible,nav button:focus-visible,.icon-btn:focus-visible{outline:3px solid var(--accent-blue);outline-offset:2px}
+.btn:not(:disabled):hover{filter:brightness(.98)}
+#nav button{transition:color .16s ease,background .16s ease}
+#nav button:hover{color:var(--petrol-d);background:var(--petrol-t)}
+#view .fin-entry,#view .fin-compact,#view .dash-row{transition:background-color .16s ease}
+.fin-entry:hover,.fin-compact:hover{background:var(--blue-soft)}
+.fin-stats strong,.fin-entry-right strong{font-variant-numeric:tabular-nums}
+.fin-new-btn{white-space:nowrap;flex:0 0 auto}
+.fin-head>div{min-width:0}
+.flow li{grid-template-columns:76px 20px minmax(0,1fr)}
+.flow li::before{left:85px}
+.flow li.now::after{left:86px}
+.flow time{padding-right:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.flow .node,.flow li.now .node,.flow li.is-live .node{box-shadow:none!important;border:0!important;outline:0!important}
+.blk:focus-visible{outline:2px solid var(--accent-blue);outline-offset:1px}
+@media (min-width:800px){
+  #app{padding-top:27px;padding-bottom:138px}
+  .top{margin-bottom:20px}
+  .top h1{font-size:33px}
+  .agent-card,.wx-card,.day-plan-card,.dash-clear,.fin-card{padding:21px}
+  nav .in{padding:9px 16px}
+}
+@media(max-width:700px){
+  .flow li{grid-template-columns:64px 20px minmax(0,1fr)}
+  .flow li::before{left:73px}
+  .flow li.now::after{left:74px}
+}
+@media(max-width:560px){
+  #app{padding-bottom:calc(105px + env(safe-area-inset-bottom,0px))}
+  .top{align-items:flex-start}
+  .top h1{font-size:26px}
+  .top p{max-width:22ch}
+  .fin-head{align-items:center}
+  .fin-new-btn{min-height:42px;padding-inline:13px}
+  .fin-stats{gap:8px}
+  .fin-stats>div{padding:11px}
+  .fin-card,.agent-card,.day-plan-card,.wx-card{border-radius:18px}
+  .btn.sm{min-height:40px}
+}
+@media(max-width:400px){
+  .flow li{grid-template-columns:60px 18px minmax(0,1fr)}
+  .flow li::before{left:68px}
+  .flow li.now::after{left:69px}
+  .flow time{font-size:12px;padding-right:8px}
+  .fin-head strong{font-size:17px}
+  .fin-head p{font-size:12px}
+  .fin-new-btn{font-size:13px;padding-inline:10px;gap:5px}
+  .fin-new-btn svg{width:15px;height:15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .btn,#nav button,#view .fin-entry,#view .fin-compact,#view .dash-row{transition:none}
+}
+
 </style>
 </head>
 <body>
@@ -1043,8 +1111,17 @@ function rel(n) {
   return n > 0 ? `čez ${n} dni` : `pred ${-n} dnevi`;
 }
 const num = v => { if (v == null || v === '') return null; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : null; };
-const dt = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : null;
-const tm = v => (typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v)) ? v.padStart(5, '0') : null;
+const dt = v => {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const [y,m,d] = v.split('-').map(Number);
+  if (y < 1900 || y > 2200 || m < 1 || m > 12) return null;
+  return d >= 1 && d <= new Date(y,m,0).getDate() ? v : null;
+};
+const tm = v => {
+  if (typeof v !== 'string' || !/^\d{1,2}:\d{2}$/.test(v)) return null;
+  const [h,m] = v.split(':').map(Number);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? `${pad(h)}:${pad(m)}` : null;
+};
 const str = v => (v == null || v === '' || v === 'null') ? null : String(v).trim();
 const arr = v => Array.isArray(v) ? v : [];
 
@@ -1088,7 +1165,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-19 · v23 · časovna os, agent Gemini + Groq, brez plavajočega Dodaj';
+const APP_VERSION = '2026-10-19 · v24 · celovit pregled, odzivnost, finance prek AI';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -1124,7 +1201,7 @@ function normalizeState(st) {
       title: 'FITINN PRO', category: 'Šport', amount: 30, interval: 1,
       startMonth: '2026-10', endMonth: '', baseEnd: '2027-03-31',
       noticeSentOn: '', pauses: [], paidMonths: [], paymentMethod: 'auto',
-      note: 'Robert Filipšek – članska št. 4628547. Izhodiščni konec 31. 3. 2027; rok za odpoved 28. 2. 2027. Samodejno podaljšanje za 6 mesecev. Paket PRO: do 2 meseca mirovanja v posameznem 12-mesečnem obdobju članstva; urediti pred začetkom meseca. Mirovanje = 0 € vadnine in podaljšanje za isti čas. Prejšnja mirovanja so morda že vključena v izhodiščni datum.'
+      note: 'Izhodiščni konec 31. 3. 2027; rok za odpoved 28. 2. 2027. Samodejno podaljšanje za 6 mesecev. Paket PRO: do 2 meseca mirovanja v posameznem 12-mesečnem obdobju članstva; urediti pred začetkom meseca. Mirovanje = 0 € vadnine in podaljšanje za isti čas. Prejšnja mirovanja so morda že vključena v izhodiščni datum.'
     });
   }
   st.finances = st.finances.filter(x => x && typeof x === 'object' && ['subscription','bill','warranty'].includes(x.type)).map(x => ({ ...x, id: String(x.id || uid()), paidMonths: Array.isArray(x.paidMonths) ? x.paidMonths : [], pauses: Array.isArray(x.pauses) ? x.pauses : [], paymentMethod: x.type === 'subscription' ? (['auto','manual'].includes(x.paymentMethod) ? x.paymentMethod : x.special === 'fitinn' ? 'auto' : 'manual') : x.paymentMethod }));
@@ -1452,6 +1529,7 @@ function downloadICS(title, date, time, note='') {
   ];
   if (time) {
     const safeTime = tm(time);
+    if (!safeTime || !dt(eventDate)) { toast('Za koledar vnesi veljaven datum in uro.'); return; }
     const d = new Date(`${eventDate}T${safeTime}:00`);
     if (!Number.isFinite(d.getTime())) { toast('Datuma ali ure ni mogoče uporabiti za koledar.'); return; }
     const start = d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
@@ -2563,6 +2641,9 @@ Pravila:
     const bloki = arr(r.bloki).filter(b => !(b && futureTaskIds.has(b.task_id))).map(b => ({ od: tm(b && b.od), do: tm(b && b.do), naslov: str(b && b.naslov), tip: TIP[b && b.tip] ? b.tip : 'opravilo', task_id: b && ids.has(b.task_id) ? b.task_id : null, done: false, id: uid() }))
       .filter(b => b.od && b.do && b.naslov && toM(b.do) > toM(b.od)).sort((a, b) => toM(a.od) - toM(b.od));
     if (!bloki.length) throw new UserErr('Model ni vrnil uporabnega načrta. Poskusi znova.');
+    // Model lahko kljub navodilom vrne prekrivajoče bloke. Ne prepiši starega načrta z neveljavnim.
+    const overlap = bloki.some((b,i) => i > 0 && toM(b.od) < toM(bloki[i-1].do));
+    if (overlap) throw new UserErr('AI je vrnil prekrivajoče se termine. Obstoječi načrt ostane nespremenjen; poskusi znova.');
     S.plan = { date: t, energy: u.energy, bloki, nasvet: str(r.nasvet) || '', opozorila: arr(r.opozorila).map(str).filter(Boolean).slice(0, 4) };
     save();
   } catch (e) { toast(e.message === 'NO_KEY' ? 'Manjka API ključ.' : e.message); }
@@ -2739,11 +2820,12 @@ async function startCloudSync(user) {
       if (remote && typeof remote === 'object') {
         cloudSync.applyingRemote = true;
         const base = JSON.parse(JSON.stringify(DEFAULT));
+        const localUi = JSON.parse(JSON.stringify(S.ui || DEFAULT.ui));
         S = {
           ...base,
           ...remote,
           settings: { ...base.settings, ...(remote.settings || {}) },
-          ui: { ...base.ui, ...(remote.ui || {}) }
+          ui: localUi // Nastavitve trenutnega pogleda ostanejo lokalne tudi ob prvem prenosu.
         };
         S.settings.apiKey = localApiKey; S.settings.groqKey = localGroqKey;
         S.settings.fbConfig = FIREBASE_CONFIG.apiKey ? '' : (S.settings.fbConfig || '');
@@ -3598,6 +3680,10 @@ $('#fileImport').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const o = JSON.parse(await f.text());
+    if (!o || typeof o !== 'object' || Array.isArray(o) || !(['tasks','notes','deadlines','reminders','finances'].some(k=>Array.isArray(o[k])))) {
+      toast('Datoteka ni veljavna varnostna kopija LifeFlow.'); return;
+    }
+    if (!confirm('Uvoz bo zamenjal trenutne podatke v aplikaciji in jih lahko sinhroniziral v oblak. Pred uvozom priporočamo izvoz varnostne kopije. Želiš nadaljevati?')) return;
     const key = S.settings.apiKey, gkey = S.settings.groqKey || '', fbc = S.settings.fbConfig || '';
     S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, groqKey: gkey, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
     normalizeState(S); cleanupLegacyImages(); save(); render(); toast('Podatki uvoženi.');
@@ -4337,7 +4423,7 @@ function wxUi() { const c = $('#wxCard'); if (c) { c.className = 'wx-card ' + wx
 
 /* ---------- Agent: pogovor + orodja (branje takoj, pisanje šele po potrditvi) ---------- */
 const AGENT_MAX_STEPS = 10;
-const AG_TYPES = [['opravilo', 'Nova opravila', 'predlagaj_opravilo'], ['sprememba', 'Spremembe obstoječih opravil', 'predlagaj_spremembo_opravila'], ['rok', 'Roki (servis, vinjeta …)', 'predlagaj_rok'], ['opomnik', 'Opomniki', 'predlagaj_opomnik'], ['dogodek', 'Novi dogodki v koledarju', 'predlagaj_dogodek'], ['premik', 'Premiki dogodkov', 'predlagaj_premik_dogodka'], ['osnutek', 'Osnutki odgovorov na e-pošto', 'predlagaj_osnutek_maila'], ['nacrt', 'Spremembe dnevnega načrta', ['predlagaj_blok_nacrta', 'predlagaj_spremembo_bloka', 'predlagaj_odstranitev_bloka']]];
+const AG_TYPES = [['opravilo', 'Nova opravila', 'predlagaj_opravilo'], ['sprememba', 'Spremembe obstoječih opravil', 'predlagaj_spremembo_opravila'], ['rok', 'Roki (servis, vinjeta …)', 'predlagaj_rok'], ['opomnik', 'Opomniki', 'predlagaj_opomnik'], ['dogodek', 'Novi dogodki v koledarju', 'predlagaj_dogodek'], ['premik', 'Premiki dogodkov', 'predlagaj_premik_dogodka'], ['osnutek', 'Osnutki odgovorov na e-pošto', 'predlagaj_osnutek_maila'], ['finance', 'Finance: naročnine, računi in garancije', ['predlagaj_financni_vnos','predlagaj_spremembo_financ','predlagaj_odstranitev_financ']], ['nacrt', 'Spremembe dnevnega načrta', ['predlagaj_blok_nacrta', 'predlagaj_spremembo_bloka', 'predlagaj_odstranitev_bloka']]];
 function agCfg() {
   const a = (S.settings && S.settings.agent) || {};
   return {
@@ -4389,6 +4475,7 @@ function agentTools() {
   if (!c.useCal) { off.add('dogodki_v_koledarju'); off.add('predlagaj_premik_dogodka'); }
   if (!c.useMail) { off.add('isci_gmail'); off.add('beri_gmail'); off.add('predlagaj_osnutek_maila'); }
   if (!c.useTasks) off.add('predlagaj_spremembo_opravila');
+  if (!c.types.includes('finance')) off.add('preglej_finance');
   AG_TYPES.forEach(t => { if (!c.types.includes(t[0])) [].concat(t[2]).forEach(n => off.add(n)); });
   return [{ functionDeclarations: AGENT_TOOLS[0].functionDeclarations.filter(f => !off.has(f.name)) }];
 }
@@ -4416,16 +4503,21 @@ const AGENT_TOOLS = [{ functionDeclarations: [
   { name: 'predlagaj_blok_nacrta', description: 'Predlaga nov blok v današnjem dnevnem načrtu. Ničesar ne shrani, dokler uporabnik ne potrdi.', parameters: { type: 'OBJECT', properties: { naslov: { type: 'STRING' }, od: { type: 'STRING', description: 'HH:MM' }, do: { type: 'STRING', description: 'HH:MM, kasneje kot od' }, tip: { type: 'STRING', enum: Object.keys(TIP) }, task_id: { type: 'STRING', description: 'id opravila iz preglej_stanje, če blok izhaja iz opravila' } }, required: ['naslov', 'od', 'do'] } },
   { name: 'predlagaj_spremembo_bloka', description: 'Predlaga spremembo bloka v današnjem načrtu (id iz preglej_nacrt): premik ure, nov naslov ali vrsta, oznaka kot opravljeno.', parameters: { type: 'OBJECT', properties: { id: { type: 'STRING' }, naslov: { type: 'STRING' }, od: { type: 'STRING', description: 'nova ura začetka HH:MM' }, do: { type: 'STRING', description: 'nova ura konca HH:MM' }, tip: { type: 'STRING', enum: Object.keys(TIP) }, opravljeno: { type: 'BOOLEAN' } }, required: ['id'] } },
   { name: 'predlagaj_odstranitev_bloka', description: 'Predlaga odstranitev bloka iz današnjega načrta (id iz preglej_nacrt).', parameters: { type: 'OBJECT', properties: { id: { type: 'STRING' } }, required: ['id'] } },
+  { name: 'preglej_finance', description: 'Vrne obstoječe naročnine, račune in garancije (id, znesek, datumi). Pokliči pred dodajanjem ali spreminjanjem financ.' },
+  { name: 'predlagaj_financni_vnos', description: 'Predlaga novo naročnino, račun ali garancijo; nikoli ne shrani brez uporabnikove potrditve. Vnos mora imeti realen znesek in datum.', parameters: { type: 'OBJECT', properties: { vrsta: { type: 'STRING', enum: ['subscription','bill','warranty'] }, naziv: { type: 'STRING' }, znesek: { type: 'NUMBER', description: 'EUR, najmanj 0' }, kategorija: { type: 'STRING' }, mesec_zacetka: { type: 'STRING', description: 'YYYY-MM, ob naročnini' }, interval_mesecev: { type: 'INTEGER', enum: [1,3,6,12] }, placilo: { type: 'STRING', enum: ['auto','manual'] }, datum: { type: 'STRING', description: 'YYYY-MM-DD, pri računu ali nakupu' }, iztek_garancije: { type: 'STRING', description: 'YYYY-MM-DD, neobvezno' }, opomba: { type: 'STRING' } }, required: ['vrsta','naziv','znesek'] } },
+  { name: 'predlagaj_spremembo_financ', description: 'Predlaga spremembo obstoječe naročnine, računa ali garancije. Najprej pridobi id z orodjem preglej_finance.', parameters: { type: 'OBJECT', properties: { id: { type: 'STRING' }, naziv: { type: 'STRING' }, znesek: { type: 'NUMBER' }, kategorija: { type: 'STRING' }, placilo: { type: 'STRING', enum: ['auto','manual'] }, datum: { type: 'STRING', description: 'YYYY-MM-DD za račun/nakup' }, iztek_garancije: { type: 'STRING', description: 'YYYY-MM-DD' }, placano: { type: 'BOOLEAN', description: 'za račun' }, opomba: { type: 'STRING' } }, required: ['id'] } },
+  { name: 'predlagaj_odstranitev_financ', description: 'Predlaga odstranitev finančnega vnosa po id. Zahteva izrecno uporabnikovo potrditev.', parameters: { type: 'OBJECT', properties: { id: { type: 'STRING' } }, required: ['id'] } },
   { name: 'predlagaj_osnutek_maila', description: 'Pripravi osnutek e-pošte (shrani se kot Gmail osnutek, NE pošlje se).', parameters: { type: 'OBJECT', properties: { prejemnik: { type: 'STRING' }, zadeva: { type: 'STRING' }, besedilo: { type: 'STRING' } }, required: ['prejemnik', 'zadeva', 'besedilo'] } }
 ] }];
-const AGENT_LABELS = { isci_splet: 'Iščem na spletu …', vreme: 'Preverjam vreme …', preglej_stanje: 'Pregledujem opravila in roke …', dogodki_v_koledarju: 'Pregledujem koledar …', isci_gmail: 'Iščem v Gmailu …', beri_gmail: 'Berem e-pošto …', preglej_nacrt: 'Pregledujem dnevni načrt …' };
+const AGENT_LABELS = { preglej_finance:'Pregledujem finance …', isci_splet: 'Iščem na spletu …', vreme: 'Preverjam vreme …', preglej_stanje: 'Pregledujem opravila in roke …', dogodki_v_koledarju: 'Pregledujem koledar …', isci_gmail: 'Iščem v Gmailu …', beri_gmail: 'Berem e-pošto …', preglej_nacrt: 'Pregledujem dnevni načrt …' };
 function agentPrompt() {
   const c = agCfg();
   const H = { '0': 'danes', '1': 'danes ali jutri', '2': 'v naslednjih 2 dneh', '3': 'v naslednjih 3 dneh', '7': 'v naslednjih 7 dneh' }[c.horizon];
-  const avail = [c.useTasks ? 'opravila in roke' : '', c.useCal ? 'Google koledar' : '', c.useMail ? 'Gmail' : ''].filter(Boolean).join(', ') || 'samo preglej_stanje';
+  const avail = [c.useTasks ? 'opravila in roke' : '', 'finance', c.useCal ? 'Google koledar' : '', c.useMail ? 'Gmail' : ''].filter(Boolean).join(', ') || 'samo preglej_stanje';
   return `Si "LifeFlow AI", prilagodljiv osebni asistent. Prednostno pomagaj pri opravilih, e-pošti, koledarju, zapiskih, dnevnem načrtu in nastavitvah aplikacije, vendar odgovori tudi na VSAKO drugo običajno vprašanje, ki ga uporabnik zastavi, kadar ga lahko zanesljivo obravnavaš. To vključuje vreme, splošno znanje, razlage, načrtovanje, priporočila in aktualne podatke s spleta. Ne zavrni vprašanja samo zato, ker ni povezano z opravili, e-pošto ali koledarjem. Trenutni datum in ura: ${nowStr()} (${weekday()}, Europe/Ljubljana). ${workLine(today(), 'Služba danes')}
 
 PRAVILA
+- Za finance uporabi orodje preglej_finance in predlagaj_financni_vnos / predlagaj_spremembo_financ / predlagaj_odstranitev_financ. Nove vnose, spremembe in izbrise vedno najprej pokaži v potrditev, nikoli jih ne izvedi sam. Datumov in zneskov ne ugibaj.
 - Odgovarjaj v slovenščini, kratko in konkretno, brez nepotrebnih uvodov. Vprašaj le, kadar je to res potrebno.
 - Pri neposrednem vprašanju odgovori na vprašanje. Če uporabnik vpraša za vreme, vedno pokliči orodje vreme in odgovori za zahtevani kraj ter dan; za jutri uporabi jutrišnje podatke, ne današnjih. Če je za aktualno ali lokalno informacijo potreben splet, uporabi isci_splet, kadar je na voljo. Če orodje ne vrne dovolj podatkov, to jasno povej in ne izmišljaj odgovorov.
 - ${c.focus ? `NAČIN "SAMO NUJNO" velja SAMO za proaktivne predloge pri pregledu opravil, pošte in koledarja: predlagaj le stvari, ki so zamujene, zapadejo ${H} ali terjajo uporabnikov odgovor, plačilo ali oddajo. Ta način NIKOLI ne omejuje odgovorov na neposredna uporabnikova vprašanja, vključno z vremenom, splošnim znanjem, spletnim iskanjem ali priporočili.` : 'Pri proaktivnem pregledu prednostno izpostavi nujne stvari, vendar odgovarjaj tudi na splošna vprašanja.'}
@@ -4615,7 +4707,7 @@ async function agentExecTool(name, a, batch) {
   a = a || {};
   const t = today(), bad = m => ({ napaka: m });
   const propose = (kind, data) => {
-    if (kind !== 'pravilo' && !agCfg().types.includes(kind.startsWith('blok_') ? 'nacrt' : kind)) return bad('Ta vrsta predlogov je izklopljena v nastavitvah.');
+    if (kind !== 'pravilo' && !agCfg().types.includes(kind.startsWith('blok_') ? 'nacrt' : kind.startsWith('finance_') ? 'finance' : kind)) return bad('Ta vrsta predlogov je izklopljena v nastavitvah.');
     if (batch.length >= agCfg().maxProp) return bad(`Dosežena omejitev ${agCfg().maxProp} predlogov naenkrat.`);
     const key = agMemKey(kind, data), h = S.agentMem.handled[key];
     if (h) return { status: 'ze_obravnavano', opomba: `Uporabnik je ta predlog že ${h.s} (${h.d}). Ne predlagaj ga več.` };
@@ -4634,6 +4726,52 @@ async function agentExecTool(name, a, batch) {
         opomniki: S.reminders.filter(r => !r.done && r.trigger === 'cas' && r.at).slice(0, 40).map(r => ({ besedilo: r.text, cas: r.at })),
         ze_obravnavano: Object.values(S.agentMem.handled).filter(v => v.d >= addDays(t, -14)).sort((x, y) => y.d.localeCompare(x.d)).slice(0, 50).map(v => ({ predlog: v.t, odlocitev: v.s, datum: v.d, ...(v.r ? { razlog: v.r } : {}) }))
       };
+    case 'preglej_finance': {
+      return { mesec: finUi.month, prikazani_stroski: finNumbers(finUi.month).total,
+        vnosi: S.finances.slice(0,100).map(x => ({id:x.id, vrsta:x.type, naziv:x.title, znesek:x.amount, kategorija:x.category,
+          zacetek:x.startMonth||null, obracun_mesecev:x.interval||null, placilo:x.paymentMethod||null,
+          datum:x.date||null, garancija_do:x.expiry||null, placano:x.type==='bill'?!!x.paid:null, posebna_pogodba:!!x.special })) };
+    }
+    case 'predlagaj_financni_vnos': {
+      const kind = a.vrsta, naziv = title(a.naziv), znesek = finBoundedPrice(a.znesek);
+      if (!['subscription','bill','warranty'].includes(kind) || !naziv || znesek === null) return bad('Vrsta, naziv in znesek so obvezni. Znesek mora biti pozitivno število ali 0.');
+      const d = { vrsta:kind, naziv, znesek, kategorija:title(a.kategorija)||'Drugo', opomba:String(a.opomba||'').slice(0,1000) };
+      if (kind==='subscription') {
+        d.mesec = a.mesec_zacetka || today().slice(0,7);
+        d.interval = Number(a.interval_mesecev || 1);
+        d.placilo = a.placilo === 'auto' ? 'auto' : 'manual';
+        if (!finMonthValid(d.mesec) || ![1,3,6,12].includes(d.interval)) return bad('Naročnina potrebuje veljaven začetni mesec in interval 1, 3, 6 ali 12.');
+      } else {
+        d.datum = dt(a.datum);
+        if (!d.datum) return bad('Račun ali nakup potrebuje veljaven datum YYYY-MM-DD. Ne ugibaj datuma, vprašaj uporabnika.');
+        if (kind==='warranty') {
+          if (a.iztek_garancije && !dt(a.iztek_garancije)) return bad('Datum garancije ni veljaven.');
+          d.iztek = dt(a.iztek_garancije);
+          if (d.iztek && d.iztek < d.datum) return bad('Garancija ne more poteči pred nakupom.');
+        }
+      }
+      if (S.finances.some(x=>x.type===kind&&x.title.toLowerCase()===naziv.toLowerCase() && (x.date||x.startMonth)===(d.datum||d.mesec))) return bad('Enak vnos že obstaja.');
+      return propose('finance_dodaj',d);
+    }
+    case 'predlagaj_spremembo_financ': {
+      const item = S.finances.find(x=>x.id===a.id); if (!item) return bad('Vnos ne obstaja. Najprej pokliči preglej_finance.');
+      const ch={};
+      if (title(a.naziv)) ch.title=title(a.naziv);
+      if (a.znesek!=null) { const v=finBoundedPrice(a.znesek); if (v===null)return bad('Neveljaven znesek.'); ch.amount=v; }
+      if (title(a.kategorija)) ch.category=title(a.kategorija);
+      if (a.placilo) { if (item.type!=='subscription'||!['auto','manual'].includes(a.placilo))return bad('Način plačila je mogoče spremeniti samo za naročnino.');ch.paymentMethod=a.placilo; }
+      if (a.datum) { if (item.type==='subscription'||!dt(a.datum))return bad('Neveljaven datum.');ch.date=a.datum; }
+      if (a.iztek_garancije) { if(item.type!=='warranty'||!dt(a.iztek_garancije))return bad('Neveljaven datum garancije.');ch.expiry=a.iztek_garancije; }
+      if (typeof a.placano==='boolean') { if(item.type!=='bill')return bad('Označevanje plačila velja le za račune.');ch.paid=a.placano; }
+      if (a.opomba!=null) ch.note=String(a.opomba).slice(0,1000);
+      if (item.type==='warranty' && ch.expiry && ch.expiry<(ch.date||item.date)) return bad('Garancija ne more poteči pred nakupom.');
+      if (!Object.keys(ch).length) return bad('Ni nobene spremembe.');
+      return propose('finance_sprememba',{id:item.id,naziv:item.title,vrsta:item.type,ch});
+    }
+    case 'predlagaj_odstranitev_financ': {
+      const item=S.finances.find(x=>x.id===a.id);if(!item)return bad('Finančnega vnosa ni.');
+      return propose('finance_odstrani',{id:item.id,naziv:item.title,vrsta:item.type});
+    }
     case 'vreme': {
       const w = await wxLoad(); if (!w) return bad(wxSt.err || 'Vremenskih podatkov ni mogoče pridobiti.');
       return wxForAgent(w);
@@ -4884,6 +5022,24 @@ async function agentApplyOne(it) {
       S.agentMem.rules.push({ id: uid(), t: String(d.besedilo).slice(0, 200), on: true, d: today() }); save();
       return 'Zapomnil sem si. Pravila urediš v Nastavitvah → Agent.';
     }
+    case 'finance_dodaj': {
+      const x={ id:uid(), type:d.vrsta, title:d.naziv, amount:d.znesek, category:d.kategorija, note:d.opomba||'' };
+      if (d.vrsta==='subscription') Object.assign(x,{startMonth:d.mesec,endMonth:'',interval:d.interval,paymentMethod:d.placilo,paidMonths:[],pauses:[]});
+      else if(d.vrsta==='bill') Object.assign(x,{date:d.datum,paid:false});
+      else Object.assign(x,{date:d.datum,expiry:d.iztek||'',paid:true});
+      if (S.finances.some(v=>v.type===x.type&&v.title.toLowerCase()===x.title.toLowerCase()&&(v.date||v.startMonth)===(x.date||x.startMonth))) return 'Tak finančni vnos že obstaja.';
+      S.finances.push(x);save();return 'Finančni vnos je dodan.';
+    }
+    case 'finance_sprememba': {
+      const x=S.finances.find(v=>v.id===d.id);if(!x)return 'Finančnega vnosa ni več.';
+      Object.assign(x,d.ch);finRefreshLinkedDeadlines();save();return 'Finančni vnos posodobljen.';
+    }
+    case 'finance_odstrani': {
+      const x=S.finances.find(v=>v.id===d.id);if(!x)return 'Finančnega vnosa ni več.';
+      S.finances=S.finances.filter(v=>v.id!==d.id);
+      S.deadlines=S.deadlines.filter(v=>v.financeId!==d.id);
+      save();return 'Finančni vnos in povezani finančni opomniki odstranjeni.';
+    }
     case 'opravilo': {
       if (S.tasks.some(t => !t.done && String(t.title).trim().toLowerCase() === d.naslov.toLowerCase() && (t.due || null) === (d.rok || null))) return 'Že obstaja, preskočeno.';
       const nt = { id: uid(), title: capFirst(d.naslov), prio: d.prio, frame: null, due: d.rok, time: d.ura, min: d.min, repeat: '', done: false };
@@ -4998,6 +5154,9 @@ async function agentApply(msgIdx) {
 function agentDescribe(it) {
   const d = it.data, dd = s => s ? fmtDateY(s) : '';
   switch (it.kind) {
+    case 'finance_dodaj': return {ico:'wallet',t:'Dodaj v finance: '+d.naziv,l:[finEuro(d.znesek)+' · '+({subscription:'Naročnina',bill:'Račun',warranty:'Garancija'}[d.vrsta]),d.datum||d.mesec||'',d.placilo==='auto'?'Trajnik':'']};
+    case 'finance_sprememba': return {ico:'wallet',t:'Spremeni finančni vnos: '+d.naziv,l:Object.entries(d.ch).map(([k,v])=>({'title':'Naziv','amount':'Znesek','category':'Kategorija','paymentMethod':'Plačilo','date':'Datum','expiry':'Garancija do','paid':'Plačano','note':'Opomba'}[k]||k)+': '+(k==='amount'?finEuro(v):String(v)))};
+    case 'finance_odstrani': return {ico:'trash',t:'Odstrani iz financ: '+d.naziv,l:['Odstranjeni bodo tudi povezani opomniki.']};
     case 'opravilo': return { ico: 'list', t: 'Opravilo: ' + d.naslov, l: [[d.rok ? 'Rok ' + dd(d.rok) : 'Brez roka', d.ura, d.prio, d.min ? d.min + ' min' : ''].filter(Boolean).join(' · ')] };
     case 'sprememba': {
       const l = [];
@@ -5031,7 +5190,7 @@ function agentDescribe(it) {
 function agentRich(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); }
 function agentLogHtml() {
   let h = '';
-  if (!agent.msgs.length) h += `<p class="help">Naroči z besedami, agent pa pogleda opravila, koledar in Gmail ter pripravi predloge. Nič se ne shrani brez tvoje potrditve, e-pošte pa agent ne pošilja, samo pripravi osnutek.</p>`;
+  if (!agent.msgs.length) h += `<p class="help">Naroči z besedami, agent pa pregleda opravila, finance, koledar in Gmail ter pripravi predloge. Nič se ne shrani brez tvoje potrditve, e-pošte pa agent ne pošilja, samo pripravi osnutek.</p>`;
   agent.msgs.forEach((m, i) => {
     if (m.role === 'user') h += `<div class="ag-msg user">${agentRich(m.text)}</div>`;
     else if (m.role === 'ai') h += `<div class="ag-msg ai">${agentRich(m.text)}</div>`;
@@ -5213,7 +5372,7 @@ function renderFinance() {
     <section class="fin-card"><div class="fin-month"><button type="button" class="fin-month-nav" data-act="finShift" data-n="-1" aria-label="Prejšnji mesec" title="Prejšnji mesec">${ic('chevron-left',24)}</button><div class="fin-month-value"><strong>${esc(finMonthLabel(m))}</strong><label class="fin-month-picker" for="finPickMonth">${ic('calendar',15)}<span>Izberi mesec</span><input type="month" id="finPickMonth" value="${m}" aria-label="Izberi mesec" title="Izberi mesec"></label></div><button type="button" class="fin-month-nav" data-act="finShift" data-n="1" aria-label="Naslednji mesec" title="Naslednji mesec">${ic('chevron-right',24)}</button></div>
     <div class="fin-stats"><div><small>Stroški skupaj</small><strong>${finEuro(f.total)}</strong>${deltaTxt?`<small class="fin-delta">${esc(deltaTxt)}</small>`:''}</div><div><small>Naročnine</small><strong>${finEuro(f.subscriptions)}</strong></div><div><small>Trajniki · predvideno</small><strong>${finEuro(f.auto)}</strong></div><div><small>Za ročno plačilo</small><strong>${finEuro(f.due)}</strong></div><div><small>Skupaj v letu ${yy}</small><strong>${finEuro(yTotal)}</strong></div><div><small>Povprečje na mesec</small><strong>${finEuro(yTotal/12)}</strong></div></div>
     <h3 class="fin-label">Pregled po mesecih · ${yy}</h3><div class="fin-chart" aria-label="Letni pregled stroškov">${bars}</div><p class="fin-note">Graf prikazuje evidentirane in predvidene stroške, ne stanja bančnega računa. Trajniki so prikazani kot predvideni odtegljaji (ne kot potrjena bančna plačila). Ročna plačila lahko označiš posebej.</p></section>${finCatHtml(f)}
-    ${fit&&fd?`<section class="fin-card fin-fit"><div class="fin-card-head"><div><small class="fin-eyebrow">FITINN PRO · ${finEuro(fit.amount)} / mesec</small><h2>Članstvo in mirovanje</h2><span class="muted">Robert Filipšek · št. 4628547</span></div><button class="btn sm ghost" data-act="finEdit" data-id="${esc(fit.id)}">Uredi</button></div>
+    ${fit&&fd?`<section class="fin-card fin-fit"><div class="fin-card-head"><div><small class="fin-eyebrow">FITINN PRO · ${finEuro(fit.amount)} / mesec</small><h2>Članstvo in mirovanje</h2><span class="muted">Roki in pogodbeni pogoji za osebno evidenco</span></div><button class="btn sm ghost" data-act="finEdit" data-id="${esc(fit.id)}">Uredi</button></div>
       <div class="fin-duodates"><div><small>Rok za odpoved</small><strong>${fmtDateY(fd.cancelBy)}</strong></div><div><small>Možni konec članstva</small><strong>${fmtDateY(fd.end)}</strong></div></div>
       ${fd.renewal?`<p class="fin-warning">Rok za prvotni iztek je glede na današnji datum že potekel. Prikazan je izračun ob samodejnem ${fd.renewal===1?'podaljšanju':'podaljševanju'} za 6 mesecev, če odpoved ni bila pravočasno oddana.</p>`:''}
       ${fit.noticeSentOn?`<p class="fin-good">Odpoved evidentirana: ${fmtDateY(fit.noticeSentOn)}. Preveri, ali jo je FITINN tudi potrdil.</p>`:''}
