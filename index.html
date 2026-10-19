@@ -941,6 +941,29 @@ html{background:var(--mist)}body{background:var(--mist)}
 .inline{display:flex;align-items:center;gap:8px}.inline>input{flex:1 1 auto;min-width:0}.inline>.btn{flex:0 0 auto}
 @media(max-width:380px){.btn{padding-inline:12px}.btn.sm{padding-inline:10px;font-size:13px}}
 
+
+/* v23: časovna os — prostor za uro je ločen od oznak; brez belih obročev. */
+.flow li { grid-template-columns: 76px 20px minmax(0, 1fr); }
+.flow time { min-width:0; padding:7px 9px 0 0; white-space:nowrap; overflow:visible; position:relative; z-index:2; }
+.flow li::before { left:85px; }
+.flow .node, .flow li.now .node, .flow li.is-live .node {
+  width:12px; height:12px; margin-top:11px; padding:0;
+  border:0; box-shadow:none; outline:0; justify-self:center; z-index:1;
+}
+.flow li.now .node { width:10px; height:10px; margin-top:12px; }
+.flow li.now::after { left:86px; }
+@media(max-width:700px) {
+  .flow li { grid-template-columns:64px 20px minmax(0,1fr); }
+  .flow li::before { left:73px; }
+  .flow li.now::after { left:74px; }
+}
+@media(max-width:400px) {
+  .flow li { grid-template-columns:60px 18px minmax(0,1fr); }
+  .flow time { font-size:12px; padding-right:8px; }
+  .flow li::before { left:68px; }
+  .flow li.now::after { left:69px; }
+}
+
 </style>
 </head>
 <body>
@@ -959,7 +982,6 @@ html{background:var(--mist)}body{background:var(--mist)}
   <main id="view"></main>
 </div>
 
-<button class="fab" data-act="capture" aria-label="Dodaj sliko, glas ali zapisek"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Dodaj</button>
 
 <nav aria-label="Glavna navigacija"><div class="in" id="nav"></div></nav>
 
@@ -1066,7 +1088,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-19 · v22 · Groq + Gemini, nevtralna črno-bela tema, modra okna, nova ikona, Finance';
+const APP_VERSION = '2026-10-19 · v23 · časovna os, agent Gemini + Groq, brez plavajočega Dodaj';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -1076,7 +1098,7 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, v); } catch (e) { memStore[KEY] = v; } }
 };
 const DEFAULT = {
-  settings: { apiKey: '', provider: 'gemini', groqKey: '', groqModel: 'openai/gpt-oss-120b', model: 'gemini-3.1-flash-lite', name: 'Robert', work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null, prefs: {}, profile: { city: 'Celje' } },
+  settings: { apiKey: '', provider: 'gemini', agentProvider: 'auto', groqKey: '', groqModel: 'openai/gpt-oss-120b', model: 'gemini-3.1-flash-lite', name: 'Robert', work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null, prefs: {}, profile: { city: 'Celje' } },
   modelCache: null, agentMem: { handled: {}, mail: {}, last: null, rules: [], edits: [] },
   tasks: [], reminders: [], inbox: [], plan: null, deadlines: [], notes: [], finances: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', taskSort: 'due' }
@@ -3465,7 +3487,15 @@ function settingsPaneHtml(p) {
   if (p === 'gemini') return `<h3 class="rvh">AI ponudnik</h3>
     <div class="field"><label for="setProvider">Aktivni ponudnik</label>
       <select id="setProvider"><option value="gemini" ${s.provider === 'groq' ? '' : 'selected'}>Gemini (Google) – besedilo, slike, glas</option><option value="groq" ${s.provider === 'groq' ? 'selected' : ''}>Groq (GPT-OSS) – hitro, samo besedilo</option></select>
-      <p class="help">Ko je Gemini preobremenjen, preklopi na Groq. Slike, glasovni posnetki, agent in iskanje po spletu še vedno uporabljajo Gemini ključ (če ga imaš vnesenega).</p></div>
+      <p class="help">Ko je Gemini preobremenjen, preklopi na Groq. Slike, glasovni posnetki in iskanje po spletu uporabljajo Gemini ključ; ponudnika pogovornega agenta izbereš posebej spodaj.</p></div>
+    <div class="field"><label for="setAgentProvider">Model za pogovornega AI agenta</label>
+      <select id="setAgentProvider">
+        <option value="auto" ${!['gemini','groq'].includes(s.agentProvider) ? 'selected' : ''}>Samodejno — Gemini, ob težavah Groq</option>
+        <option value="gemini" ${s.agentProvider === 'gemini' ? 'selected' : ''}>Samo Gemini</option>
+        <option value="groq" ${s.agentProvider === 'groq' ? 'selected' : ''}>Groq — Gemini še vedno za spletno iskanje</option>
+      </select>
+      <p class="help">Pri »Samodejno« začne agent z Geminijem in ob omejitvi zahtevkov, preobremenitvi ali prekinitvi povezave nadaljuje z Groq (če je vnesen njegov ključ). Če manjka ključ Gemini, lahko začne z Groq. Pri menjavi načina se začne nov pogovor, predhodni predlogi ostanejo vidni do takrat. Za spletno iskanje in slike je potreben Gemini. Ko agent dela prek Groq, se ustrezni kontekst (npr. opravila, koledar in pošta) pošilja tudi Groqu.</p>
+      <p class="help">Pozor: API ključa sta v lokalni shrambi brskalnika; za javno objavljeno aplikacijo je varneje uporabljati svoj strežnik/proxy in ključev ne izpostavljati v odjemalcu.</p></div>
     <h3 class="rvh">Gemini</h3>
     <div class="field"><label for="setKey">Gemini API ključ</label>
       <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
@@ -3543,6 +3573,7 @@ const onSettingInput = e => {
     if (changed && e.type === 'change' && nk.length >= 30) setTimeout(() => refreshModels(null, true), 0);
   }
   else if (id === 'setProvider') { S.settings.provider = e.target.value === 'groq' ? 'groq' : 'gemini'; save(); setTimeout(() => openSettings('gemini'), 0); return; }
+  else if (id === 'setAgentProvider') { S.settings.agentProvider = ['auto','gemini','groq'].includes(e.target.value) ? e.target.value : 'auto'; agent.engine = null; agent.contents = []; agent.msgs = []; agent.err = ''; S.ui.brief = null; save(); return; }
   else if (id === 'setGroqKey') S.settings.groqKey = e.target.value.trim();
   else if (id === 'setGroqModel') S.settings.groqModel = e.target.value;
   else if (id === 'setModel') {
@@ -4354,14 +4385,14 @@ function agentPaneHtml() {
 }
 function agentTools() {
   const c = agCfg(), off = new Set();
-  if (!c.web) off.add('isci_splet');
+  if (!c.web || !(S.settings.apiKey || '').trim()) off.add('isci_splet');
   if (!c.useCal) { off.add('dogodki_v_koledarju'); off.add('predlagaj_premik_dogodka'); }
   if (!c.useMail) { off.add('isci_gmail'); off.add('beri_gmail'); off.add('predlagaj_osnutek_maila'); }
   if (!c.useTasks) off.add('predlagaj_spremembo_opravila');
   AG_TYPES.forEach(t => { if (!c.types.includes(t[0])) [].concat(t[2]).forEach(n => off.add(n)); });
   return [{ functionDeclarations: AGENT_TOOLS[0].functionDeclarations.filter(f => !off.has(f.name)) }];
 }
-const agent = { msgs: [], contents: [], busy: false, status: '', err: '' };
+const agent = { msgs: [], contents: [], busy: false, status: '', err: '', engine: null };
 const AGENT_PRESETS = {
   nujno: 'Kaj je danes nujno? Preglej opravila, roke, koledar in pošto ter predlagaj samo to, kar je zamujeno, zapade kmalu ali terja moj odgovor. Brez vremena in splošnih nasvetov.',
   posta: 'Preglej mojo pošto (po mojih nastavitvah predalov in obdobja; že pregledane preskoči). Za sporočila, ki terjajo moje dejanje, predlagaj opravilo, rok ali dogodek; če terja odgovor, pripravi kratek osnutek. Oglase in obvestila preskoči. Na koncu v 1–2 stavkih povzemi.',
@@ -4405,7 +4436,7 @@ PRAVILA
 - Relativne datume izračunaj glede na današnji datum. Datumi YYYY-MM-DD, ure HH:MM.
 - Spomin: stvari v ze_obravnavano (iz preglej_stanje) je uporabnik že potrdil ali zavrnil, zato jih NIKOLI ne predlagaj znova.
 - UČENJE: če uporabnik v sporočilu izrazi splošno željo ali popravek (npr. "tega ne predlagaj", "piši krajše", "to je vedno nujno"), pokliči predlagaj_pravilo s kratkim splošnim pravilom v ukazni obliki (največ eno na sporočilo). Isto naredi, če so v ze_obravnavano vsaj 2 podobna predloga zavrnjena z istim razlogom (polje razlog). Ne ustvarjaj pravil za enkratne stvari in ne podvajaj obstoječih.
-${c.web ? '- SPLET: uporabi isci_splet za aktualna ali preverljiva dejstva zunaj aplikacije, kadar je to koristno za odgovor (npr. vreme, novice, informacije o krajih, odpiralni čas, potovanja, urniki, razlage ali primerjave). Rezultate povzemi in navedi razpoložljive vire. V poizvedbo nikoli ne vstavljaj osebnih podatkov, e-poštnih naslovov ali vsebine e-pošt.' : '- Spletno iskanje je v nastavitvah izklopljeno; odgovori iz znanja, ki ga imaš, in jasno povej, če aktualnih podatkov ne moreš preveriti.'}
+${c.web && (S.settings.apiKey || '').trim() ? '- SPLET: uporabi isci_splet za aktualna ali preverljiva dejstva zunaj aplikacije, kadar je to koristno za odgovor (npr. vreme, novice, informacije o krajih, odpiralni čas, potovanja, urniki, razlage ali primerjave). Rezultate povzemi in navedi razpoložljive vire. V poizvedbo nikoli ne vstavljaj osebnih podatkov, e-poštnih naslovov ali vsebine e-pošt.' : '- Spletno iskanje je v nastavitvah izklopljeno; odgovori iz znanja, ki ga imaš, in jasno povej, če aktualnih podatkov ne moreš preveriti.'}
 ${c.types.includes('nacrt') ? '- DNEVNI NAČRT: uporabnik ima na zavihku Danes dnevni načrt (bloki z uro od–do). Pred vsako spremembo načrta pokliči preglej_nacrt, da dobiš id blokov. Bloke dodajaš, spreminjaš (naslov, ura, vrsta, opravljeno) in odstranjuješ z orodji predlagaj_blok_nacrta, predlagaj_spremembo_bloka in predlagaj_odstranitev_bloka. Načrt velja samo za danes; za druge dni predlagaj opravilo ali dogodek. Pazi, da se bloki ne prekrivajo (prekrivajoč blok najprej premakni ali odstrani) in da je ura "do" za uro "od". Blokov tipa fiksno, ki so dogodki iz Google koledarja, v načrtu ne premikaj: zanje uporabi predlagaj_premik_dogodka. Če uporabnik reče, da je blok opravljen, nastavi opravljeno=true.\n' : ''}- Pred novim opravilom preglej stanje, da ne ustvariš dvojnika. Največ ${c.maxProp} predlogov naenkrat.${c.instr.trim() ? '\nDODATNA NAVODILA UPORABNIKA: ' + c.instr.trim() : ''}${agRulesText()}${userContext() ? '\n\n' + userContext() : ''}`;
 }
 async function agentWebSearch(q) {
@@ -4436,7 +4467,112 @@ function agRulesText() {
   if (e.length) t += '\n\nPRIMERI, KAKO UPORABNIK POPRAVLJA TVOJE OSNUTKE E-POŠTE (posnemaj njegov slog, ton in dolžino):\n' + e.map((x, i) => `${i + 1}) Tvoj osnutek: «${x.a}»\n   Uporabnikova različica: «${x.b}»`).join('\n');
   return t;
 }
+/* Pretvorba Gemini-shem v standardni JSON Schema za Groqovo klicanje orodij. */
+function groqToolSchema(p) {
+  if (!p || typeof p !== 'object') return { type: 'object', properties: {} };
+  const o = {};
+  for (const [k, v] of Object.entries(p)) {
+    if (k === 'type') o.type = String(v).toLowerCase();
+    else if (k === 'properties' && v && typeof v === 'object') o.properties = Object.fromEntries(Object.entries(v).map(([n, spec]) => [n, groqToolSchema(spec)]));
+    else if (k === 'items') o.items = groqToolSchema(v);
+    else if (k === 'enum' || k === 'description' || k === 'required') o[k] = v;
+  }
+  if (o.type === 'object' && !o.properties) o.properties = {};
+  return o;
+}
+function groqAgentTools() {
+  return agentTools()[0].functionDeclarations.map(f => ({
+    type: 'function', function: {
+      name: f.name, description: f.description || f.name,
+      parameters: groqToolSchema(f.parameters || { type: 'OBJECT', properties: {} })
+    }
+  }));
+}
+/* Pogovorno zgodovino (in odgovore orodij) prenesi med ponudnikoma brez izgub podatkov.
+   Groq zahteva tool_call_id, zato ob manjkajočih ID-jih ustvarimo stabilen ID. */
+function groqAgentMessages() {
+  const out = [{ role: 'system', content: agentPrompt() }], pending = [];
+  agent.contents.forEach((item, i) => {
+    const parts = arr(item && item.parts), texts = parts.filter(p => p && p.text && !p.thought).map(p => p.text).join('\n').trim();
+    if (item.role === 'model') {
+      const calls = parts.filter(p => p && p.functionCall).map((p, j) => {
+        const c = p.functionCall, id = c.id || `lf_call_${i}_${j}`;
+        pending.push({ id, name: c.name });
+        return { id, type: 'function', function: { name: c.name, arguments: JSON.stringify(c.args || {}) } };
+      });
+      if (texts || calls.length) out.push({ role: 'assistant', content: texts || null, ...(calls.length ? { tool_calls: calls } : {}) });
+    } else if (item.role === 'user') {
+      if (texts) out.push({ role: 'user', content: texts });
+      parts.filter(p => p && p.functionResponse).forEach(p => {
+        const r = p.functionResponse;
+        const index = pending.findIndex(x => x.name === r.name && (!r.id || x.id === r.id));
+        const tool = index >= 0 ? pending.splice(index, 1)[0] : pending.shift();
+        if (tool) out.push({ role: 'tool', tool_call_id: tool.id, content: JSON.stringify(r.response == null ? {} : r.response) });
+      });
+    }
+  });
+  return out;
+}
+async function agentCallGroq() {
+  const key = (S.settings.groqKey || '').trim();
+  if (!key) throw new UserErr('NO_KEY');
+  const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 90000);
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        model: (S.settings.groqModel || 'openai/gpt-oss-120b').trim(),
+        messages: groqAgentMessages(), tools: groqAgentTools(),
+        tool_choice: 'auto', parallel_tool_calls: false, temperature: 0.2
+      })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new UserErr(groqErrText(res.status, data));
+    const m = data && data.choices && data.choices[0] && data.choices[0].message;
+    if (!m) throw new UserErr('Groq ni vrnil odgovora.');
+    const parts = [];
+    if (typeof m.content === 'string' && m.content.trim()) parts.push({ text: m.content });
+    for (const call of arr(m.tool_calls)) {
+      if (!call || !call.function || !call.function.name) continue;
+      let args;
+      try { args = JSON.parse(call.function.arguments || '{}'); }
+      catch (e) { throw new UserErr('Groq je vrnil neveljavne argumente orodja; poskusi znova.'); }
+      parts.push({ functionCall: { name: call.function.name, args, id: call.id } });
+    }
+    if (!parts.length) throw new UserErr('Groq ni vrnil vsebine niti klicev orodij.');
+    return { role: 'model', parts };
+  } catch (e) {
+    if (e instanceof UserErr) throw e;
+    if (e.name === 'AbortError') throw new UserErr('Zahteva Groq je potekla.');
+    throw new UserErr('Ni povezave z Groq. Preveri internet.');
+  } finally { clearTimeout(to); }
+}
+function agentMode() {
+  const desired = S.settings.agentProvider || 'auto';
+  if (desired === 'gemini' || desired === 'groq') return desired;
+  return (S.settings.apiKey || '').trim() ? 'gemini' : 'groq';
+}
+function agentHasKey() {
+  const mode = S.settings.agentProvider || 'auto';
+  return mode === 'auto' ? !!((S.settings.apiKey || '').trim() || (S.settings.groqKey || '').trim())
+    : mode === 'groq' ? !!(S.settings.groqKey || '').trim() : !!(S.settings.apiKey || '').trim();
+}
 async function agentCall() {
+  if (!agent.engine) agent.engine = agentMode();
+  if (agent.engine === 'groq') return agentCallGroq();
+  try { return await agentCallGemini(); }
+  catch (e) {
+    /* Samodejni način se na Groq preklopi le ob prehodnih napakah, ne ob napačnem ključu.
+       Tako ne skrivamo napak avtorizacije ali vsebine in ne podvajamo zahtevkov. */
+    if ((S.settings.agentProvider || 'auto') === 'auto' && (S.settings.groqKey || '').trim() && e && e.transient) {
+      agent.engine = 'groq';
+      return agentCallGroq();
+    }
+    throw e;
+  }
+}
+async function agentCallGemini() {
   const key = (S.settings.apiKey || '').trim();
   if (!key) throw new UserErr('NO_KEY');
   const model = (S.settings.model || 'gemini-3.1-flash-lite').trim();
@@ -4445,7 +4581,7 @@ async function agentCall() {
   try {
     const res = await genPost(model, key, body, ctrl.signal);
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new UserErr(apiErrText(res.status, data));
+    if (!res.ok) { const e = new UserErr(apiErrText(res.status, data)); e.transient = res.status === 429 || res.status >= 500; throw e; }
     const cand = data && data.candidates && data.candidates[0];
     if (!cand || !cand.content) {
       const br = data && data.promptFeedback && data.promptFeedback.blockReason;
@@ -4454,8 +4590,8 @@ async function agentCall() {
     return cand.content; // celotna vsebina (vključno s podpisi razmišljanja) se vrne nespremenjena
   } catch (e) {
     if (e instanceof UserErr) throw e;
-    if (e.name === 'AbortError') throw new UserErr('Zahteva je potekla. Poskusi znova.');
-    throw new UserErr('Ni povezave z Gemini. Preveri internet in poskusi znova.');
+    if (e.name === 'AbortError') { const x = new UserErr('Zahteva je potekla. Poskusi znova.'); x.transient = true; throw x; }
+    const x = new UserErr('Ni povezave z Gemini. Preveri internet in poskusi znova.'); x.transient = true; throw x;
   } finally { clearTimeout(to); }
 }
 function agentTrim() {
@@ -4675,7 +4811,7 @@ async function agentLoop() {
 async function agentSend(text, opts = {}) {
   text = String(text || '').trim();
   if (agent.busy || !text) return;
-  if (!opts.silent && !needKey()) return;
+  if (!opts.silent && !agentHasKey()) { toast('Za agenta vnesi ustrezni API ključ.'); openSettings('gemini'); return; }
   if (!opts.silent) agent.msgs.push({ role: 'user', text });
   agent.contents.push({ role: 'user', parts: [{ text }] });
   agent.busy = true; agent.err = ''; agentUi();
@@ -4689,7 +4825,7 @@ function persistBrief(fresh) {
     if (!agent.msgs.length) { S.ui.brief = null; }
     else {
       const old = S.ui.brief || {};
-      S.ui.brief = { date: fresh ? today() : (old.date || today()), at: fresh ? Date.now() : (old.at || Date.now()), google: fresh ? gcalOn() : !!old.google, msgs: agent.msgs, contents: JSON.stringify(agent.contents).length < 600000 ? agent.contents : [] };
+      S.ui.brief = { date: fresh ? today() : (old.date || today()), at: fresh ? Date.now() : (old.at || Date.now()), google: fresh ? gcalOn() : !!old.google, engine: agent.engine, msgs: agent.msgs, contents: JSON.stringify(agent.contents).length < 600000 ? agent.contents : [] };
     }
     store.set(JSON.stringify(S));
   } catch (e) { /* predpomnilnik ni nujen */ }
@@ -4705,13 +4841,13 @@ function briefPrompt() {
 Odgovor: največ 4 kratke alineje (vsaka se začne z "- "): 1) kaj je nujno (zamujeno, rok kmalu), 2) koledar (prekrivanja, termini, ki terjajo pripravo), 3) pošta, ki terja dejanje. Alineje, kjer ni nič nujnega, izpusti. NE omenjaj vremena, športa ali splošnih nasvetov. Za vsako konkretno stvar pripravi predlog z orodji predlagaj_* (za e-pošto, ki terja odgovor, osnutek). Ne podvajaj stvari, ki že so med opravili ali v koledarju. Največ ${c.maxProp} predlogov.`;
 }
 async function agentAutoStart(force) {
-  if (agent.busy || !(S.settings.apiKey || '').trim()) return;
+  if (agent.busy || !agentHasKey()) return;
   if (!force && !prefsCfg().autoBrief) return;
   const b = S.ui.brief;
   if (!force && b && b.date === today() && Date.now() - b.at < 600000 && !!b.google === gcalOn() && arr(b.msgs).length) {
-    agent.msgs = b.msgs; agent.contents = arr(b.contents); agentUi(); return;
+    agent.msgs = b.msgs; agent.contents = arr(b.contents); agent.engine = b.engine || null; agentUi(); return;
   }
-  agent.msgs = []; agent.contents = [];
+  agent.msgs = []; agent.contents = []; agent.engine = null;
   await agentSend(briefPrompt(), { silent: true });
 }
 
@@ -4913,12 +5049,12 @@ function agentLogHtml() {
   return h;
 }
 function agentConnHtml() {
-  if (!(S.settings.apiKey || '').trim()) return `<div class="conn-banner"><span>Za agenta vnesi Gemini ključ.</span><button class="btn sm" data-act="openSet" data-p="gemini">Vnesi ključ</button></div>`;
+  if (!agentHasKey()) return `<div class="conn-banner"><span>Za agenta vnesi ${S.settings.agentProvider === 'groq' ? 'Groq' : S.settings.agentProvider === 'gemini' ? 'Gemini' : 'Gemini ali Groq'} ključ.</span><button class="btn sm" data-act="openSet" data-p="gemini">Vnesi ključ</button></div>`;
   if (!fbCfg() || gcalOn()) return '';
   return `<div class="conn-banner"><span>${gcal.user ? 'Povezava z Gmailom in koledarjem je potekla.' : 'Gmail in koledar še nista povezana.'}</span><button class="btn sm" data-act="gSignIn" ${gcal.busy ? 'disabled' : ''}>${gcal.busy ? '<span class="spin"></span>' : ''} Poveži</button></div>`;
 }
 function agentSubText() {
-  if (agent.busy) return agent.status || 'Delam …';
+  if (agent.busy) return (agent.engine === 'groq' ? 'Groq · ' : 'Gemini · ') + (agent.status || 'Delam …');
   const b = S.ui.brief;
   if (b && b.at && agent.msgs.length) return 'Pregled ob ' + hm(new Date(b.at)) + (gcalOn() ? ' · Gmail in koledar povezana' : '');
   return 'Povej, kaj naj uredi';
@@ -4944,7 +5080,7 @@ Object.assign(A, {
   agentGo() { const t = $('#agentText'); if (!t || !t.value.trim()) return; const v = t.value; t.value = ''; agent.draft = ''; agentSend(v); },
   agentPreset(b) { agentGoToday(); agentSend(AGENT_PRESETS[b.dataset.p]); },
   agentBrief() { agentGoToday(); agentAutoStart(true); },
-  agentReset() { if (agent.busy) { toast('Počakaj, da agent konča.'); return; } agent.msgs = []; agent.contents = []; agent.err = ''; persistBrief(); render(); },
+  agentReset() { if (agent.busy) { toast('Počakaj, da agent konča.'); return; } agent.msgs = []; agent.contents = []; agent.engine = null; agent.err = ''; persistBrief(); render(); },
   agentApply(b) { agentApply(+b.dataset.i); },
   agentDismiss(b) { const m = agent.msgs[+b.dataset.i]; if (!m || m.busy) return; m.items.forEach(x => { if (x.state === 'caka') { x.state = 'zavrzeno'; x.note = 'Zavrženo.'; agMemRemember(x, 'zavrnil'); } }); save(); persistBrief(); agentUi(); },
   wxRefresh() { wxLoad(true); },
