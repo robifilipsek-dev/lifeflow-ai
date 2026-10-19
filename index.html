@@ -1066,7 +1066,7 @@ const FIREBASE_CONFIG = {
   appId: "1:629653470714:web:658daa774a30ebc6fdb843"
 };
 
-const APP_VERSION = '2026-10-19 · v21 · Nevtralna črno-bela tema, modra okna, nova ikona, Finance';
+const APP_VERSION = '2026-10-19 · v22 · Groq + Gemini, nevtralna črno-bela tema, modra okna, nova ikona, Finance';
 
 /* ---------- state ---------- */
 const KEY = 'lifeflow.v1';
@@ -1076,7 +1076,7 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, v); } catch (e) { memStore[KEY] = v; } }
 };
 const DEFAULT = {
-  settings: { apiKey: '', model: 'gemini-3.1-flash-lite', name: 'Robert', work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null, prefs: {}, profile: { city: 'Celje' } },
+  settings: { apiKey: '', provider: 'gemini', groqKey: '', groqModel: 'openai/gpt-oss-120b', model: 'gemini-3.1-flash-lite', name: 'Robert', work: { on: true, days: [1, 2, 3, 4, 5], from: '06:00', to: '14:00', commute: 30 }, fbConfig: '', lastBackupAt: null, backupReminderDismissedAt: null, prefs: {}, profile: { city: 'Celje' } },
   modelCache: null, agentMem: { handled: {}, mail: {}, last: null, rules: [], edits: [] },
   tasks: [], reminders: [], inbox: [], plan: null, deadlines: [], notes: [], finances: [], dismissed: {},
   ui: { tab: 'today', energy: 'srednja', from: '08:00', to: '21:00', taskSort: 'due' }
@@ -1276,7 +1276,49 @@ async function genPost(model, key, body, signal) {
   }
   return res;
 }
+function activeKey() { return ((S.settings.provider === 'groq' ? S.settings.groqKey : S.settings.apiKey) || '').trim(); }
+function groqErrText(status, data) {
+  const m = (data && data.error && data.error.message) || '';
+  if (status === 401) return 'Groq ključ ni veljaven. Preveri ga v nastavitvah.';
+  if (status === 403) return 'Groq je dostop zavrnil (403). Preveri ključ ali omejitve računa.';
+  if (status === 404) return 'Groq model ni najden. V nastavitvah izberi drug model.';
+  if (status === 413) return 'Vnos je za Groq predolg. Skrajšaj besedilo.';
+  if (status === 429) return 'Dosežena omejitev brezplačnega Groq načrta. Počakaj minuto ali preklopi na Gemini.';
+  if (status >= 500) return 'Groq je trenutno preobremenjen. Poskusi znova čez nekaj trenutkov.';
+  return 'Groq napaka ' + status + ': ' + m;
+}
+async function callGroq(parts, extra = '') {
+  const key = (S.settings.groqKey || '').trim();
+  if (!key) throw new UserErr('NO_KEY');
+  if (arr(parts).some(p => p && p.inlineData)) throw new UserErr('Slike in glasovni posnetki zahtevajo Gemini. Vnesi Gemini ključ ali preklopi ponudnika.');
+  const model = (S.settings.groqModel || 'openai/gpt-oss-120b').trim();
+  const sys = SYSTEM_PROMPT + '\n\n' + FORMAT_RULES + (userContext() ? '\n\n' + userContext() : '') + (extra ? '\n\n' + extra : '') + '\n\nOdgovori izključno z veljavnim JSON objektom.';
+  const user = arr(parts).map(p => (p && p.text) || '').filter(Boolean).join('\n\n');
+  const ctrl = new AbortController(), to = setTimeout(() => ctrl.abort(), 90000);
+  const send = fmt => fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({ model, temperature: 0.3, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], ...(fmt ? { response_format: { type: 'json_object' } } : {}) }),
+    signal: ctrl.signal
+  });
+  try {
+    let res = await send(true);
+    if (res.status === 400) res = await send(false);
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new UserErr(groqErrText(res.status, data));
+    const txt = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!txt) throw new UserErr('Model ni vrnil odgovora. Poskusi znova.');
+    return parseJson(txt);
+  } catch (e) {
+    if (e instanceof UserErr) throw e;
+    if (e.name === 'AbortError') throw new UserErr('Zahteva je potekla. Poskusi znova.');
+    throw new UserErr('Ni povezave z Groq. Preveri internet in poskusi znova.');
+  } finally { clearTimeout(to); }
+}
 async function callGemini(parts, extra = '') {
+  if (S.settings.provider === 'groq') {
+    const media = arr(parts).some(p => p && p.inlineData);
+    if (!media || !(S.settings.apiKey || '').trim()) return callGroq(parts, extra);
+  }
   const key = (S.settings.apiKey || '').trim();
   if (!key) throw new UserErr('NO_KEY');
   const model = (S.settings.model || 'gemini-3.1-flash-lite').trim();
@@ -1305,8 +1347,8 @@ async function callGemini(parts, extra = '') {
   } finally { clearTimeout(to); }
 }
 function needKey() {
-  if ((S.settings.apiKey || '').trim()) return true;
-  toast('Najprej vnesi Gemini API ključ.');
+  if (activeKey()) return true;
+  toast('Najprej vnesi API ključ (' + (S.settings.provider === 'groq' ? 'Groq' : 'Gemini') + ').');
   openSettings('gemini');
   return false;
 }
@@ -1621,7 +1663,7 @@ Na podlagi zapiska in navodila napiši jasno, vljudno in kratko e-pošto.
 Vrni JSON: {"za":"","zadeva":"","besedilo":"","opomba":""}`
 };
 
-function noteHasKey() { return !!(S.settings.apiKey || '').trim(); }
+function noteHasKey() { return !!activeKey(); }
 function noteSource() {
   const t = (noteForm && noteForm.title || '').trim(), x = (noteForm && noteForm.text || '').trim();
   return [t ? 'Naslov: ' + t : '', x ? 'Besedilo:\n' + x : ''].filter(Boolean).join('\n');
@@ -1805,7 +1847,7 @@ function noteAiGuard() {
   if (!noteForm || noteAi.busy) return false;
   syncNoteDom();
   noteAi.err = ''; noteAi.info = '';
-  if (!noteHasKey()) { noteAi.err = 'Manjka Gemini API ključ. Vnesi ga v Nastavitvah (zobnik zgoraj desno).'; renderNoteAi(); return false; }
+  if (!noteHasKey()) { noteAi.err = 'Manjka API ključ. Vnesi ga v Nastavitvah → AI ponudnik (zobnik zgoraj desno).'; renderNoteAi(); return false; }
   return true;
 }
 
@@ -1942,7 +1984,7 @@ async function noteMailGen(auto) {
   syncMailDom();
   const form = noteForm;
   if (!form.text.trim() && !form.title.trim() && !form.instr.trim()) { m.err = 'Napiši zapisek ali navodilo, da AI ve, o čem naj bo e-pošta.'; renderMailStatus(); return; }
-  if (!noteHasKey()) { m.err = 'Manjka Gemini API ključ. Vnesi ga v Nastavitvah (zobnik zgoraj desno).'; renderMailStatus(); return; }
+  if (!noteHasKey()) { m.err = 'Manjka API ključ. Vnesi ga v Nastavitvah → AI ponudnik (zobnik zgoraj desno).'; renderMailStatus(); return; }
   if (auto !== true && m.body.trim() && !confirm('Zamenjam trenutno besedilo e-pošte z novim AI osnutkom?')) return;
   m.busy = 'gen'; m.err = ''; m.ok = ''; m.link = ''; m.auth = false; renderMailStatus();
   try {
@@ -2594,7 +2636,7 @@ const cloudSync = {
 function cloudState() {
   const x = JSON.parse(JSON.stringify(S));
   if (x.settings) {
-    delete x.settings.apiKey;   // ostane samo na tej napravi
+    delete x.settings.apiKey; delete x.settings.groqKey;   // ostane samo na tej napravi
     delete x.settings.fbConfig; // konfiguracija je v kodi
   }
   // UI stanje je lokalno za posamezno napravo/brskalnik. Aktivni zavihek,
@@ -2666,7 +2708,7 @@ async function startCloudSync(user) {
   cloudStatus('Nalagam podatke …', 'busy');
 
   const ref = cloudPath();
-  const localApiKey = S.settings.apiKey || '';
+  const localApiKey = S.settings.apiKey || ''; const localGroqKey = S.settings.groqKey || '';
   let needsCloudCleanup = false;
   try {
     const snap = await cloudSync.FM.getDoc(ref);
@@ -2681,7 +2723,7 @@ async function startCloudSync(user) {
           settings: { ...base.settings, ...(remote.settings || {}) },
           ui: { ...base.ui, ...(remote.ui || {}) }
         };
-        S.settings.apiKey = localApiKey;
+        S.settings.apiKey = localApiKey; S.settings.groqKey = localGroqKey;
         S.settings.fbConfig = FIREBASE_CONFIG.apiKey ? '' : (S.settings.fbConfig || '');
         normalizeState(S);
         cleanupLegacyImages();
@@ -2716,14 +2758,14 @@ async function startCloudSync(user) {
       if (stableJson(remote) === stableJson(cloudState())) { cloudSync.lastJson = cloudJson(); return; }
 
       cloudSync.applyingRemote = true;
-      const localApiKey = S.settings.apiKey || '';
+      const localApiKey = S.settings.apiKey || ''; const localGroqKey = S.settings.groqKey || '';
       // Remote sync posodobi podatke, ne pa navigacije/UI trenutne naprave.
       const localUi = JSON.parse(JSON.stringify(S.ui || DEFAULT.ui));
       const base = JSON.parse(JSON.stringify(DEFAULT));
       S = {
         ...base,
         ...remote,
-        settings: { ...base.settings, ...(remote.settings || {}), apiKey: localApiKey },
+        settings: { ...base.settings, ...(remote.settings || {}), apiKey: localApiKey, groqKey: localGroqKey },
         ui: localUi
       };
       normalizeState(S);
@@ -3343,6 +3385,11 @@ function calShift(n) {
 }
 
 /* ---------- settings: izbira modela ---------- */
+const GROQ_MODELS = [
+  { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (OpenAI) — najzmogljivejši, privzet' },
+  { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (OpenAI) — hitrejši' },
+  { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B — alternativa' }
+];
 const MODEL_KNOWN = [
   { id: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite — najhitrejši in najcenejši, privzet' },
   { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — zmogljivejši, malo počasnejši' },
@@ -3391,7 +3438,7 @@ function workSettingsHtml() {
     </div>`;
 }
 let settingsPane = 'basic';
-const SET_PANES = [['basic', 'Osnovno'], ['prefs', 'Želje'], ['agent', 'Agent'], ['gemini', 'Gemini'], ['google', 'Google'], ['data', 'Podatki']];
+const SET_PANES = [['basic', 'Osnovno'], ['prefs', 'Želje'], ['agent', 'Agent'], ['gemini', 'AI ponudnik'], ['google', 'Google'], ['data', 'Podatki']];
 const prefVal = k => esc(((S.settings.prefs || {})[k]) || '');
 const profVal = k => esc(((S.settings.profile || {})[k]) || '');
 const prefSel = (k, opts) => { const cur = (S.settings.prefs || {})[k] || ''; return `<select data-pref="${k}">${opts.map(([v, l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`; };
@@ -3415,7 +3462,11 @@ function settingsPaneHtml(p) {
     
     
     ${prefArea('extra', 'Druge želje', 'Karkoli drugega, kar naj agent ve o tebi', '')}`;
-  if (p === 'gemini') return `<h3 class="rvh">Gemini</h3>
+  if (p === 'gemini') return `<h3 class="rvh">AI ponudnik</h3>
+    <div class="field"><label for="setProvider">Aktivni ponudnik</label>
+      <select id="setProvider"><option value="gemini" ${s.provider === 'groq' ? '' : 'selected'}>Gemini (Google) – besedilo, slike, glas</option><option value="groq" ${s.provider === 'groq' ? 'selected' : ''}>Groq (GPT-OSS) – hitro, samo besedilo</option></select>
+      <p class="help">Ko je Gemini preobremenjen, preklopi na Groq. Slike, glasovni posnetki, agent in iskanje po spletu še vedno uporabljajo Gemini ključ (če ga imaš vnesenega).</p></div>
+    <h3 class="rvh">Gemini</h3>
     <div class="field"><label for="setKey">Gemini API ključ</label>
       <div class="inline"><input type="password" id="setKey" value="${esc(s.apiKey)}" autocomplete="off" spellcheck="false" placeholder="AIza…"><button class="btn ghost" data-act="showKey" type="button">Pokaži</button></div>
       <p class="help">Ključ dobiš brezplačno v <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Shranjen je samo v tej napravi; slike in zvok gredo neposredno h Googlu.</p></div>
@@ -3423,7 +3474,14 @@ function settingsPaneHtml(p) {
       <select id="setModel">${modelOptions().map(m => `<option value="${esc(m.id)}" ${m.id === s.model ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}<option value="__custom" ${modelOptions().some(m => m.id === s.model) ? '' : 'selected'}>Drug model (vpišem sam) …</option></select>
       <input type="text" id="setModelCustom" value="${esc(s.model)}" autocomplete="off" spellcheck="false" placeholder="npr. gemini-3.5-flash" ${modelOptions().some(m => m.id === s.model) ? 'hidden' : ''} style="margin-top:8px">
       <p class="help"><strong>Osveži seznam</strong> prebere modele, ki jih tvoj ključ dejansko lahko uporablja.</p></div>
-    <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button><button class="btn" data-act="testKey">Preveri povezavo</button></div>`;
+    <div class="set-actions"><button class="btn ghost" data-act="refreshModels">Osveži seznam</button></div>
+    <h3 class="rvh">Groq</h3>
+    <div class="field"><label for="setGroqKey">Groq API ključ</label>
+      <div class="inline"><input type="password" id="setGroqKey" value="${esc(s.groqKey)}" autocomplete="off" spellcheck="false" placeholder="gsk_…"><button class="btn ghost" data-act="showGroqKey" type="button">Pokaži</button></div>
+      <p class="help">Brezplačen ključ brez kartice: <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>. Shranjen je samo v tej napravi.</p></div>
+    <div class="field"><label for="setGroqModel">Groq model</label>
+      <select id="setGroqModel">${GROQ_MODELS.map(m => `<option value="${esc(m.id)}" ${m.id === (s.groqModel || 'openai/gpt-oss-120b') ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></div>
+    <div class="set-actions"><button class="btn" data-act="testKey">Preveri povezavo</button></div>`;
   if (p === 'google') return `<h3 class="rvh">Google račun in povezave</h3>
     ${FIREBASE_CONFIG.apiKey ? '' : `<p class="help" style="color:var(--danger-ink)">Firebase podatki še niso vpisani. V datoteki <code>index.html</code> poišči <code>FIREBASE_CONFIG</code>.</p>`}
     <div id="gBlock">${googleBlockInner()}</div>
@@ -3484,6 +3542,9 @@ const onSettingInput = e => {
     if (changed) S.modelCache = null;   /* seznam modelov velja za določen ključ */
     if (changed && e.type === 'change' && nk.length >= 30) setTimeout(() => refreshModels(null, true), 0);
   }
+  else if (id === 'setProvider') { S.settings.provider = e.target.value === 'groq' ? 'groq' : 'gemini'; save(); setTimeout(() => openSettings('gemini'), 0); return; }
+  else if (id === 'setGroqKey') S.settings.groqKey = e.target.value.trim();
+  else if (id === 'setGroqModel') S.settings.groqModel = e.target.value;
   else if (id === 'setModel') {
     const c = $('#setModelCustom');
     if (e.target.value === '__custom') { if (c) { c.hidden = false; c.focus(); } S.settings.model = (c && c.value.trim()) || S.settings.model; }
@@ -3506,8 +3567,8 @@ $('#fileImport').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const o = JSON.parse(await f.text());
-    const key = S.settings.apiKey, fbc = S.settings.fbConfig || '';
-    S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
+    const key = S.settings.apiKey, gkey = S.settings.groqKey || '', fbc = S.settings.fbConfig || '';
+    S = { ...JSON.parse(JSON.stringify(DEFAULT)), ...o, settings: { ...DEFAULT.settings, ...(o.settings || {}), apiKey: key, groqKey: gkey, fbConfig: fbc || (o.settings || {}).fbConfig || '' }, ui: { ...DEFAULT.ui, ...(o.ui || {}) } };
     normalizeState(S); cleanupLegacyImages(); save(); render(); toast('Podatki uvoženi.');
   } catch (err) { toast('Datoteke ni bilo mogoče uvoziti.'); }
 });
@@ -3988,14 +4049,15 @@ saveTaskRepeat() { saveTaskRepeat(); },
   },
 refreshModels(b) { refreshModels(b); },
   showKey(b) { const i = $('#setKey'); i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Pokaži' : 'Skrij'; },
+  showGroqKey(b) { const i = $('#setGroqKey'); i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Pokaži' : 'Skrij'; },
   async testKey(b) {
-    if (!(S.settings.apiKey || '').trim()) { toast('Najprej vnesi ključ.'); return; }
+    if (!activeKey()) { toast('Najprej vnesi ključ.'); return; }
     b.disabled = true; b.textContent = 'Preverjam …';
     try { await callGemini([{ text: 'Vrni JSON {"ok":true}' }]); toast('Povezava deluje ✓'); }
     catch (e) { toast(e.message); }
     b.disabled = false; b.textContent = 'Preveri povezavo';
   },
-  export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1), 'application/json;charset=utf-8'); S.settings.lastBackupAt=today(); save(); render(); },
+  export() { const o = JSON.parse(JSON.stringify(S)); o.settings.apiKey = ''; o.settings.groqKey = ''; download(`lifeflow-kopija-${today()}.json`, JSON.stringify(o, null, 1), 'application/json;charset=utf-8'); S.settings.lastBackupAt=today(); save(); render(); },
   import() { $('#fileImport').click(); },
   wipe() {
     if (!confirm('Res izbrišem vse podatke o opravilih, dogodkih in načrtovanju? Ključ API ostane.')) return;
